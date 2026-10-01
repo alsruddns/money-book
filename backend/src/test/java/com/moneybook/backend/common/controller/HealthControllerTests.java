@@ -20,7 +20,7 @@ class HealthControllerTests {
 
     @Test
     void healthIsAvailableWithoutAuthentication() throws Exception {
-        mockMvc.perform(get("/api/health"))
+        mockMvc.perform(get("/api/health").contextPath("/api"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("UP"));
     }

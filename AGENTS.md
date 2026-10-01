@@ -274,6 +274,13 @@ public ResponseEntity<?> create(...) {
 
 Controllers must never access Repository directly.
 
+## API URI Rules
+
+- Do not write the `/api` prefix directly in Controller URIs.
+- Manage the common API prefix with `server.servlet.context-path` in `application.yaml`.
+- The default context path is `/api`.
+- Controllers declare only their business URI.
+
 ---
 
 # 7. DTO Rules
@@ -773,7 +780,7 @@ Example:
  * 가계부 거래내역 API를 제공한다.
  */
 @RestController
-@RequestMapping("/api/transactions")
+@RequestMapping("/transactions")
 public class TransactionController {
 
     /**

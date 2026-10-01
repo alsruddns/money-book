@@ -5,7 +5,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/money_book}
     username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD}
+    password: ${DB_PASSWORD:111}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -23,3 +23,5 @@ spring:
 
 server:
   port: 8080
+  servlet:
+    context-path: /api
