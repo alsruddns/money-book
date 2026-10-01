@@ -3,6 +3,8 @@ package com.moneybook.backend.common.exception;
 import org.springframework.http.HttpStatus;
 
 public enum ErrorCode {
+    TRANSFER_NOT_FOUND(HttpStatus.NOT_FOUND, "이체를 찾을 수 없습니다."),
+    SAME_TRANSFER_ACCOUNT(HttpStatus.BAD_REQUEST, "출금 계좌와 입금 계좌가 같을 수 없습니다."),
     MONEY_BOOK_CREATE_FORBIDDEN(HttpStatus.FORBIDDEN, "가계부에 등록할 권한이 없습니다."),
     MONEY_BOOK_READ_FORBIDDEN(HttpStatus.FORBIDDEN, "가계부를 조회할 권한이 없습니다."),
     MONEY_BOOK_UPDATE_FORBIDDEN(HttpStatus.FORBIDDEN, "가계부를 수정할 권한이 없습니다."),
