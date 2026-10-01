@@ -23,6 +23,10 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+	// Database schema versioning and migration execution
+	implementation 'org.flywaydb:flyway-core'
+	// PostgreSQL dialect support for Flyway migrations
+	implementation 'org.flywaydb:flyway-database-postgresql'
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'org.postgresql:postgresql'
 	annotationProcessor 'org.projectlombok:lombok'
