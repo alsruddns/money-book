@@ -1,0 +1,140 @@
+package com.moneybook.backend.transaction.repository;
+
+import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.Test;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.jdbc.datasource.SingleConnectionDataSource;
+import org.springframework.jdbc.datasource.init.ScriptUtils;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+class LedgerMigrationTests {
+
+    @Test
+    void flywayAppliesLedgerMigrationAfterExistingBookSchema() throws Exception {
+        try (Connection connection = DriverManager.getConnection(
+                "jdbc:h2:mem:ledger_flyway;MODE=PostgreSQL", "sa", "")) {
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("CREATE TABLE users (user_uid BIGINT PRIMARY KEY)");
+            }
+            ScriptUtils.executeSqlScript(connection,
+                    new ClassPathResource("db/migration/V20261001_2__create_money_books.sql"));
+            Flyway.configure()
+                    .dataSource(new SingleConnectionDataSource(connection, true))
+                    .locations("classpath:db/migration")
+                    .baselineOnMigrate(true)
+                    .baselineVersion("20261001.2")
+                    .load()
+                    .migrate();
+            try (Statement statement = connection.createStatement();
+                 ResultSet result = statement.executeQuery("""
+                         SELECT COUNT(*) FROM "flyway_schema_history"
+                         WHERE "version" = '20261002.1' AND "success" = TRUE
+                         """)) {
+                result.next();
+                assertEquals(1, result.getInt(1));
+            }
+        }
+    }
+
+    @Test
+    void migrationCreatesAuditedTablesAndEnforcesAmountAndBookReferences() throws Exception {
+        try (Connection connection = DriverManager.getConnection(
+                "jdbc:h2:mem:ledger_migration;MODE=PostgreSQL", "sa", "")) {
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("""
+                        CREATE TABLE users (user_uid BIGINT PRIMARY KEY, nickname VARCHAR(50) NOT NULL,
+                                            status VARCHAR(30) NOT NULL, reg_time TIMESTAMP NOT NULL,
+                                            mod_time TIMESTAMP NOT NULL)
+                        """);
+            }
+            ScriptUtils.executeSqlScript(connection,
+                    new ClassPathResource("db/migration/V20261001_2__create_money_books.sql"));
+            ScriptUtils.executeSqlScript(connection,
+                    new ClassPathResource("db/migration/V20261002_1__create_ledger_tables.sql"));
+
+            try (Statement statement = connection.createStatement()) {
+                try (ResultSet result = statement.executeQuery("""
+                        SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                        WHERE TABLE_NAME IN ('MONEY_BOOK_CATEGORIES', 'MONEY_BOOK_ACCOUNTS',
+                                             'MONEY_BOOK_TRANSACTIONS')
+                          AND COLUMN_NAME IN ('REG_R_ID', 'REG_TIME', 'MOD_R_ID', 'MOD_TIME')
+                        """)) {
+                    result.next();
+                    assertEquals(12, result.getInt(1));
+                }
+                statement.execute("""
+                        INSERT INTO users (user_uid, nickname, status, reg_time, mod_time)
+                        VALUES (1, 'owner', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        """);
+                statement.execute("""
+                        INSERT INTO money_books (money_book_uid, name, owner_user_uid, reg_time, mod_time)
+                        VALUES (1, 'first', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+                               (2, 'second', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        """);
+                statement.execute("""
+                        INSERT INTO money_book_categories
+                            (category_uid, money_book_uid, name, transaction_type, sort_order, reg_time, mod_time)
+                        VALUES (1, 1, 'food', 'EXPENSE', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        """);
+                statement.execute("""
+                        INSERT INTO money_book_accounts
+                            (account_uid, money_book_uid, name, account_type, sort_order, reg_time, mod_time)
+                        VALUES (1, 1, 'cash', 'CASH', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+                               (2, 2, 'other', 'BANK', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        """);
+                assertThrows(SQLException.class, () -> statement.execute("""
+                        INSERT INTO money_book_transactions
+                            (money_book_uid, transaction_type, amount, transaction_date, category_uid,
+                             account_uid, reg_time, mod_time)
+                        VALUES (1, 'EXPENSE', 0, DATE '2026-10-02', 1, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        """));
+                assertThrows(SQLException.class, () -> statement.execute("""
+                        INSERT INTO money_book_transactions
+                            (money_book_uid, transaction_type, amount, transaction_date, category_uid,
+                             account_uid, reg_time, mod_time)
+                        VALUES (1, 'EXPENSE', -1, DATE '2026-10-02', 1, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        """));
+                assertThrows(SQLException.class, () -> statement.execute("""
+                        INSERT INTO money_book_transactions
+                            (money_book_uid, transaction_type, amount, transaction_date, category_uid,
+                             account_uid, reg_time, mod_time)
+                        VALUES (1, 'EXPENSE', 100, DATE '2026-10-02', 1, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        """));
+                assertThrows(SQLException.class, () -> statement.execute("""
+                        INSERT INTO money_book_transactions
+                            (money_book_uid, transaction_type, amount, transaction_date, category_uid,
+                             account_uid, reg_time, mod_time)
+                        VALUES (1, 'INCOME', 100, DATE '2026-10-02', 1, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        """));
+                assertThrows(SQLException.class, () -> statement.execute("""
+                        INSERT INTO money_book_categories
+                            (money_book_uid, name, transaction_type, sort_order, reg_time, mod_time)
+                        VALUES (1, 'food', 'EXPENSE', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        """));
+                assertThrows(SQLException.class, () -> statement.execute("""
+                        INSERT INTO money_book_categories
+                            (money_book_uid, name, transaction_type, sort_order, reg_time, mod_time)
+                        VALUES (1, 'invalid', 'EXPENSE', -1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        """));
+                assertThrows(SQLException.class, () -> statement.execute("""
+                        INSERT INTO money_book_accounts
+                            (money_book_uid, name, account_type, sort_order, reg_time, mod_time)
+                        VALUES (1, 'cash', 'CASH', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        """));
+                assertThrows(SQLException.class, () -> statement.execute("""
+                        INSERT INTO money_book_accounts
+                            (money_book_uid, name, account_type, sort_order, reg_time, mod_time)
+                        VALUES (1, 'invalid', 'CARD', -1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        """));
+            }
+        }
+    }
+}
