@@ -9,6 +9,7 @@ import { setTokens } from "../store/authSlice";
 import { tokenStorage } from "../storage/tokenStorage";
 import { getAuthErrorMessage } from "./authError";
 import type { AppDispatch } from "@/store/store";
+import { baseApi } from "@/common/api/baseApi";
 
 export function useLogin() {
   const router = useRouter();
@@ -27,6 +28,7 @@ export function useLogin() {
       };
       tokenStorage.setTokens(tokens);
       dispatch(setTokens(tokens));
+      dispatch(baseApi.util.resetApiState());
       router.push("/books");
     } catch (error) {
       setErrorMessage(getAuthErrorMessage(error, "로그인에 실패했습니다."));

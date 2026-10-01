@@ -1,0 +1,203 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import vm from "node:vm";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
+import ts from "typescript";
+
+const testDirectory = path.dirname(fileURLToPath(import.meta.url));
+const localRequire = createRequire(import.meta.url);
+
+function createHarness(initialTokens, handleRequest) {
+  const source = fs.readFileSync(path.join(testDirectory, "../src/common/api/baseApi.ts"), "utf8");
+  const compiled = ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+  }).outputText;
+  let tokens = initialTokens;
+  const calls = [];
+  const actions = [];
+  const storage = {
+    getTokens: () => tokens,
+    setTokens: (next) => { tokens = next; },
+    updateAccessToken: (accessToken) => {
+      if (!tokens) return null;
+      tokens = { ...tokens, accessToken };
+      return tokens;
+    },
+    clearTokens: () => { tokens = null; },
+  };
+  const compiledModule = { exports: {} };
+  const requireMock = (name) => {
+    if (name === "@reduxjs/toolkit/query/react") {
+      return {
+        createApi: () => ({}),
+        fetchBaseQuery: (config) => async (args) => {
+          const headers = config.prepareHeaders(new Headers(), { arg: args });
+          const url = typeof args === "string" ? args : args.url;
+          calls.push({ url, authorization: headers.get("Authorization"), body: args.body });
+          return handleRequest(args, headers);
+        },
+      };
+    }
+    if (name === "@/auth/storage/tokenStorage") return { tokenStorage: storage };
+    if (name === "@/auth/store/authSlice") {
+      return {
+        clearAuth: () => ({ type: "auth/clearAuth" }),
+        setTokens: (payload) => ({ type: "auth/setTokens", payload }),
+      };
+    }
+    throw new Error(`Unexpected import: ${name}`);
+  };
+  vm.runInNewContext(compiled, {
+    module: compiledModule,
+    exports: compiledModule.exports,
+    require: requireMock,
+    process: { env: { NEXT_PUBLIC_API_BASE_URL: "http://localhost:8080/api" } },
+    Headers,
+  });
+  const api = { dispatch: (action) => actions.push(action) };
+  return {
+    query: (args) => compiledModule.exports.baseQueryWithReauth(args, api, {}),
+    calls,
+    actions,
+    getTokens: () => tokens,
+  };
+}
+
+test("protected requests attach only the access token and succeed", async () => {
+  const harness = createHarness(
+    { accessToken: "valid-access", refreshToken: "refresh-secret" },
+    () => ({ data: { userUid: 1 } }),
+  );
+  const result = await harness.query("auth/me");
+  assert.equal(result.data.userUid, 1);
+  assert.equal(harness.calls[0].authorization, "Bearer valid-access");
+  assert.equal(harness.calls.length, 1);
+});
+
+test("a 401 refreshes access token and retries the original request once", async () => {
+  const harness = createHarness(
+    { accessToken: "expired", refreshToken: "refresh-secret" },
+    (args, headers) => {
+      const url = typeof args === "string" ? args : args.url;
+      if (url === "auth/refresh") return { data: { accessToken: "new-access" } };
+      if (headers.get("Authorization") === "Bearer expired") return { error: { status: 401 } };
+      return { data: { userUid: 1 } };
+    },
+  );
+  const result = await harness.query("auth/me");
+  assert.equal(result.data.userUid, 1);
+  assert.equal(harness.calls.length, 3);
+  assert.equal(harness.calls[1].url, "auth/refresh");
+  assert.equal(harness.calls[1].authorization, null);
+  assert.equal(harness.calls[1].body.refreshToken, "refresh-secret");
+  assert.equal(harness.calls[2].authorization, "Bearer new-access");
+  assert.equal(harness.getTokens().accessToken, "new-access");
+  assert.equal(harness.getTokens().refreshToken, "refresh-secret");
+  assert.equal(harness.actions[0].type, "auth/setTokens");
+});
+
+test("a stored refresh token can restore a session without an access token", async () => {
+  const harness = createHarness(
+    { accessToken: "", refreshToken: "refresh-secret" },
+    (args, headers) => {
+      const url = typeof args === "string" ? args : args.url;
+      if (url === "auth/refresh") return { data: { accessToken: "restored-access" } };
+      if (!headers.get("Authorization")) return { error: { status: 401 } };
+      return { data: { userUid: 1 } };
+    },
+  );
+  const result = await harness.query("auth/me");
+  assert.equal(result.data.userUid, 1);
+  assert.equal(harness.calls[0].authorization, null);
+  assert.equal(harness.calls[2].authorization, "Bearer restored-access");
+});
+
+test("simultaneous 401 responses share one refresh request", async () => {
+  let refreshCount = 0;
+  const harness = createHarness(
+    { accessToken: "expired", refreshToken: "refresh-secret" },
+    async (args, headers) => {
+      const url = typeof args === "string" ? args : args.url;
+      if (url === "auth/refresh") {
+        refreshCount++;
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        return { data: { accessToken: "new-access" } };
+      }
+      if (headers.get("Authorization") === "Bearer expired") return { error: { status: 401 } };
+      return { data: { userUid: 1 } };
+    },
+  );
+  const results = await Promise.all([harness.query("auth/me"), harness.query("auth/me")]);
+  assert.equal(refreshCount, 1);
+  assert.ok(results.every((result) => result.data.userUid === 1));
+  assert.equal(harness.calls.length, 5);
+});
+
+test("failed refresh clears tokens and auth state without repeating", async () => {
+  const harness = createHarness(
+    { accessToken: "expired", refreshToken: "bad-refresh" },
+    () => ({ error: { status: 401 } }),
+  );
+  const result = await harness.query("auth/me");
+  assert.equal(result.error.status, 401);
+  assert.equal(harness.getTokens(), null);
+  assert.equal(harness.actions[0].type, "auth/clearAuth");
+  assert.equal(harness.calls.length, 2);
+});
+
+test("login and refresh 401 responses never trigger another refresh", async () => {
+  for (const url of ["auth/login", "auth/refresh"]) {
+    const harness = createHarness(
+      { accessToken: "expired", refreshToken: "refresh-secret" },
+      () => ({ error: { status: 401 } }),
+    );
+    await harness.query(url);
+    assert.equal(harness.calls.length, 1);
+    assert.equal(harness.calls[0].authorization, null);
+  }
+});
+
+test("a second 401 after retry clears auth without another refresh", async () => {
+  const harness = createHarness(
+    { accessToken: "expired", refreshToken: "refresh-secret" },
+    (args) => {
+      const url = typeof args === "string" ? args : args.url;
+      return url === "auth/refresh"
+        ? { data: { accessToken: "new-access" } }
+        : { error: { status: 401 } };
+    },
+  );
+  await harness.query("auth/me");
+  assert.equal(harness.calls.length, 3);
+  assert.equal(harness.getTokens(), null);
+  assert.equal(harness.actions.at(-1).type, "auth/clearAuth");
+});
+
+test("auth state initializes from stored tokens and clears after recovery failure", () => {
+  const source = fs.readFileSync(path.join(testDirectory, "../src/auth/store/authSlice.ts"), "utf8");
+  const compiled = ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+  }).outputText;
+  const compiledModule = { exports: {} };
+  vm.runInNewContext(compiled, {
+    module: compiledModule,
+    exports: compiledModule.exports,
+    require: (name) => localRequire(name),
+  });
+  const { default: reducer, initializeAuth, clearAuth } = compiledModule.exports;
+  const initial = reducer(undefined, { type: "init" });
+  assert.equal(initial.isInitialized, false);
+
+  const restored = reducer(initial, initializeAuth({ accessToken: "access", refreshToken: "refresh" }));
+  assert.equal(restored.isInitialized, true);
+  assert.equal(restored.accessToken, "access");
+  assert.equal(restored.refreshToken, "refresh");
+
+  const cleared = reducer(restored, clearAuth());
+  assert.equal(cleared.isInitialized, true);
+  assert.equal(cleared.accessToken, null);
+  assert.equal(cleared.refreshToken, null);
+});

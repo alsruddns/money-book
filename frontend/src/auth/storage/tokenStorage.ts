@@ -27,6 +27,13 @@ export const tokenStorage = {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(tokens));
     }
   },
+  updateAccessToken(accessToken: string): AuthTokens | null {
+    const current = this.getTokens();
+    if (!current) return null;
+    const updated = { ...current, accessToken };
+    this.setTokens(updated);
+    return updated;
+  },
   clearTokens(): void {
     if (typeof window !== "undefined") window.localStorage.removeItem(STORAGE_KEY);
   },

@@ -1,5 +1,4 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import { tokenStorage } from "../storage/tokenStorage";
 
 export interface AuthTokens {
   accessToken: string;
@@ -9,30 +8,36 @@ export interface AuthTokens {
 interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
+  isInitialized: boolean;
 }
 
-const initialState = (): AuthState => {
-  const tokens = tokenStorage.getTokens();
-  return {
-    accessToken: tokens?.accessToken ?? null,
-    refreshToken: tokens?.refreshToken ?? null,
-  };
+const initialState: AuthState = {
+  accessToken: null,
+  refreshToken: null,
+  isInitialized: false,
 };
 
 const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
+    initializeAuth: (state, action: PayloadAction<AuthTokens | null>) => {
+      state.accessToken = action.payload?.accessToken ?? null;
+      state.refreshToken = action.payload?.refreshToken ?? null;
+      state.isInitialized = true;
+    },
     setTokens: (state, action: PayloadAction<AuthTokens>) => {
       state.accessToken = action.payload.accessToken;
       state.refreshToken = action.payload.refreshToken;
+      state.isInitialized = true;
     },
     clearAuth: (state) => {
       state.accessToken = null;
       state.refreshToken = null;
+      state.isInitialized = true;
     },
   },
 });
 
-export const { setTokens, clearAuth } = authSlice.actions;
+export const { initializeAuth, setTokens, clearAuth } = authSlice.actions;
 export default authSlice.reducer;
