@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import type { CreateInvitationRequest } from "../dto/req/CreateInvitationRequest";
 import { useInviteMoneyBookUser } from "../hooks/useInviteMoneyBookUser";
 import PermissionFields from "./PermissionFields";
-import DialogShell from "./DialogShell";
+import DialogShell from "@/common/components/DialogShell";
 
 export default function InviteMemberDialog({ moneyBookUid, onClose }: { moneyBookUid: number; onClose: () => void }) {
   const [request, setRequest] = useState<CreateInvitationRequest>({

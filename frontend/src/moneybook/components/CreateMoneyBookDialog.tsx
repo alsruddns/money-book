@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useCreateMoneyBook } from "../hooks/useCreateMoneyBook";
-import DialogShell from "./DialogShell";
+import DialogShell from "@/common/components/DialogShell";
 
 export default function CreateMoneyBookDialog({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState("");

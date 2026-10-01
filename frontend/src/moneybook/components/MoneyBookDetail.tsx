@@ -29,7 +29,7 @@ export default function MoneyBookDetail({ moneyBookUid }: { moneyBookUid: number
           </Link>
         </div>
       </section>
-      <p className="text-sm text-zinc-500">거래와 통계 기능은 이후에 제공됩니다.</p>
+      <p className="text-sm text-zinc-600">위 메뉴에서 거래, 카테고리, 계좌와 멤버를 관리할 수 있습니다.</p>
     </div>
   );
 }

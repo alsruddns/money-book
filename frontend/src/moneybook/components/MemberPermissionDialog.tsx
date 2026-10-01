@@ -5,7 +5,7 @@ import type { MoneyBookMemberResponse } from "../dto/res/MoneyBookMemberResponse
 import type { UpdateMoneyBookMemberPermissionRequest } from "../dto/req/UpdateMoneyBookMemberPermissionRequest";
 import { useUpdateMemberPermission } from "../hooks/useUpdateMemberPermission";
 import PermissionFields from "./PermissionFields";
-import DialogShell from "./DialogShell";
+import DialogShell from "@/common/components/DialogShell";
 
 export default function MemberPermissionDialog({ moneyBookUid, member, onClose }: {
   moneyBookUid: number; member: MoneyBookMemberResponse; onClose: () => void;
