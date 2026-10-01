@@ -1,0 +1,248 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import vm from "node:vm";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import ts from "typescript";
+
+const localRequire = createRequire(import.meta.url);
+const testDirectory = path.dirname(fileURLToPath(import.meta.url));
+
+function loadModule(relativePath, mocks = {}, globals = {}) {
+  const source = fs.readFileSync(path.join(testDirectory, "../src", relativePath), "utf8");
+  const compiled = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+      jsx: ts.JsxEmit.ReactJSX,
+    },
+  }).outputText;
+  const compiledModule = { exports: {} };
+  vm.runInNewContext(compiled, {
+    module: compiledModule,
+    exports: compiledModule.exports,
+    require: (name) => name in mocks ? mocks[name] : localRequire(name),
+    ...globals,
+  });
+  return compiledModule.exports;
+}
+
+function asLocal(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+const link = ({ href, children }) => React.createElement("a", { href }, children);
+
+test("money book API uses backend paths and invalidates only affected cache tags", () => {
+  const builder = {
+    query: (definition) => definition,
+    mutation: (definition) => definition,
+  };
+  const { moneyBookApi: api } = loadModule("moneybook/controller/moneyBookApi.ts", {
+    "@/common/api/baseApi": {
+      baseApi: { injectEndpoints: ({ endpoints }) => endpoints(builder) },
+    },
+  });
+  const key = { moneyBookUid: 7, moneyBookUserUid: 9 };
+  assert.equal(api.getMoneyBooks.query(), "money-books");
+  assert.equal(api.createMoneyBook.query({ name: "집" }).url, "money-books");
+  assert.equal(api.getPendingInvitations.query(), "money-books/invitations");
+  assert.equal(api.inviteMoneyBookUser.query({ moneyBookUid: 7, request: {} }).url, "money-books/7/invitations");
+  assert.equal(api.acceptInvitation.query(key).url, "money-books/7/invitations/9/accept");
+  assert.equal(api.rejectInvitation.query(key).url, "money-books/7/invitations/9/reject");
+  assert.equal(api.getMoneyBookMembers.query(7), "money-books/7/members");
+  assert.equal(api.updateMoneyBookMemberPermission.query({ ...key, request: {} }).url, "money-books/7/members/9/permissions");
+  assert.equal(api.removeMoneyBookMember.query(key).url, "money-books/7/members/9");
+  assert.deepEqual(asLocal(api.createMoneyBook.invalidatesTags({}, undefined)), ["MoneyBook"]);
+  assert.deepEqual(asLocal(api.acceptInvitation.invalidatesTags({}, undefined)), ["MoneyBookInvitation", "MoneyBook"]);
+  assert.deepEqual(asLocal(api.rejectInvitation.invalidatesTags({}, undefined)), ["MoneyBookInvitation"]);
+  assert.deepEqual(asLocal(api.getMoneyBookMembers.providesTags([], undefined, 7)), [{ type: "MoneyBookMember", id: 7 }]);
+  assert.deepEqual(asLocal(api.updateMoneyBookMemberPermission.invalidatesTags(undefined, undefined, key)), [{ type: "MoneyBookMember", id: 7 }, "MoneyBook"]);
+  assert.deepEqual(asLocal(api.removeMoneyBookMember.invalidatesTags(undefined, undefined, key)), [{ type: "MoneyBookMember", id: 7 }, "MoneyBook"]);
+  assert.deepEqual(asLocal(api.createMoneyBook.invalidatesTags(undefined, { status: 400 })), []);
+});
+
+test("book UID parser rejects missing, malformed, and unsafe values", () => {
+  const { parseMoneyBookUid } = loadModule("moneybook/parseMoneyBookUid.ts");
+  assert.equal(parseMoneyBookUid("42"), 42);
+  for (const value of ["", "0", "-1", "1.2", "1e2", "abc", "9007199254740992"]) {
+    assert.equal(parseMoneyBookUid(value), null);
+  }
+});
+
+test("admin permission forces create, read, update, and delete", () => {
+  const { normalizePermissions, permissionSummary } = loadModule("moneybook/permissions.ts");
+  const requested = { isAdmin: true, canCreate: false, canRead: false, canUpdate: false, canDelete: false };
+  const normalized = normalizePermissions(requested);
+  assert.deepEqual(asLocal(normalized), {
+    isAdmin: true, canCreate: true, canRead: true, canUpdate: true, canDelete: true,
+  });
+  assert.deepEqual(asLocal(permissionSummary(normalized)), ["관리자", "생성", "조회", "수정", "삭제"]);
+  const { default: PermissionFields } = loadModule("moneybook/components/PermissionFields.tsx", {
+    react: React,
+    "../permissions": { normalizePermissions, permissionLabels: loadModule("moneybook/permissions.ts").permissionLabels },
+  });
+  const markup = renderToStaticMarkup(React.createElement(PermissionFields, {
+    value: normalized, onChange: () => {}, idPrefix: "test",
+  }));
+  assert.equal((markup.match(/disabled=""/g) ?? []).length, 4);
+  assert.equal((markup.match(/checked=""/g) ?? []).length, 5);
+});
+
+test("money book list presents loading, error, empty, and populated states", () => {
+  const baseMocks = {
+    react: React,
+    "next/link": { default: link },
+    "../hooks/usePendingInvitations": { usePendingInvitations: () => ({ invitations: [] }) },
+    "./MoneyBookCard": { default: ({ moneyBook }) => React.createElement("div", null, moneyBook.name) },
+    "./CreateMoneyBookDialog": { default: () => null },
+  };
+  function render(state) {
+    const { default: List } = loadModule("moneybook/components/MoneyBookList.tsx", {
+      ...baseMocks,
+      "../hooks/useMoneyBookList": { useMoneyBookList: () => state },
+    });
+    return renderToStaticMarkup(React.createElement(List));
+  }
+  assert.match(render({ moneyBooks: [], isLoading: true }), /불러오는 중/);
+  assert.match(render({ moneyBooks: [], isLoading: false, isError: true, errorMessage: "오류" }), /오류/);
+  assert.match(render({ moneyBooks: [], isLoading: false, isError: false }), /아직 참여 중인 가계부가 없습니다/);
+  assert.match(render({ moneyBooks: [{ moneyBookUid: 1, name: "우리 집" }], isLoading: false, isError: false }), /우리 집/);
+});
+
+test("invitation list presents pending invitations and an empty state", () => {
+  const mocks = {
+    "next/link": { default: link },
+    "./InvitationCard": { default: ({ invitation }) => React.createElement("article", null, invitation.moneyBookName) },
+  };
+  const empty = loadModule("moneybook/components/InvitationList.tsx", {
+    ...mocks,
+    "../hooks/usePendingInvitations": { usePendingInvitations: () => ({ invitations: [], isLoading: false, isError: false }) },
+  }).default;
+  assert.match(renderToStaticMarkup(React.createElement(empty)), /대기 중인 초대가 없습니다/);
+  const populated = loadModule("moneybook/components/InvitationList.tsx", {
+    ...mocks,
+    "../hooks/usePendingInvitations": { usePendingInvitations: () => ({ invitations: [{ moneyBookUserUid: 2, moneyBookName: "여행" }], isLoading: false, isError: false }) },
+  }).default;
+  assert.match(renderToStaticMarkup(React.createElement(populated)), /여행/);
+});
+
+test("owner and ordinary users never receive owner edit or removal controls", () => {
+  const { default: MemberRow } = loadModule("moneybook/components/MemberRow.tsx", {
+    react: React,
+    "../hooks/useRemoveMoneyBookMember": { useRemoveMoneyBookMember: () => ({ isLoading: false, errorMessage: null }) },
+    "./PermissionBadges": { default: () => null },
+    "./MemberPermissionDialog": { default: () => null },
+  });
+  const member = { moneyBookUserUid: 3, nickname: "테스터", isOwner: true };
+  const ownerMarkup = renderToStaticMarkup(React.createElement(MemberRow, { member, moneyBookUid: 1, canManage: true }));
+  assert.match(ownerMarkup, /소유자/);
+  assert.doesNotMatch(ownerMarkup, /권한 변경|제거/);
+  const ordinaryMarkup = renderToStaticMarkup(React.createElement(MemberRow, { member: { ...member, isOwner: false }, moneyBookUid: 1, canManage: false }));
+  assert.doesNotMatch(ordinaryMarkup, /권한 변경|제거/);
+  const managerMarkup = renderToStaticMarkup(React.createElement(MemberRow, { member: { ...member, isOwner: false }, moneyBookUid: 1, canManage: true }));
+  assert.match(managerMarkup, /권한 변경/);
+  assert.match(managerMarkup, /제거/);
+});
+
+test("member list shows management only to owner or admin, with loading and empty states", () => {
+  const member = { moneyBookUserUid: 2, nickname: "멤버" };
+  function render(book, memberState = { members: [member], isLoading: false, isError: false }) {
+    const { default: MemberList } = loadModule("moneybook/components/MemberList.tsx", {
+      react: React,
+      "next/link": { default: link },
+      "../hooks/useMoneyBookDetail": { useMoneyBookDetail: () => ({ moneyBook: book, isLoading: false, isError: false }) },
+      "../hooks/useMoneyBookMembers": { useMoneyBookMembers: () => memberState },
+      "./InviteMemberDialog": { default: () => null },
+      "./MemberRow": { default: ({ member: row }) => React.createElement("div", null, row.nickname) },
+    });
+    return renderToStaticMarkup(React.createElement(MemberList, { moneyBookUid: 1 }));
+  }
+  const book = { moneyBookUid: 1, name: "집", isOwner: false, isAdmin: false };
+  assert.doesNotMatch(render(book), /사용자 초대/);
+  assert.match(render({ ...book, isOwner: true }), /사용자 초대/);
+  assert.match(render({ ...book, isAdmin: true }), /사용자 초대/);
+  assert.match(render(book, { members: [], isLoading: true }), /멤버를 불러오는 중/);
+  assert.match(render(book, { members: [], isLoading: false, isError: false }), /가입한 멤버가 없습니다/);
+});
+
+test("create and invitation hooks pass exact mutation arguments on success", async () => {
+  const calls = [];
+  const mutation = (response) => (argument) => ({
+    unwrap: async () => { calls.push(argument); return response; },
+  });
+  const reactMock = { useState: (initial) => [initial, () => {}] };
+  const { useCreateMoneyBook } = loadModule("moneybook/hooks/useCreateMoneyBook.ts", {
+    react: reactMock,
+    "@/common/api/getApiErrorMessage": { getApiErrorMessage: () => "오류" },
+    "../controller/moneyBookApi": { useCreateMoneyBookMutation: () => [mutation({ moneyBookUid: 1 }), { isLoading: false }] },
+  });
+  assert.equal(await useCreateMoneyBook().createMoneyBook("  우리 집  "), true);
+  assert.deepEqual(asLocal(calls.shift()), { name: "우리 집" });
+
+  const { normalizePermissions } = loadModule("moneybook/permissions.ts");
+  const { useInviteMoneyBookUser } = loadModule("moneybook/hooks/useInviteMoneyBookUser.ts", {
+    react: reactMock,
+    "@/common/api/getApiErrorMessage": { getApiErrorMessage: () => "오류" },
+    "../permissions": { normalizePermissions },
+    "../controller/moneyBookApi": { useInviteMoneyBookUserMutation: () => [mutation({ moneyBookUserUid: 2 }), { isLoading: false }] },
+  });
+  const request = { loginId: "  friend  ", isAdmin: true, canCreate: false, canRead: false, canUpdate: false, canDelete: false };
+  assert.equal(await useInviteMoneyBookUser(1).inviteMoneyBookUser(request), true);
+  assert.deepEqual(asLocal(calls.shift()), {
+    moneyBookUid: 1,
+    request: { loginId: "friend", isAdmin: true, canCreate: true, canRead: true, canUpdate: true, canDelete: true },
+  });
+
+  const { useAcceptInvitation } = loadModule("moneybook/hooks/useAcceptInvitation.ts", {
+    react: reactMock,
+    "@/common/api/getApiErrorMessage": { getApiErrorMessage: () => "오류" },
+    "../controller/moneyBookApi": { useAcceptInvitationMutation: () => [mutation({}), { isLoading: false }] },
+  });
+  await useAcceptInvitation().acceptInvitation(1, 2);
+  assert.deepEqual(asLocal(calls.shift()), { moneyBookUid: 1, moneyBookUserUid: 2 });
+
+  const { useRejectInvitation } = loadModule("moneybook/hooks/useRejectInvitation.ts", {
+    react: reactMock,
+    "@/common/api/getApiErrorMessage": { getApiErrorMessage: () => "오류" },
+    "../controller/moneyBookApi": { useRejectInvitationMutation: () => [mutation({}), { isLoading: false }] },
+  });
+  await useRejectInvitation().rejectInvitation(1, 2);
+  assert.deepEqual(asLocal(calls.shift()), { moneyBookUid: 1, moneyBookUserUid: 2 });
+});
+
+test("member permission hook normalizes admin rights and removal requires confirmation", async () => {
+  const calls = [];
+  const mutation = (argument) => ({ unwrap: async () => { calls.push(argument); } });
+  const reactMock = { useState: (initial) => [initial, () => {}] };
+  const { normalizePermissions } = loadModule("moneybook/permissions.ts");
+  const { useUpdateMemberPermission } = loadModule("moneybook/hooks/useUpdateMemberPermission.ts", {
+    react: reactMock,
+    "@/common/api/getApiErrorMessage": { getApiErrorMessage: () => "오류" },
+    "../permissions": { normalizePermissions },
+    "../controller/moneyBookApi": { useUpdateMoneyBookMemberPermissionMutation: () => [mutation, { isLoading: false }] },
+  });
+  await useUpdateMemberPermission(1, 2).updateMemberPermission({
+    isAdmin: true, canCreate: false, canRead: false, canUpdate: false, canDelete: false,
+  });
+  assert.deepEqual(asLocal(calls.shift()), {
+    moneyBookUid: 1, moneyBookUserUid: 2,
+    request: { isAdmin: true, canCreate: true, canRead: true, canUpdate: true, canDelete: true },
+  });
+
+  function removeHook(confirmed) {
+    return loadModule("moneybook/hooks/useRemoveMoneyBookMember.ts", {
+      react: reactMock,
+      "@/common/api/getApiErrorMessage": { getApiErrorMessage: () => "오류" },
+      "../controller/moneyBookApi": { useRemoveMoneyBookMemberMutation: () => [mutation, { isLoading: false }] },
+    }, { window: { confirm: () => confirmed } }).useRemoveMoneyBookMember(1);
+  }
+  await removeHook(false).removeMoneyBookMember(2, "멤버");
+  assert.equal(calls.length, 0);
+  await removeHook(true).removeMoneyBookMember(2, "멤버");
+  assert.deepEqual(asLocal(calls.shift()), { moneyBookUid: 1, moneyBookUserUid: 2 });
+});

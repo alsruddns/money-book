@@ -7,7 +7,7 @@ import { useLoginMutation } from "../controller/authApi";
 import type { LoginRequest } from "../dto/req/LoginRequest";
 import { setTokens } from "../store/authSlice";
 import { tokenStorage } from "../storage/tokenStorage";
-import { getAuthErrorMessage } from "./authError";
+import { getApiErrorMessage } from "@/common/api/getApiErrorMessage";
 import type { AppDispatch } from "@/store/store";
 import { baseApi } from "@/common/api/baseApi";
 
@@ -31,7 +31,7 @@ export function useLogin() {
       dispatch(baseApi.util.resetApiState());
       router.push("/books");
     } catch (error) {
-      setErrorMessage(getAuthErrorMessage(error, "로그인에 실패했습니다."));
+      setErrorMessage(getApiErrorMessage(error, "로그인에 실패했습니다."));
     }
   }
 

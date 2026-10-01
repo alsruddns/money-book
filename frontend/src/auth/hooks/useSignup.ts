@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSignupMutation } from "../controller/authApi";
 import type { SignUpReqDto } from "../dto/req/SignUpReqDto";
-import { getAuthErrorMessage } from "./authError";
+import { getApiErrorMessage } from "@/common/api/getApiErrorMessage";
 
 export function useSignup() {
   const router = useRouter();
@@ -26,7 +26,7 @@ export function useSignup() {
       await signupMutation(request).unwrap();
       router.push("/login");
     } catch (error) {
-      setErrorMessage(getAuthErrorMessage(error, "회원가입에 실패했습니다."));
+      setErrorMessage(getApiErrorMessage(error, "회원가입에 실패했습니다."));
     }
   }
 
