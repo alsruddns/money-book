@@ -1,6 +1,7 @@
 package com.moneybook.backend.auth.controller;
 
 import com.moneybook.backend.auth.dto.LoginResponse;
+import com.moneybook.backend.auth.dto.RefreshResponse;
 import com.moneybook.backend.auth.dto.SignUpResDto;
 import com.moneybook.backend.auth.service.AuthService;
 import com.moneybook.backend.common.exception.BusinessException;
@@ -74,7 +75,8 @@ class AuthControllerTests {
 
     @Test
     void loginIsAvailableWithoutAuthenticationOrCsrfToken() throws Exception {
-        when(authService.login(any())).thenReturn(new LoginResponse(42L, "닉네임", "signed-access-token"));
+        when(authService.login(any())).thenReturn(new LoginResponse(
+                42L, "닉네임", "signed-access-token", "signed-refresh-token"));
 
         mockMvc.perform(post("/api/auth/login").contextPath("/api")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -84,12 +86,35 @@ class AuthControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userUid").value(42))
                 .andExpect(jsonPath("$.nickname").value("닉네임"))
-                .andExpect(jsonPath("$.accessToken").value("signed-access-token"));
+                .andExpect(jsonPath("$.accessToken").value("signed-access-token"))
+                .andExpect(jsonPath("$.refreshToken").value("signed-refresh-token"));
     }
 
     @Test
     void loginRejectsMissingCredentials() throws Exception {
         mockMvc.perform(post("/api/auth/login").contextPath("/api")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    void refreshIsAvailableWithoutAuthenticationOrCsrfToken() throws Exception {
+        when(authService.refresh(any())).thenReturn(new RefreshResponse("new-access-token"));
+
+        mockMvc.perform(post("/api/auth/refresh").contextPath("/api")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"refreshToken":"signed-refresh-token"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").value("new-access-token"));
+    }
+
+    @Test
+    void refreshRejectsMissingToken() throws Exception {
+        mockMvc.perform(post("/api/auth/refresh").contextPath("/api")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest())

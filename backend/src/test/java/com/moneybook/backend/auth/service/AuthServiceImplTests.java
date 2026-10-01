@@ -2,6 +2,8 @@ package com.moneybook.backend.auth.service;
 
 import com.moneybook.backend.auth.dto.LoginRequest;
 import com.moneybook.backend.auth.dto.LoginResponse;
+import com.moneybook.backend.auth.dto.RefreshRequest;
+import com.moneybook.backend.auth.dto.RefreshResponse;
 import com.moneybook.backend.auth.dto.SignUpReqDto;
 import com.moneybook.backend.auth.dto.SignUpResDto;
 import com.moneybook.backend.auth.repository.UserAuthRepository;
@@ -98,13 +100,16 @@ class AuthServiceImplTests {
         when(user.getUserUid()).thenReturn(42L);
         when(user.getNickname()).thenReturn("닉네임");
         when(jwtTokenProvider.createAccessToken(42L)).thenReturn("signed-access-token");
+        when(jwtTokenProvider.createRefreshToken(42L)).thenReturn("signed-refresh-token");
 
         LoginResponse response = service.login(new LoginRequest("member", "correct-password"));
 
         assertEquals(42L, response.userUid());
         assertEquals("닉네임", response.nickname());
         assertEquals("signed-access-token", response.accessToken());
+        assertEquals("signed-refresh-token", response.refreshToken());
         verify(jwtTokenProvider).createAccessToken(42L);
+        verify(jwtTokenProvider).createRefreshToken(42L);
     }
 
     @Test
@@ -138,5 +143,44 @@ class AuthServiceImplTests {
 
         assertEquals(ErrorCode.USER_INACTIVE, exception.getErrorCode());
         verifyNoInteractions(jwtTokenProvider);
+    }
+
+    @Test
+    void refreshReturnsNewAccessTokenForActiveUser() {
+        User user = mock(User.class);
+        when(jwtTokenProvider.getRefreshTokenUserUid("refresh-token")).thenReturn(42L);
+        when(userRepository.findById(42L)).thenReturn(Optional.of(user));
+        when(user.getStatus()).thenReturn(UserStatus.ACTIVE);
+        when(jwtTokenProvider.createAccessToken(42L)).thenReturn("new-access-token");
+
+        RefreshResponse response = service.refresh(new RefreshRequest("refresh-token"));
+
+        assertEquals("new-access-token", response.accessToken());
+        verify(jwtTokenProvider).createAccessToken(42L);
+    }
+
+    @Test
+    void refreshRejectsUnknownUser() {
+        when(jwtTokenProvider.getRefreshTokenUserUid("refresh-token")).thenReturn(42L);
+        when(userRepository.findById(42L)).thenReturn(Optional.empty());
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> service.refresh(new RefreshRequest("refresh-token")));
+
+        assertEquals(ErrorCode.INVALID_REFRESH_TOKEN, exception.getErrorCode());
+        verify(jwtTokenProvider).getRefreshTokenUserUid("refresh-token");
+    }
+
+    @Test
+    void refreshRejectsInactiveUser() {
+        User user = mock(User.class);
+        when(jwtTokenProvider.getRefreshTokenUserUid("refresh-token")).thenReturn(42L);
+        when(userRepository.findById(42L)).thenReturn(Optional.of(user));
+        when(user.getStatus()).thenReturn(UserStatus.INACTIVE);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> service.refresh(new RefreshRequest("refresh-token")));
+
+        assertEquals(ErrorCode.USER_INACTIVE, exception.getErrorCode());
     }
 }

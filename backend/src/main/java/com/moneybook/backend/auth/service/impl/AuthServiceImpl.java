@@ -2,6 +2,8 @@ package com.moneybook.backend.auth.service.impl;
 
 import com.moneybook.backend.auth.dto.LoginRequest;
 import com.moneybook.backend.auth.dto.LoginResponse;
+import com.moneybook.backend.auth.dto.RefreshRequest;
+import com.moneybook.backend.auth.dto.RefreshResponse;
 import com.moneybook.backend.auth.dto.SignUpReqDto;
 import com.moneybook.backend.auth.dto.SignUpResDto;
 import com.moneybook.backend.auth.repository.UserAuthRepository;
@@ -75,7 +77,21 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.USER_INACTIVE);
         }
         return new LoginResponse(user.getUserUid(), user.getNickname(),
-                jwtTokenProvider.createAccessToken(user.getUserUid()));
+                jwtTokenProvider.createAccessToken(user.getUserUid()),
+                jwtTokenProvider.createRefreshToken(user.getUserUid()));
+    }
+
+    /** Reissues only an Access Token after validating a Refresh Token and its active user. */
+    @Override
+    @Transactional(readOnly = true)
+    public RefreshResponse refresh(RefreshRequest request) {
+        Long userUid = jwtTokenProvider.getRefreshTokenUserUid(request.refreshToken());
+        User user = userRepository.findById(userUid)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN));
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.USER_INACTIVE);
+        }
+        return new RefreshResponse(jwtTokenProvider.createAccessToken(userUid));
     }
 
     private boolean isDuplicateLocalLoginId(Throwable exception) {

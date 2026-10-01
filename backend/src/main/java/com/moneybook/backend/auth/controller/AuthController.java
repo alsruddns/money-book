@@ -2,6 +2,8 @@ package com.moneybook.backend.auth.controller;
 
 import com.moneybook.backend.auth.dto.LoginRequest;
 import com.moneybook.backend.auth.dto.LoginResponse;
+import com.moneybook.backend.auth.dto.RefreshRequest;
+import com.moneybook.backend.auth.dto.RefreshResponse;
 import com.moneybook.backend.auth.dto.SignUpReqDto;
 import com.moneybook.backend.auth.dto.SignUpResDto;
 import com.moneybook.backend.auth.service.AuthService;
@@ -15,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * LOCAL 회원가입과 로그인 API를 제공한다.
+ * LOCAL 회원가입, 로그인 및 Access Token 재발급 API를 제공한다.
  */
 @RestController
 @RequestMapping("/auth")
@@ -36,13 +38,25 @@ public class AuthController {
     }
 
     /**
-     * 인증 없이 LOCAL 계정의 로그인 ID와 비밀번호를 검증하고 Access Token을 발급한다.
+     * 인증 없이 LOCAL 계정의 로그인 ID와 비밀번호를 검증하고 두 종류의 토큰을 발급한다.
      *
      * @param request 로그인 ID와 비밀번호
-     * @return 사용자 UID, 닉네임 및 JWT Access Token
+     * @return 사용자 UID, 닉네임, JWT Access Token 및 Refresh Token
      */
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    /**
+     * 인증 없이 받은 Refresh Token을 검증하고 활성 사용자의 새 Access Token을 발급한다.
+     * Refresh Token의 서명, 만료 및 타입은 서비스에서 검증한다.
+     *
+     * @param request 기존 Refresh Token
+     * @return 새 JWT Access Token
+     */
+    @PostMapping("/refresh")
+    public ResponseEntity<RefreshResponse> refresh(@Valid @RequestBody RefreshRequest request) {
+        return ResponseEntity.ok(authService.refresh(request));
     }
 }
