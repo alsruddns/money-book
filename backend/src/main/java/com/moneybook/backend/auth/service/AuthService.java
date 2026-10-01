@@ -1,9 +1,13 @@
 package com.moneybook.backend.auth.service;
 
+import com.moneybook.backend.auth.dto.LoginRequest;
+import com.moneybook.backend.auth.dto.LoginResponse;
 import com.moneybook.backend.auth.dto.SignUpReqDto;
 import com.moneybook.backend.auth.dto.SignUpResDto;
 
 public interface AuthService {
 
     SignUpResDto signUp(SignUpReqDto request);
+
+    LoginResponse login(LoginRequest request);
 }

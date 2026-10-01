@@ -1,5 +1,6 @@
 package com.moneybook.backend.auth.controller;
 
+import com.moneybook.backend.auth.dto.LoginResponse;
 import com.moneybook.backend.auth.dto.SignUpResDto;
 import com.moneybook.backend.auth.service.AuthService;
 import com.moneybook.backend.common.exception.BusinessException;
@@ -10,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -28,6 +30,9 @@ class AuthControllerTests {
 
     @MockitoBean
     private AuthService authService;
+
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
 
     @Test
     void signUpIsAvailableWithoutAuthenticationOrCsrfToken() throws Exception {
@@ -65,5 +70,29 @@ class AuthControllerTests {
                                 """))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("DUPLICATE_LOGIN_ID"));
+    }
+
+    @Test
+    void loginIsAvailableWithoutAuthenticationOrCsrfToken() throws Exception {
+        when(authService.login(any())).thenReturn(new LoginResponse(42L, "닉네임", "signed-access-token"));
+
+        mockMvc.perform(post("/api/auth/login").contextPath("/api")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"loginId":"member","password":"correct-password"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userUid").value(42))
+                .andExpect(jsonPath("$.nickname").value("닉네임"))
+                .andExpect(jsonPath("$.accessToken").value("signed-access-token"));
+    }
+
+    @Test
+    void loginRejectsMissingCredentials() throws Exception {
+        mockMvc.perform(post("/api/auth/login").contextPath("/api")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
     }
 }

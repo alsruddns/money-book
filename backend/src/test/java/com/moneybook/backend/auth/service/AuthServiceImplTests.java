@@ -1,9 +1,12 @@
 package com.moneybook.backend.auth.service;
 
+import com.moneybook.backend.auth.dto.LoginRequest;
+import com.moneybook.backend.auth.dto.LoginResponse;
 import com.moneybook.backend.auth.dto.SignUpReqDto;
 import com.moneybook.backend.auth.dto.SignUpResDto;
 import com.moneybook.backend.auth.repository.UserAuthRepository;
 import com.moneybook.backend.auth.service.impl.AuthServiceImpl;
+import com.moneybook.backend.auth.token.JwtTokenProvider;
 import com.moneybook.backend.common.exception.BusinessException;
 import com.moneybook.backend.common.exception.ErrorCode;
 import com.moneybook.backend.entity.User;
@@ -33,7 +36,9 @@ class AuthServiceImplTests {
     private final UserRepository userRepository = mock(UserRepository.class);
     private final UserAuthRepository userAuthRepository = mock(UserAuthRepository.class);
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-    private final AuthServiceImpl service = new AuthServiceImpl(userRepository, userAuthRepository, passwordEncoder);
+    private final JwtTokenProvider jwtTokenProvider = mock(JwtTokenProvider.class);
+    private final AuthServiceImpl service = new AuthServiceImpl(
+            userRepository, userAuthRepository, passwordEncoder, jwtTokenProvider);
 
     @Test
     void signUpStoresOnlyBcryptHashAndLocalIdentity() {
@@ -80,5 +85,58 @@ class AuthServiceImplTests {
 
         assertEquals(ErrorCode.PASSWORD_CONFIRM_MISMATCH, exception.getErrorCode());
         verifyNoInteractions(userRepository, userAuthRepository);
+    }
+
+    @Test
+    void loginReturnsAccessTokenForActiveLocalUser() {
+        UserAuth auth = mock(UserAuth.class);
+        User user = mock(User.class);
+        when(userAuthRepository.findByLocalLoginId("member")).thenReturn(Optional.of(auth));
+        when(auth.getPasswordHash()).thenReturn(passwordEncoder.encode("correct-password"));
+        when(auth.getUser()).thenReturn(user);
+        when(user.getStatus()).thenReturn(UserStatus.ACTIVE);
+        when(user.getUserUid()).thenReturn(42L);
+        when(user.getNickname()).thenReturn("닉네임");
+        when(jwtTokenProvider.createAccessToken(42L)).thenReturn("signed-access-token");
+
+        LoginResponse response = service.login(new LoginRequest("member", "correct-password"));
+
+        assertEquals(42L, response.userUid());
+        assertEquals("닉네임", response.nickname());
+        assertEquals("signed-access-token", response.accessToken());
+        verify(jwtTokenProvider).createAccessToken(42L);
+    }
+
+    @Test
+    void loginUsesSameFailureForUnknownIdAndWrongPassword() {
+        when(userAuthRepository.findByLocalLoginId("missing")).thenReturn(Optional.empty());
+        UserAuth auth = mock(UserAuth.class);
+        when(userAuthRepository.findByLocalLoginId("member")).thenReturn(Optional.of(auth));
+        when(auth.getPasswordHash()).thenReturn(passwordEncoder.encode("correct-password"));
+
+        BusinessException unknownId = assertThrows(BusinessException.class,
+                () -> service.login(new LoginRequest("missing", "password")));
+        BusinessException wrongPassword = assertThrows(BusinessException.class,
+                () -> service.login(new LoginRequest("member", "wrong-password")));
+
+        assertEquals(ErrorCode.LOGIN_FAILED, unknownId.getErrorCode());
+        assertEquals(unknownId.getErrorCode(), wrongPassword.getErrorCode());
+        verifyNoInteractions(jwtTokenProvider);
+    }
+
+    @Test
+    void loginRejectsInactiveUser() {
+        UserAuth auth = mock(UserAuth.class);
+        User user = mock(User.class);
+        when(userAuthRepository.findByLocalLoginId("member")).thenReturn(Optional.of(auth));
+        when(auth.getPasswordHash()).thenReturn(passwordEncoder.encode("correct-password"));
+        when(auth.getUser()).thenReturn(user);
+        when(user.getStatus()).thenReturn(UserStatus.INACTIVE);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> service.login(new LoginRequest("member", "correct-password")));
+
+        assertEquals(ErrorCode.USER_INACTIVE, exception.getErrorCode());
+        verifyNoInteractions(jwtTokenProvider);
     }
 }

@@ -1,13 +1,17 @@
 package com.moneybook.backend.auth.service.impl;
 
+import com.moneybook.backend.auth.dto.LoginRequest;
+import com.moneybook.backend.auth.dto.LoginResponse;
 import com.moneybook.backend.auth.dto.SignUpReqDto;
 import com.moneybook.backend.auth.dto.SignUpResDto;
 import com.moneybook.backend.auth.repository.UserAuthRepository;
 import com.moneybook.backend.auth.service.AuthService;
+import com.moneybook.backend.auth.token.JwtTokenProvider;
 import com.moneybook.backend.common.exception.BusinessException;
 import com.moneybook.backend.common.exception.ErrorCode;
 import com.moneybook.backend.entity.User;
 import com.moneybook.backend.entity.UserAuth;
+import com.moneybook.backend.enums.UserStatus;
 import com.moneybook.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.exception.ConstraintViolationException;
@@ -27,6 +31,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final UserAuthRepository userAuthRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtTokenProvider jwtTokenProvider;
 
     /** Creates the user and LOCAL credentials atomically; a duplicate login ID rolls both inserts back. */
     @Override
@@ -53,6 +58,24 @@ public class AuthServiceImpl implements AuthService {
             throw exception;
         }
         return new SignUpResDto(user.getUserUid(), user.getNickname());
+    }
+
+    /** Validates LOCAL credentials and active user state before issuing an Access Token. */
+    @Override
+    @Transactional(readOnly = true)
+    public LoginResponse login(LoginRequest request) {
+        UserAuth userAuth = userAuthRepository.findByLocalLoginId(request.loginId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.LOGIN_FAILED));
+        if (!passwordEncoder.matches(request.password(), userAuth.getPasswordHash())) {
+            throw new BusinessException(ErrorCode.LOGIN_FAILED);
+        }
+
+        User user = userAuth.getUser();
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.USER_INACTIVE);
+        }
+        return new LoginResponse(user.getUserUid(), user.getNickname(),
+                jwtTokenProvider.createAccessToken(user.getUserUid()));
     }
 
     private boolean isDuplicateLocalLoginId(Throwable exception) {

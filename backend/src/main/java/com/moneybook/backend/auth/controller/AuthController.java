@@ -1,5 +1,7 @@
 package com.moneybook.backend.auth.controller;
 
+import com.moneybook.backend.auth.dto.LoginRequest;
+import com.moneybook.backend.auth.dto.LoginResponse;
 import com.moneybook.backend.auth.dto.SignUpReqDto;
 import com.moneybook.backend.auth.dto.SignUpResDto;
 import com.moneybook.backend.auth.service.AuthService;
@@ -13,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 사용자 인증과 LOCAL 회원가입 API를 제공한다.
+ * LOCAL 회원가입과 로그인 API를 제공한다.
  */
 @RestController
 @RequestMapping("/auth")
@@ -31,5 +33,16 @@ public class AuthController {
     @PostMapping("/signup")
     public ResponseEntity<SignUpResDto> signUp(@Valid @RequestBody SignUpReqDto request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(authService.signUp(request));
+    }
+
+    /**
+     * 인증 없이 LOCAL 계정의 로그인 ID와 비밀번호를 검증하고 Access Token을 발급한다.
+     *
+     * @param request 로그인 ID와 비밀번호
+     * @return 사용자 UID, 닉네임 및 JWT Access Token
+     */
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.login(request));
     }
 }
