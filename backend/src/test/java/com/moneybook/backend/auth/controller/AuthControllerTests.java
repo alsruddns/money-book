@@ -1,5 +1,6 @@
 package com.moneybook.backend.auth.controller;
 
+import com.moneybook.backend.auth.dto.CurrentUserResponse;
 import com.moneybook.backend.auth.dto.LoginResponse;
 import com.moneybook.backend.auth.dto.RefreshResponse;
 import com.moneybook.backend.auth.dto.SignUpResDto;
@@ -9,11 +10,14 @@ import com.moneybook.backend.common.exception.ErrorCode;
 import com.moneybook.backend.config.JwtConfig;
 import com.moneybook.backend.config.SecurityConfig;
 import com.moneybook.backend.enums.JwtTokenType;
+import com.moneybook.backend.enums.UserStatus;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
@@ -27,7 +31,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -153,6 +159,31 @@ class AuthControllerTests {
         mockMvc.perform(get("/api/test/protected").contextPath("/api")
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void meReturnsCurrentUserWithAccessToken() throws Exception {
+        when(authService.currentUser(any())).thenReturn(new CurrentUserResponse(42L, "닉네임", UserStatus.ACTIVE));
+
+        mockMvc.perform(get("/api/auth/me").contextPath("/api")
+                        .header("Authorization", "Bearer " + token(JwtTokenType.ACCESS)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userUid").value(42))
+                .andExpect(jsonPath("$.nickname").value("닉네임"))
+                .andExpect(jsonPath("$.status").value("ACTIVE"));
+
+        ArgumentCaptor<Authentication> captor = ArgumentCaptor.forClass(Authentication.class);
+        verify(authService).currentUser(captor.capture());
+        assertEquals("42", captor.getValue().getName());
+    }
+
+    @Test
+    void meRequiresAccessToken() throws Exception {
+        mockMvc.perform(get("/api/auth/me").contextPath("/api"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/auth/me").contextPath("/api")
+                        .header("Authorization", "Bearer " + token(JwtTokenType.REFRESH)))
+                .andExpect(status().isUnauthorized());
     }
 
     private String token(JwtTokenType type) {

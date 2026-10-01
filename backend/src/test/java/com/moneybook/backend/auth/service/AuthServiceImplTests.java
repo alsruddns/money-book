@@ -1,5 +1,6 @@
 package com.moneybook.backend.auth.service;
 
+import com.moneybook.backend.auth.dto.CurrentUserResponse;
 import com.moneybook.backend.auth.dto.LoginRequest;
 import com.moneybook.backend.auth.dto.LoginResponse;
 import com.moneybook.backend.auth.dto.RefreshRequest;
@@ -19,6 +20,8 @@ import com.moneybook.backend.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
 import java.util.Optional;
 
@@ -182,5 +185,50 @@ class AuthServiceImplTests {
                 () -> service.refresh(new RefreshRequest("refresh-token")));
 
         assertEquals(ErrorCode.USER_INACTIVE, exception.getErrorCode());
+    }
+
+    @Test
+    void currentUserReturnsActiveUserProfile() {
+        User user = mock(User.class);
+        when(userRepository.findById(42L)).thenReturn(Optional.of(user));
+        when(user.getUserUid()).thenReturn(42L);
+        when(user.getNickname()).thenReturn("닉네임");
+        when(user.getStatus()).thenReturn(UserStatus.ACTIVE);
+
+        CurrentUserResponse response = service.currentUser(authentication("42"));
+
+        assertEquals(42L, response.userUid());
+        assertEquals("닉네임", response.nickname());
+        assertEquals(UserStatus.ACTIVE, response.status());
+    }
+
+    @Test
+    void currentUserRejectsMissingUser() {
+        when(userRepository.findById(42L)).thenReturn(Optional.empty());
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> service.currentUser(authentication("42")));
+
+        assertEquals(ErrorCode.USER_NOT_FOUND, exception.getErrorCode());
+    }
+
+    @Test
+    void currentUserRejectsInactiveUser() {
+        User user = mock(User.class);
+        when(userRepository.findById(42L)).thenReturn(Optional.of(user));
+        when(user.getStatus()).thenReturn(UserStatus.INACTIVE);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> service.currentUser(authentication("42")));
+
+        assertEquals(ErrorCode.USER_INACTIVE, exception.getErrorCode());
+    }
+
+    private JwtAuthenticationToken authentication(String subject) {
+        Jwt jwt = Jwt.withTokenValue("test-token")
+                .header("alg", "HS256")
+                .claim("sub", subject)
+                .build();
+        return new JwtAuthenticationToken(jwt);
     }
 }

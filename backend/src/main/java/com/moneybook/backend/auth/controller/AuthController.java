@@ -1,5 +1,6 @@
 package com.moneybook.backend.auth.controller;
 
+import com.moneybook.backend.auth.dto.CurrentUserResponse;
 import com.moneybook.backend.auth.dto.LoginRequest;
 import com.moneybook.backend.auth.dto.LoginResponse;
 import com.moneybook.backend.auth.dto.RefreshRequest;
@@ -11,13 +12,15 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * LOCAL 회원가입, 로그인 및 Access Token 재발급 API를 제공한다.
+ * LOCAL 회원가입, 로그인, Access Token 재발급 및 현재 사용자 조회 API를 제공한다.
  */
 @RestController
 @RequestMapping("/auth")
@@ -58,5 +61,17 @@ public class AuthController {
     @PostMapping("/refresh")
     public ResponseEntity<RefreshResponse> refresh(@Valid @RequestBody RefreshRequest request) {
         return ResponseEntity.ok(authService.refresh(request));
+    }
+
+    /**
+     * Access Token으로 인증된 사용자의 기본 정보를 조회한다.
+     * 사용자 존재 여부와 활성 상태는 서비스에서 확인한다.
+     *
+     * @param authentication Spring Security에서 검증한 인증 정보
+     * @return 사용자 UID, 닉네임 및 상태
+     */
+    @GetMapping("/me")
+    public ResponseEntity<CurrentUserResponse> me(Authentication authentication) {
+        return ResponseEntity.ok(authService.currentUser(authentication));
     }
 }

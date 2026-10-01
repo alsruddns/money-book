@@ -1,5 +1,6 @@
 package com.moneybook.backend.auth.service.impl;
 
+import com.moneybook.backend.auth.dto.CurrentUserResponse;
 import com.moneybook.backend.auth.dto.LoginRequest;
 import com.moneybook.backend.auth.dto.LoginResponse;
 import com.moneybook.backend.auth.dto.RefreshRequest;
@@ -18,7 +19,9 @@ import com.moneybook.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -92,6 +95,29 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.USER_INACTIVE);
         }
         return new RefreshResponse(jwtTokenProvider.createAccessToken(userUid));
+    }
+
+    /** Reads the verified JWT principal and returns the active user's current persisted profile. */
+    @Override
+    @Transactional(readOnly = true)
+    public CurrentUserResponse currentUser(Authentication authentication) {
+        if (!(authentication instanceof JwtAuthenticationToken)) {
+            throw new BusinessException(ErrorCode.INVALID_ACCESS_TOKEN);
+        }
+
+        Long userUid;
+        try {
+            userUid = Long.valueOf(authentication.getName());
+        } catch (NumberFormatException exception) {
+            throw new BusinessException(ErrorCode.INVALID_ACCESS_TOKEN);
+        }
+
+        User user = userRepository.findById(userUid)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.USER_INACTIVE);
+        }
+        return new CurrentUserResponse(user.getUserUid(), user.getNickname(), user.getStatus());
     }
 
     private boolean isDuplicateLocalLoginId(Throwable exception) {
