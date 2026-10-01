@@ -3,6 +3,10 @@ package com.moneybook.backend.common.exception;
 import org.springframework.http.HttpStatus;
 
 public enum ErrorCode {
+    RECURRING_TRANSACTION_NOT_FOUND(HttpStatus.NOT_FOUND, "정기 거래 규칙을 찾을 수 없습니다."),
+    INVALID_RECURRING_DAY(HttpStatus.BAD_REQUEST, "정기 거래 주기와 예정일 설정이 올바르지 않습니다."),
+    INVALID_RECURRING_DATE_RANGE(HttpStatus.BAD_REQUEST, "정기 거래 시작일과 종료일이 올바르지 않습니다."),
+    RECURRING_GENERATION_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "한 번에 생성할 수 있는 정기 거래 수를 초과했습니다."),
     TRANSFER_NOT_FOUND(HttpStatus.NOT_FOUND, "이체를 찾을 수 없습니다."),
     SAME_TRANSFER_ACCOUNT(HttpStatus.BAD_REQUEST, "출금 계좌와 입금 계좌가 같을 수 없습니다."),
     MONEY_BOOK_CREATE_FORBIDDEN(HttpStatus.FORBIDDEN, "가계부에 등록할 권한이 없습니다."),

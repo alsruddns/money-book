@@ -56,6 +56,12 @@ public class MoneyBookTransaction extends BaseEntity {
     @Column(name = "memo", length = 500)
     private String memo;
 
+    @Column(name = "recurring_transaction_uid")
+    private Long recurringTransactionUid;
+
+    @Column(name = "scheduled_date")
+    private LocalDate scheduledDate;
+
     private MoneyBookTransaction(MoneyBook moneyBook, TransactionType transactionType, BigDecimal amount,
                                  LocalDate transactionDate, MoneyBookCategory category,
                                  MoneyBookAccount account, String memo) {
@@ -67,6 +73,17 @@ public class MoneyBookTransaction extends BaseEntity {
                                               BigDecimal amount, LocalDate transactionDate,
                                               MoneyBookCategory category, MoneyBookAccount account, String memo) {
         return new MoneyBookTransaction(moneyBook, transactionType, amount, transactionDate, category, account, memo);
+    }
+
+    public static MoneyBookTransaction createRecurring(MoneyBook moneyBook, TransactionType transactionType,
+                                                       BigDecimal amount, LocalDate scheduledDate,
+                                                       MoneyBookCategory category, MoneyBookAccount account,
+                                                       String memo, Long recurringTransactionUid) {
+        MoneyBookTransaction transaction = new MoneyBookTransaction(moneyBook, transactionType, amount,
+                scheduledDate, category, account, memo);
+        transaction.recurringTransactionUid = Objects.requireNonNull(recurringTransactionUid, "recurringTransactionUid");
+        transaction.scheduledDate = Objects.requireNonNull(scheduledDate, "scheduledDate");
+        return transaction;
     }
 
     public void change(TransactionType transactionType, BigDecimal amount, LocalDate transactionDate,

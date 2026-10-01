@@ -34,4 +34,10 @@ public interface TransactionJpaRepository extends JpaRepository<MoneyBookTransac
                                               @Param("from") LocalDate from,
                                               @Param("until") LocalDate until);
 
+    @Query("""
+            select entry.scheduledDate from MoneyBookTransaction entry
+            where entry.recurringTransactionUid = :ruleUid and entry.scheduledDate <= :through
+            """)
+    List<LocalDate> findGeneratedDates(@Param("ruleUid") Long ruleUid, @Param("through") LocalDate through);
+
 }

@@ -10,5 +10,6 @@ public interface TransactionRepository {
     MoneyBookTransaction save(MoneyBookTransaction transaction);
     Optional<MoneyBookTransaction> findByIdAndMoneyBookUid(Long transactionUid, Long moneyBookUid);
     List<MoneyBookTransaction> findForPeriod(Long moneyBookUid, LocalDate from, LocalDate until);
+    List<LocalDate> findGeneratedDates(Long recurringTransactionUid, LocalDate through);
     void delete(MoneyBookTransaction transaction);
 }

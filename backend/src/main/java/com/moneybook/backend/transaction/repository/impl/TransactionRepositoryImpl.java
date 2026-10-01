@@ -30,6 +30,11 @@ public class TransactionRepositoryImpl implements TransactionRepository {
     }
 
     @Override
+    public List<LocalDate> findGeneratedDates(Long recurringTransactionUid, LocalDate through) {
+        return jpa.findGeneratedDates(recurringTransactionUid, through);
+    }
+
+    @Override
     public void delete(MoneyBookTransaction transaction) {
         jpa.delete(transaction);
     }
