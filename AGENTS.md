@@ -7,12 +7,14 @@
 ### Technology Stack
 
 Frontend:
+
 - Next.js
 - TypeScript
 - PWA
 - Responsive / Mobile First UI
 
 Backend:
+
 - Java 21
 - Spring Boot
 - Spring Security
@@ -22,6 +24,7 @@ Backend:
 - Flyway
 
 Repository:
+
 - Monorepo
 
 ```text
@@ -755,7 +758,6 @@ Codex는 코드를 수정하기 전에 반드시 다음 규칙을 따른다.
 
 When a requested implementation conflicts with this document, this document takes priority unless the developer explicitly requests a convention change.
 
-
 ## API Comment Rules
 
 - 모든 API Controller 클래스에는 해당 Controller의 역할을 설명하는 주석을 작성한다.
@@ -766,7 +768,7 @@ When a requested implementation conflicts with this document, this document take
 
 Example:
 
-```java
+````java
 /**
  * 가계부 거래내역 API를 제공한다.
  */
@@ -797,7 +799,7 @@ public class TransactionController {
 
 ```text
 Type : [scope] 작업 내용
-```
+````
 
 ### Type
 
@@ -857,3 +859,14 @@ Perf : [dashboard] 월별 통계 조회 쿼리 개선
 - 서로 관련 없는 작업을 하나의 커밋에 섞지 않는다.
 - 작업 내용은 `추가`, `수정` 같은 단순 표현보다 실제 변경 내용을 알 수 있게 작성한다.
 - 기능 개발 브랜치에서 작업 후 `develop`으로 병합한다.
+
+## 검증 규칙
+
+- 모든 작업에서 무조건 전체 테스트를 실행하지 않는다.
+- 변경 범위에 맞는 최소 검증을 수행한다.
+- 문서/주석 변경은 테스트를 생략할 수 있다.
+- 설정 및 의존성 변경은 compile 또는 build로 검증한다.
+- DB/Flyway 변경은 애플리케이션 기동과 migration 적용 여부를 확인한다.
+- API 변경은 해당 API의 정상 응답을 확인한다.
+- 비즈니스 로직 변경은 관련 테스트를 우선 수행한다.
+- 대규모 리팩토링 또는 공통 모듈 변경 시 전체 build/test를 수행한다.
