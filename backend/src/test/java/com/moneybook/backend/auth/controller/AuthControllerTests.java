@@ -6,24 +6,37 @@ import com.moneybook.backend.auth.dto.SignUpResDto;
 import com.moneybook.backend.auth.service.AuthService;
 import com.moneybook.backend.common.exception.BusinessException;
 import com.moneybook.backend.common.exception.ErrorCode;
+import com.moneybook.backend.config.JwtConfig;
 import com.moneybook.backend.config.SecurityConfig;
+import com.moneybook.backend.enums.JwtTokenType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
+import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.time.Instant;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AuthController.class)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, JwtConfig.class, AuthControllerTests.ProtectedController.class})
+@TestPropertySource(properties = "jwt.secret=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=")
 class AuthControllerTests {
 
     @Autowired
@@ -32,8 +45,16 @@ class AuthControllerTests {
     @MockitoBean
     private AuthService authService;
 
-    @MockitoBean
-    private JwtDecoder jwtDecoder;
+    @Autowired
+    private JwtEncoder jwtEncoder;
+
+    @RestController
+    static class ProtectedController {
+        @GetMapping("/test/protected")
+        String protectedResource() {
+            return "ok";
+        }
+    }
 
     @Test
     void signUpIsAvailableWithoutAuthenticationOrCsrfToken() throws Exception {
@@ -119,5 +140,30 @@ class AuthControllerTests {
                         .content("{}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    void refreshTokenCannotAuthenticateProtectedApi() throws Exception {
+        String refreshToken = token(JwtTokenType.REFRESH);
+        String accessToken = token(JwtTokenType.ACCESS);
+
+        mockMvc.perform(get("/api/test/protected").contextPath("/api")
+                        .header("Authorization", "Bearer " + refreshToken))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/test/protected").contextPath("/api")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk());
+    }
+
+    private String token(JwtTokenType type) {
+        Instant now = Instant.now();
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .subject("42")
+                .issuedAt(now)
+                .expiresAt(now.plusSeconds(3600))
+                .claim(JwtTokenType.CLAIM_NAME, type.name())
+                .build();
+        return jwtEncoder.encode(JwtEncoderParameters.from(
+                JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
     }
 }
