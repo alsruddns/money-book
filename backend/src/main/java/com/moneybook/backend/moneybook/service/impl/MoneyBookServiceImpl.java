@@ -15,6 +15,8 @@ import com.moneybook.backend.moneybook.dto.CreateMoneyBookResponse;
 import com.moneybook.backend.moneybook.dto.InvitationResponse;
 import com.moneybook.backend.moneybook.dto.MoneyBookListResponse;
 import com.moneybook.backend.moneybook.dto.PendingInvitationResponse;
+import com.moneybook.backend.moneybook.dto.MoneyBookMemberResponse;
+import com.moneybook.backend.moneybook.dto.UpdateMoneyBookMemberPermissionRequest;
 import com.moneybook.backend.moneybook.repository.MoneyBookRepository;
 import com.moneybook.backend.moneybook.repository.MoneyBookUserRepository;
 import com.moneybook.backend.moneybook.service.MoneyBookService;
@@ -69,17 +71,8 @@ public class MoneyBookServiceImpl implements MoneyBookService {
     public InvitationResponse invite(Long moneyBookUid, CreateInvitationRequest request,
                                      Authentication authentication) {
         Long actorUid = activeUserUid(authentication);
-        MoneyBook book = moneyBookRepository.findById(moneyBookUid)
-                .orElseThrow(() -> new BusinessException(ErrorCode.MONEY_BOOK_NOT_FOUND));
-        if (!book.getOwnerUserUid().equals(actorUid)) {
-            MoneyBookUser actorMembership = moneyBookUserRepository
-                    .findByMoneyBookUidAndUserUid(moneyBookUid, actorUid)
-                    .orElseThrow(() -> new BusinessException(ErrorCode.MONEY_BOOK_INVITATION_FORBIDDEN));
-            if (actorMembership.getInvitationStatus() != InvitationStatus.ACCEPTED
-                    || !actorMembership.isAdmin()) {
-                throw new BusinessException(ErrorCode.MONEY_BOOK_INVITATION_FORBIDDEN);
-            }
-        }
+        MoneyBook book = moneyBook(moneyBookUid);
+        requireManager(book, actorUid, ErrorCode.MONEY_BOOK_INVITATION_FORBIDDEN);
 
         UserAuth targetAuth = userAuthRepository.findByLocalLoginId(request.loginId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVITEE_NOT_FOUND));
@@ -133,6 +126,89 @@ public class MoneyBookServiceImpl implements MoneyBookService {
         MoneyBookUser membership = pendingOwnInvitation(moneyBookUid, moneyBookUserUid, authentication);
         membership.rejectInvitation();
         return invitationResponse(membership);
+    }
+
+    /** Accepted members with read permission can see the roster; the owner retains access independently. */
+    @Override
+    @Transactional(readOnly = true)
+    public List<MoneyBookMemberResponse> members(Long moneyBookUid, Authentication authentication) {
+        Long actorUid = activeUserUid(authentication);
+        MoneyBook book = moneyBook(moneyBookUid);
+        if (!book.getOwnerUserUid().equals(actorUid)) {
+            MoneyBookUser actor = moneyBookUserRepository.findByMoneyBookUidAndUserUid(moneyBookUid, actorUid)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.MONEY_BOOK_MEMBERS_VIEW_FORBIDDEN));
+            if (actor.getInvitationStatus() != InvitationStatus.ACCEPTED || !actor.isCanRead()) {
+                throw new BusinessException(ErrorCode.MONEY_BOOK_MEMBERS_VIEW_FORBIDDEN);
+            }
+        }
+        return moneyBookUserRepository.findAcceptedMembersByBookUid(moneyBookUid).stream()
+                .map(row -> {
+                    boolean owner = row.userUid().equals(row.ownerUserUid());
+                    return new MoneyBookMemberResponse(
+                            row.moneyBookUserUid(), row.moneyBookUid(), row.userUid(), row.nickname(), owner,
+                            owner || row.isAdmin(), owner || row.canCreate(), owner || row.canRead(),
+                            owner || row.canUpdate(), owner || row.canDelete());
+                })
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public void updateMemberPermissions(Long moneyBookUid, Long moneyBookUserUid,
+                                        UpdateMoneyBookMemberPermissionRequest request,
+                                        Authentication authentication) {
+        Long actorUid = activeUserUid(authentication);
+        MoneyBook book = moneyBook(moneyBookUid);
+        requireManager(book, actorUid, ErrorCode.MONEY_BOOK_MEMBER_PERMISSION_FORBIDDEN);
+        MoneyBookUser member = acceptedMember(moneyBookUid, moneyBookUserUid);
+        if (book.getOwnerUserUid().equals(member.getUserUid())) {
+            throw new BusinessException(ErrorCode.MONEY_BOOK_OWNER_PERMISSION_PROTECTED);
+        }
+        member.changePermissions(request.isAdmin(), request.canCreate(), request.canRead(),
+                request.canUpdate(), request.canDelete());
+    }
+
+    @Override
+    @Transactional
+    public void removeMember(Long moneyBookUid, Long moneyBookUserUid, Authentication authentication) {
+        Long actorUid = activeUserUid(authentication);
+        MoneyBook book = moneyBook(moneyBookUid);
+        requireManager(book, actorUid, ErrorCode.MONEY_BOOK_MEMBER_REMOVAL_FORBIDDEN);
+        MoneyBookUser member = acceptedMember(moneyBookUid, moneyBookUserUid);
+        if (book.getOwnerUserUid().equals(member.getUserUid())) {
+            throw new BusinessException(ErrorCode.MONEY_BOOK_OWNER_REMOVAL_PROTECTED);
+        }
+        moneyBookUserRepository.delete(member);
+    }
+
+    private MoneyBook moneyBook(Long moneyBookUid) {
+        return moneyBookRepository.findById(moneyBookUid)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MONEY_BOOK_NOT_FOUND));
+    }
+
+    /** The persisted owner UID is authoritative; otherwise current accepted admin membership is required. */
+    private void requireManager(MoneyBook book, Long actorUid, ErrorCode forbidden) {
+        if (book.getOwnerUserUid().equals(actorUid)) {
+            return;
+        }
+        MoneyBookUser actor = moneyBookUserRepository
+                .findByMoneyBookUidAndUserUid(book.getMoneyBookUid(), actorUid)
+                .orElseThrow(() -> new BusinessException(forbidden));
+        if (actor.getInvitationStatus() != InvitationStatus.ACCEPTED || !actor.isAdmin()) {
+            throw new BusinessException(forbidden);
+        }
+    }
+
+    private MoneyBookUser acceptedMember(Long moneyBookUid, Long moneyBookUserUid) {
+        MoneyBookUser member = moneyBookUserRepository.findById(moneyBookUserUid)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MONEY_BOOK_MEMBER_NOT_FOUND));
+        if (!member.getMoneyBook().getMoneyBookUid().equals(moneyBookUid)) {
+            throw new BusinessException(ErrorCode.MONEY_BOOK_MEMBER_NOT_FOUND);
+        }
+        if (member.getInvitationStatus() != InvitationStatus.ACCEPTED) {
+            throw new BusinessException(ErrorCode.MONEY_BOOK_MEMBER_NOT_ACCEPTED);
+        }
+        return member;
     }
 
     private MoneyBookUser reinvite(MoneyBookUser membership, CreateInvitationRequest request) {

@@ -100,6 +100,17 @@ public class MoneyBookUser extends BaseEntity {
         invitationStatus = InvitationStatus.REJECTED;
     }
 
+    public void changePermissions(boolean admin, boolean canCreate, boolean canRead,
+                                  boolean canUpdate, boolean canDelete) {
+        if (invitationStatus != InvitationStatus.ACCEPTED) {
+            throw new IllegalStateException("Only accepted memberships can change permissions");
+        }
+        if (userUid.equals(moneyBook.getOwnerUserUid())) {
+            throw new IllegalStateException("Owner permissions cannot change");
+        }
+        applyPermissions(admin, canCreate, canRead, canUpdate, canDelete);
+    }
+
     private void requirePending() {
         if (invitationStatus != InvitationStatus.PENDING) {
             throw new IllegalStateException("Only pending invitations can be answered");

@@ -2,6 +2,7 @@ package com.moneybook.backend.moneybook.repository.impl;
 
 import com.moneybook.backend.entity.MoneyBookUser;
 import com.moneybook.backend.enums.InvitationStatus;
+import com.moneybook.backend.moneybook.repository.MoneyBookMemberRow;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -36,4 +37,21 @@ public interface MoneyBookUserJpaRepository extends JpaRepository<MoneyBookUser,
             """)
     List<MoneyBookUser> findByUserUidAndInvitationStatusWithBook(
             @Param("userUid") Long userUid, @Param("status") InvitationStatus status);
+
+    /** Joins users once for nicknames and orders the book owner before other accepted members. */
+    @Query("""
+            select new com.moneybook.backend.moneybook.repository.MoneyBookMemberRow(
+                membership.moneyBookUserUid, book.moneyBookUid, membership.userUid,
+                member.nickname, book.ownerUserUid, membership.admin,
+                membership.canCreate, membership.canRead, membership.canUpdate, membership.canDelete)
+            from MoneyBookUser membership
+            join membership.moneyBook book
+            join User member on member.userUid = membership.userUid
+            where book.moneyBookUid = :moneyBookUid
+              and membership.invitationStatus = :status
+            order by case when membership.userUid = book.ownerUserUid then 0 else 1 end,
+                     membership.moneyBookUserUid asc
+            """)
+    List<MoneyBookMemberRow> findMembersByBookUidAndStatus(
+            @Param("moneyBookUid") Long moneyBookUid, @Param("status") InvitationStatus status);
 }

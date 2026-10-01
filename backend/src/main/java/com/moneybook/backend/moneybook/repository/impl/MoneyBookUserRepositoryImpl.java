@@ -2,6 +2,7 @@ package com.moneybook.backend.moneybook.repository.impl;
 
 import com.moneybook.backend.entity.MoneyBookUser;
 import com.moneybook.backend.enums.InvitationStatus;
+import com.moneybook.backend.moneybook.repository.MoneyBookMemberRow;
 import com.moneybook.backend.moneybook.repository.MoneyBookUserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -39,5 +40,16 @@ public class MoneyBookUserRepositoryImpl implements MoneyBookUserRepository {
     public List<MoneyBookUser> findPendingByUserUid(Long userUid) {
         return moneyBookUserJpaRepository.findByUserUidAndInvitationStatusWithBook(
                 userUid, InvitationStatus.PENDING);
+    }
+
+    @Override
+    public List<MoneyBookMemberRow> findAcceptedMembersByBookUid(Long moneyBookUid) {
+        return moneyBookUserJpaRepository.findMembersByBookUidAndStatus(
+                moneyBookUid, InvitationStatus.ACCEPTED);
+    }
+
+    @Override
+    public void delete(MoneyBookUser membership) {
+        moneyBookUserJpaRepository.delete(membership);
     }
 }

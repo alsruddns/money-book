@@ -6,6 +6,8 @@ import com.moneybook.backend.moneybook.dto.CreateInvitationRequest;
 import com.moneybook.backend.moneybook.dto.InvitationResponse;
 import com.moneybook.backend.moneybook.dto.MoneyBookListResponse;
 import com.moneybook.backend.moneybook.dto.PendingInvitationResponse;
+import com.moneybook.backend.moneybook.dto.MoneyBookMemberResponse;
+import com.moneybook.backend.moneybook.dto.UpdateMoneyBookMemberPermissionRequest;
 import com.moneybook.backend.moneybook.service.MoneyBookService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -115,5 +118,40 @@ public class MoneyBookController {
             Authentication authentication) {
         return ResponseEntity.ok(moneyBookService.rejectInvitation(
                 moneyBookUid, moneyBookUserUid, authentication));
+    }
+
+    /**
+     * 가계부의 가입 완료 멤버를 owner 우선으로 조회한다.
+     * owner 또는 읽기 권한이 있는 ACCEPTED 멤버만 조회할 수 있다.
+     */
+    @GetMapping("/{moneyBookUid}/members")
+    public ResponseEntity<List<MoneyBookMemberResponse>> members(
+            @PathVariable Long moneyBookUid, Authentication authentication) {
+        return ResponseEntity.ok(moneyBookService.members(moneyBookUid, authentication));
+    }
+
+    /**
+     * owner 또는 가입 완료 관리자가 일반 멤버의 O/C/R/U/D 권한을 변경한다.
+     * owner의 권한은 변경할 수 없으며 O 권한이 있으면 C/R/U/D가 모두 부여된다.
+     */
+    @PatchMapping("/{moneyBookUid}/members/{moneyBookUserUid}/permissions")
+    public ResponseEntity<Void> updateMemberPermissions(
+            @PathVariable Long moneyBookUid, @PathVariable Long moneyBookUserUid,
+            @Valid @RequestBody UpdateMoneyBookMemberPermissionRequest request,
+            Authentication authentication) {
+        moneyBookService.updateMemberPermissions(moneyBookUid, moneyBookUserUid, request, authentication);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * owner 또는 가입 완료 관리자가 일반 멤버의 멤버십을 제거한다.
+     * 가계부의 원래 owner는 제거할 수 없다.
+     */
+    @DeleteMapping("/{moneyBookUid}/members/{moneyBookUserUid}")
+    public ResponseEntity<Void> removeMember(
+            @PathVariable Long moneyBookUid, @PathVariable Long moneyBookUserUid,
+            Authentication authentication) {
+        moneyBookService.removeMember(moneyBookUid, moneyBookUserUid, authentication);
+        return ResponseEntity.noContent().build();
     }
 }

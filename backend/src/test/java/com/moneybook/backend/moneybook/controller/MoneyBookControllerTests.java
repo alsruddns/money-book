@@ -8,6 +8,7 @@ import com.moneybook.backend.moneybook.dto.CreateMoneyBookResponse;
 import com.moneybook.backend.moneybook.dto.InvitationResponse;
 import com.moneybook.backend.moneybook.dto.MoneyBookListResponse;
 import com.moneybook.backend.moneybook.dto.PendingInvitationResponse;
+import com.moneybook.backend.moneybook.dto.MoneyBookMemberResponse;
 import com.moneybook.backend.moneybook.service.MoneyBookService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,8 +32,10 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.Mockito.verify;
 
 @WebMvcTest(MoneyBookController.class)
 @Import({SecurityConfig.class, JwtConfig.class})
@@ -195,6 +198,62 @@ class MoneyBookControllerTests {
                             .header("Authorization", bearer))
                     .andExpect(status().isUnauthorized());
             mockMvc.perform(patch("/api/money-books/7/invitations/123/reject").contextPath("/api")
+                            .header("Authorization", bearer))
+                    .andExpect(status().isUnauthorized());
+        }
+    }
+
+    @Test
+    void memberEndpointsReturnRosterAndAcceptChangesWithAccessToken() throws Exception {
+        when(moneyBookService.members(any(), any())).thenReturn(List.of(
+                new MoneyBookMemberResponse(10L, 7L, 42L, "owner", true,
+                        true, true, true, true, true)));
+        String access = "Bearer " + token(JwtTokenType.ACCESS);
+
+        mockMvc.perform(get("/api/money-books/7/members").contextPath("/api")
+                        .header("Authorization", access))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].nickname").value("owner"))
+                .andExpect(jsonPath("$[0].isOwner").value(true));
+        mockMvc.perform(patch("/api/money-books/7/members/11/permissions").contextPath("/api")
+                        .header("Authorization", access)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"isAdmin":false,"canCreate":true,"canRead":true,
+                                 "canUpdate":false,"canDelete":false}
+                                """))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(delete("/api/money-books/7/members/11").contextPath("/api")
+                        .header("Authorization", access))
+                .andExpect(status().isNoContent());
+        verify(moneyBookService).removeMember(any(), any(), any());
+    }
+
+    @Test
+    void memberPermissionRequestRequiresEveryFlag() throws Exception {
+        mockMvc.perform(patch("/api/money-books/7/members/11/permissions").contextPath("/api")
+                        .header("Authorization", "Bearer " + token(JwtTokenType.ACCESS))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"isAdmin\":false}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    void memberEndpointsRejectMissingAndRefreshBearerTokens() throws Exception {
+        for (String bearer : List.of("", "Bearer " + token(JwtTokenType.REFRESH))) {
+            mockMvc.perform(get("/api/money-books/7/members").contextPath("/api")
+                            .header("Authorization", bearer))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(patch("/api/money-books/7/members/11/permissions").contextPath("/api")
+                            .header("Authorization", bearer)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"isAdmin":false,"canCreate":true,"canRead":true,
+                                     "canUpdate":false,"canDelete":false}
+                                    """))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(delete("/api/money-books/7/members/11").contextPath("/api")
                             .header("Authorization", bearer))
                     .andExpect(status().isUnauthorized());
         }

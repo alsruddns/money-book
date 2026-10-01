@@ -11,6 +11,8 @@ import com.moneybook.backend.moneybook.dto.CreateMoneyBookResponse;
 import com.moneybook.backend.moneybook.dto.CreateInvitationRequest;
 import com.moneybook.backend.moneybook.dto.InvitationResponse;
 import com.moneybook.backend.moneybook.dto.PendingInvitationResponse;
+import com.moneybook.backend.moneybook.dto.MoneyBookMemberResponse;
+import com.moneybook.backend.moneybook.dto.UpdateMoneyBookMemberPermissionRequest;
 import com.moneybook.backend.moneybook.service.MoneyBookService;
 import com.moneybook.backend.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -163,6 +165,70 @@ class MoneyBookMembershipQueryTests {
                 book.getMoneyBookUid(), renewed.moneyBookUserUid(), authentication(target.getUserUid()));
         assertEquals(InvitationStatus.ACCEPTED, accepted.invitationStatus());
         assertEquals(1, moneyBookService.list(authentication(target.getUserUid())).size());
+    }
+
+    @Test
+    void memberRosterJoinsNicknamesOrdersOwnerFirstAndExcludesInvitations() {
+        Long ownerUid = userRepository.save(User.create("owner", null)).getUserUid();
+        Long memberUid = userRepository.save(User.create("member", null)).getUserUid();
+        Long noReadUid = userRepository.save(User.create("no-read", null)).getUserUid();
+        Long pendingUid = userRepository.save(User.create("pending", null)).getUserUid();
+        Long rejectedUid = userRepository.save(User.create("rejected", null)).getUserUid();
+        MoneyBook book = bookWithOwner("shared", ownerUid);
+        MoneyBookUser member = MoneyBookUser.invite(book, memberUid, false, false, true, false, false);
+        member.acceptInvitation();
+        moneyBookUserRepository.save(member);
+        MoneyBookUser noRead = MoneyBookUser.invite(book, noReadUid, false, false, false, false, false);
+        noRead.acceptInvitation();
+        moneyBookUserRepository.save(noRead);
+        moneyBookUserRepository.save(MoneyBookUser.invite(book, pendingUid,
+                false, false, true, false, false));
+        MoneyBookUser rejected = MoneyBookUser.invite(book, rejectedUid,
+                false, false, true, false, false);
+        rejected.rejectInvitation();
+        moneyBookUserRepository.save(rejected);
+
+        List<MoneyBookMemberResponse> roster = moneyBookService.members(
+                book.getMoneyBookUid(), authentication(memberUid));
+
+        assertEquals(List.of(ownerUid, memberUid, noReadUid),
+                roster.stream().map(MoneyBookMemberResponse::userUid).toList());
+        assertEquals(List.of("owner", "member", "no-read"),
+                roster.stream().map(MoneyBookMemberResponse::nickname).toList());
+        assertTrue(roster.getFirst().isOwner());
+        assertFalse(roster.getLast().isOwner());
+        assertFalse(roster.getLast().canRead());
+        assertTrue(roster.getFirst().isAdmin());
+        assertTrue(roster.getFirst().canCreate());
+        assertTrue(roster.getFirst().canRead());
+        assertTrue(roster.getFirst().canUpdate());
+        assertTrue(roster.getFirst().canDelete());
+        assertEquals(roster, moneyBookService.members(book.getMoneyBookUid(), authentication(ownerUid)));
+    }
+
+    @Test
+    void ownerCanUpdateAndRemoveAcceptedMemberInDatabase() {
+        Long ownerUid = userRepository.save(User.create("owner", null)).getUserUid();
+        Long memberUid = userRepository.save(User.create("member", null)).getUserUid();
+        MoneyBook book = bookWithOwner("shared", ownerUid);
+        MoneyBookUser member = MoneyBookUser.invite(book, memberUid, false, false, false, false, false);
+        member.acceptInvitation();
+        member = moneyBookUserRepository.save(member);
+        Long memberId = member.getMoneyBookUserUid();
+
+        moneyBookService.updateMemberPermissions(book.getMoneyBookUid(), memberId,
+                new UpdateMoneyBookMemberPermissionRequest(true, false, false, false, false),
+                authentication(ownerUid));
+        List<MoneyBookMemberResponse> roster = moneyBookService.members(book.getMoneyBookUid(), authentication(ownerUid));
+        MoneyBookMemberResponse updated = roster.getLast();
+        assertTrue(updated.isAdmin());
+        assertTrue(updated.canCreate());
+        assertTrue(updated.canRead());
+        assertTrue(updated.canUpdate());
+        assertTrue(updated.canDelete());
+
+        moneyBookService.removeMember(book.getMoneyBookUid(), memberId, authentication(ownerUid));
+        assertTrue(moneyBookUserRepository.findById(memberId).isEmpty());
     }
 
     private MoneyBook bookWithOwner(String name, Long ownerUid) {
