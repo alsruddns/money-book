@@ -870,3 +870,17 @@ Perf : [dashboard] 월별 통계 조회 쿼리 개선
 - API 변경은 해당 API의 정상 응답을 확인한다.
 - 비즈니스 로직 변경은 관련 테스트를 우선 수행한다.
 - 대규모 리팩토링 또는 공통 모듈 변경 시 전체 build/test를 수행한다.
+
+## Entity Auditing 규칙
+
+- 대부분의 영속 Entity는 `BaseEntity`를 상속한다.
+- `BaseEntity`는 `@MappedSuperclass`와 `AuditingEntityListener`를 사용한다.
+- 공통 감사 컬럼은 다음과 같다.
+  - reg_r_id: 등록자 사용자 UID
+  - reg_time: 등록시간
+  - mod_r_id: 수정자 사용자 UID
+  - mod_time: 수정시간
+- 등록/수정 시간은 JPA Auditing을 이용해 자동 관리한다.
+- 인증 기능 구현 후 등록자/수정자는 `AuditorAware<Long>`을 통해 로그인 사용자의 userUid를 기록한다.
+- Hibernate가 스키마를 생성하지 않으므로 BaseEntity를 상속하는 테이블의 Flyway migration에는 위 공통 컬럼을 반드시 직접 생성한다.
+- 이미 적용된 Flyway migration을 수정하지 않고 필요한 변경은 새로운 migration으로 추가한다.
