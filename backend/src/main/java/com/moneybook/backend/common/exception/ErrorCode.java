@@ -11,6 +11,15 @@ public enum ErrorCode {
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "Refresh Token이 유효하지 않습니다."),
     INVALID_ACCESS_TOKEN(HttpStatus.UNAUTHORIZED, "Access Token이 유효하지 않습니다."),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."),
+    MONEY_BOOK_NOT_FOUND(HttpStatus.NOT_FOUND, "가계부를 찾을 수 없습니다."),
+    INVITEE_NOT_FOUND(HttpStatus.NOT_FOUND, "초대할 LOCAL 사용자를 찾을 수 없습니다."),
+    SELF_INVITATION(HttpStatus.BAD_REQUEST, "자기 자신은 초대할 수 없습니다."),
+    MONEY_BOOK_INVITATION_FORBIDDEN(HttpStatus.FORBIDDEN, "가계부 사용자를 초대할 권한이 없습니다."),
+    ALREADY_MONEY_BOOK_MEMBER(HttpStatus.CONFLICT, "이미 가입된 사용자입니다."),
+    INVITATION_ALREADY_PENDING(HttpStatus.CONFLICT, "이미 대기 중인 초대가 있습니다."),
+    INVITATION_NOT_FOUND(HttpStatus.NOT_FOUND, "초대를 찾을 수 없습니다."),
+    INVITATION_NOT_OWNED(HttpStatus.FORBIDDEN, "본인의 초대만 처리할 수 있습니다."),
+    INVITATION_NOT_PENDING(HttpStatus.CONFLICT, "대기 중인 초대만 처리할 수 있습니다."),
     VALIDATION_FAILED(HttpStatus.BAD_REQUEST, "요청값이 올바르지 않습니다.");
 
     private final HttpStatus status;

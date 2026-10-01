@@ -5,6 +5,8 @@ import com.moneybook.backend.moneybook.repository.MoneyBookRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
 @Repository
 @RequiredArgsConstructor
 public class MoneyBookRepositoryImpl implements MoneyBookRepository {
@@ -14,5 +16,10 @@ public class MoneyBookRepositoryImpl implements MoneyBookRepository {
     @Override
     public MoneyBook save(MoneyBook moneyBook) {
         return moneyBookJpaRepository.save(moneyBook);
+    }
+
+    @Override
+    public Optional<MoneyBook> findById(Long moneyBookUid) {
+        return moneyBookJpaRepository.findById(moneyBookUid);
     }
 }

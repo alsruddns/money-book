@@ -3,8 +3,11 @@ package com.moneybook.backend.moneybook.controller;
 import com.moneybook.backend.config.JwtConfig;
 import com.moneybook.backend.config.SecurityConfig;
 import com.moneybook.backend.enums.JwtTokenType;
+import com.moneybook.backend.enums.InvitationStatus;
 import com.moneybook.backend.moneybook.dto.CreateMoneyBookResponse;
+import com.moneybook.backend.moneybook.dto.InvitationResponse;
 import com.moneybook.backend.moneybook.dto.MoneyBookListResponse;
+import com.moneybook.backend.moneybook.dto.PendingInvitationResponse;
 import com.moneybook.backend.moneybook.service.MoneyBookService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +29,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -113,6 +117,92 @@ class MoneyBookControllerTests {
                             .content("{\"name\":\"우리집 가계부\"}"))
                     .andExpect(status().isUnauthorized());
         }
+    }
+
+    @Test
+    void invitationEndpointsReturnExpectedResponsesWithAccessToken() throws Exception {
+        when(moneyBookService.invite(any(), any(), any()))
+                .thenReturn(invitation(InvitationStatus.PENDING));
+        when(moneyBookService.pendingInvitations(any())).thenReturn(List.of(
+                new PendingInvitationResponse(123L, 7L, "우리집 가계부", 1L,
+                        InvitationStatus.PENDING, false, true, false, true, false)));
+        when(moneyBookService.acceptInvitation(any(), any(), any()))
+                .thenReturn(invitation(InvitationStatus.ACCEPTED));
+        when(moneyBookService.rejectInvitation(any(), any(), any()))
+                .thenReturn(invitation(InvitationStatus.REJECTED));
+        String access = "Bearer " + token(JwtTokenType.ACCESS);
+
+        mockMvc.perform(post("/api/money-books/7/invitations").contextPath("/api")
+                        .header("Authorization", access)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"loginId":"target","isAdmin":false,"canCreate":true,
+                                 "canRead":false,"canUpdate":true,"canDelete":false}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.moneyBookUserUid").value(123))
+                .andExpect(jsonPath("$.invitationStatus").value("PENDING"));
+        mockMvc.perform(get("/api/money-books/invitations").contextPath("/api")
+                        .header("Authorization", access))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].moneyBookName").value("우리집 가계부"))
+                .andExpect(jsonPath("$[0].canRead").value(false));
+        mockMvc.perform(patch("/api/money-books/7/invitations/123/accept").contextPath("/api")
+                        .header("Authorization", access))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.invitationStatus").value("ACCEPTED"));
+        mockMvc.perform(patch("/api/money-books/7/invitations/123/reject").contextPath("/api")
+                        .header("Authorization", access))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.invitationStatus").value("REJECTED"));
+    }
+
+    @Test
+    void pendingInvitationsWithoutResultsReturnEmptyArray() throws Exception {
+        when(moneyBookService.pendingInvitations(any())).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/money-books/invitations").contextPath("/api")
+                        .header("Authorization", "Bearer " + token(JwtTokenType.ACCESS)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
+    void invitationRequestRequiresLoginIdAndEveryPermission() throws Exception {
+        mockMvc.perform(post("/api/money-books/7/invitations").contextPath("/api")
+                        .header("Authorization", "Bearer " + token(JwtTokenType.ACCESS))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"loginId\":\"target\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    void invitationEndpointsRequireAccessToken() throws Exception {
+        for (String bearer : List.of("", "Bearer " + token(JwtTokenType.REFRESH))) {
+            mockMvc.perform(post("/api/money-books/7/invitations").contextPath("/api")
+                            .header("Authorization", bearer)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"loginId":"target","isAdmin":false,"canCreate":true,
+                                     "canRead":true,"canUpdate":true,"canDelete":false}
+                                    """))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(get("/api/money-books/invitations").contextPath("/api")
+                            .header("Authorization", bearer))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(patch("/api/money-books/7/invitations/123/accept").contextPath("/api")
+                            .header("Authorization", bearer))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(patch("/api/money-books/7/invitations/123/reject").contextPath("/api")
+                            .header("Authorization", bearer))
+                    .andExpect(status().isUnauthorized());
+        }
+    }
+
+    private InvitationResponse invitation(InvitationStatus status) {
+        return new InvitationResponse(123L, 7L, 42L, status,
+                false, true, false, true, false);
     }
 
     private String token(JwtTokenType type) {

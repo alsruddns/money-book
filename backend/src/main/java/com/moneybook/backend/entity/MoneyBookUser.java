@@ -57,21 +57,61 @@ public class MoneyBookUser extends BaseEntity {
     @Column(name = "invitation_status", nullable = false, length = 30)
     private InvitationStatus invitationStatus;
 
-    private MoneyBookUser(MoneyBook moneyBook, Long userUid) {
+    private MoneyBookUser(MoneyBook moneyBook, Long userUid, InvitationStatus invitationStatus,
+                          boolean admin, boolean canCreate, boolean canRead,
+                          boolean canUpdate, boolean canDelete) {
         this.moneyBook = Objects.requireNonNull(moneyBook, "moneyBook");
         this.userUid = Objects.requireNonNull(userUid, "userUid");
-        this.admin = true;
-        this.canCreate = true;
-        this.canRead = true;
-        this.canUpdate = true;
-        this.canDelete = true;
-        this.invitationStatus = InvitationStatus.ACCEPTED;
+        this.invitationStatus = Objects.requireNonNull(invitationStatus, "invitationStatus");
+        applyPermissions(admin, canCreate, canRead, canUpdate, canDelete);
     }
 
     public static MoneyBookUser owner(MoneyBook moneyBook, Long userUid) {
         if (!Objects.equals(moneyBook.getOwnerUserUid(), userUid)) {
             throw new IllegalArgumentException("owner membership must match money book owner");
         }
-        return new MoneyBookUser(moneyBook, userUid);
+        return new MoneyBookUser(moneyBook, userUid, InvitationStatus.ACCEPTED,
+                true, true, true, true, true);
+    }
+
+    public static MoneyBookUser invite(MoneyBook moneyBook, Long userUid,
+                                       boolean admin, boolean canCreate, boolean canRead,
+                                       boolean canUpdate, boolean canDelete) {
+        return new MoneyBookUser(moneyBook, userUid, InvitationStatus.PENDING,
+                admin, canCreate, canRead, canUpdate, canDelete);
+    }
+
+    public void reinvite(boolean admin, boolean canCreate, boolean canRead,
+                         boolean canUpdate, boolean canDelete) {
+        if (invitationStatus != InvitationStatus.REJECTED) {
+            throw new IllegalStateException("Only rejected invitations can be renewed");
+        }
+        applyPermissions(admin, canCreate, canRead, canUpdate, canDelete);
+        invitationStatus = InvitationStatus.PENDING;
+    }
+
+    public void acceptInvitation() {
+        requirePending();
+        invitationStatus = InvitationStatus.ACCEPTED;
+    }
+
+    public void rejectInvitation() {
+        requirePending();
+        invitationStatus = InvitationStatus.REJECTED;
+    }
+
+    private void requirePending() {
+        if (invitationStatus != InvitationStatus.PENDING) {
+            throw new IllegalStateException("Only pending invitations can be answered");
+        }
+    }
+
+    private void applyPermissions(boolean admin, boolean canCreate, boolean canRead,
+                                  boolean canUpdate, boolean canDelete) {
+        this.admin = admin;
+        this.canCreate = admin || canCreate;
+        this.canRead = admin || canRead;
+        this.canUpdate = admin || canUpdate;
+        this.canDelete = admin || canDelete;
     }
 }
