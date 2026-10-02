@@ -18,7 +18,7 @@ export const budgetApi = baseApi.injectEndpoints({
         url: `money-books/${moneyBookUid}/budgets/${year}/${month}`, method: "PUT", body: request,
       }),
       invalidatesTags: (_result, error, { moneyBookUid, year, month }) => error ? [] : [
-        { type: "Budget", id: `${moneyBookUid}-${year}-${month}` },
+        { type: "Budget", id: `${moneyBookUid}-${year}-${month}` }, { type: "Report", id: moneyBookUid },
       ],
     }),
   }),

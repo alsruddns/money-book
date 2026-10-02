@@ -20,7 +20,7 @@ export const categoryApi = baseApi.injectEndpoints({
     }),
     createCategory: builder.mutation<CategoryResponse, CreateArg>({
       query: ({ moneyBookUid, request }) => ({ url: `money-books/${moneyBookUid}/categories`, method: "POST", body: request }),
-      invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : [{ type: "Category", id: moneyBookUid }],
+      invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : [{ type: "Category", id: moneyBookUid }, { type: "Report", id: moneyBookUid }],
     }),
     updateCategory: builder.mutation<CategoryResponse, UpdateArg>({
       query: ({ moneyBookUid, categoryUid, request }) => ({
@@ -28,14 +28,14 @@ export const categoryApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : [
         { type: "Category", id: moneyBookUid }, { type: "Transaction", id: moneyBookUid },
-        { type: "Calendar", id: moneyBookUid }, { type: "Budget", id: moneyBookUid }, { type: "Recurring", id: moneyBookUid },
+        { type: "Calendar", id: moneyBookUid }, { type: "Budget", id: moneyBookUid }, { type: "Recurring", id: moneyBookUid }, { type: "Report", id: moneyBookUid },
       ],
     }),
     deleteCategory: builder.mutation<void, CategoryKey>({
       query: ({ moneyBookUid, categoryUid }) => ({
         url: `money-books/${moneyBookUid}/categories/${categoryUid}`, method: "DELETE",
       }),
-      invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : [{ type: "Category", id: moneyBookUid }],
+      invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : [{ type: "Category", id: moneyBookUid }, { type: "Report", id: moneyBookUid }],
     }),
   }),
 });

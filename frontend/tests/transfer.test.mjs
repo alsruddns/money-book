@@ -39,7 +39,7 @@ test("transfer API uses backend routes and invalidates Transfer and Calendar onl
   assert.equal(api.createTransfer.query({ moneyBookUid: 7, request: {} }).method, "POST");
   assert.equal(api.updateTransfer.query({ moneyBookUid: 7, transferUid: 9, request: {} }).method, "PATCH");
   assert.equal(api.deleteTransfer.query({ moneyBookUid: 7, transferUid: 9 }).method, "DELETE");
-  const tags = [{ type: "Transfer", id: 7 }, { type: "Calendar", id: 7 }];
+  const tags = [{ type: "Transfer", id: 7 }, { type: "Calendar", id: 7 }, { type: "Report", id: 7 }];
   for (const name of ["createTransfer", "updateTransfer", "deleteTransfer"]) {
     assert.deepEqual(plain(api[name].invalidatesTags({}, undefined, { moneyBookUid: 7 })), tags);
     assert.deepEqual(plain(api[name].invalidatesTags(undefined, { status: 403 }, { moneyBookUid: 7 })), []);

@@ -45,7 +45,7 @@ export const recurringTransactionApi = baseApi.injectEndpoints({
       query: ({ moneyBookUid, request }) => ({ url: `money-books/${moneyBookUid}/recurring-transactions/generate`, method: "POST", body: request }),
       invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : [
         ...recurringTag(moneyBookUid), { type: "Transaction", id: moneyBookUid },
-        { type: "Calendar", id: moneyBookUid }, { type: "Budget", id: moneyBookUid },
+        { type: "Calendar", id: moneyBookUid }, { type: "Budget", id: moneyBookUid }, { type: "Report", id: moneyBookUid },
       ],
     }),
   }),
