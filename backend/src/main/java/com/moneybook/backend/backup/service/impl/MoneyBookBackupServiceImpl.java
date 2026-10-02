@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import tools.jackson.core.JsonGenerator;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -60,28 +61,106 @@ public class MoneyBookBackupServiceImpl implements MoneyBookBackupService {
         MoneyBook book = permissions.requireBackupAccess(bookUid, authentication);
         List<MoneyBookCategory> categoryRows = backupRepository.findRows(MoneyBookCategory.class, bookUid);
         List<MoneyBookAccount> accountRows = backupRepository.findRows(MoneyBookAccount.class, bookUid);
-        List<MoneyBookTransaction> transactionRows = backupRepository.findRows(MoneyBookTransaction.class, bookUid);
-        List<MoneyBookTransfer> transferRows = backupRepository.findRows(MoneyBookTransfer.class, bookUid);
         List<RecurringTransaction> recurringRows = backupRepository.findRows(RecurringTransaction.class, bookUid);
         List<MoneyBookBudget> budgetRows = backupRepository.findRows(MoneyBookBudget.class, bookUid);
         List<MoneyBookMonthClosing> closingRows = backupRepository.findRows(MoneyBookMonthClosing.class, bookUid);
         WeekStartDay startDay = backupRepository.findRows(MoneyBookSetting.class, bookUid).stream()
                 .findFirst().map(MoneyBookSetting::getWeekStartDay).orElse(WeekStartDay.SUNDAY);
         Set<Long> knownRules = recurringRows.stream().map(RecurringTransaction::getRecurringTransactionUid).collect(Collectors.toSet());
-        List<Long> orphanRuleIds = transactionRows.stream().map(MoneyBookTransaction::getRecurringTransactionUid)
-                .filter(Objects::nonNull).filter(id -> !knownRules.contains(id)).distinct().toList();
-        MoneyBookBackupDocument doc = new MoneyBookBackupDocument(MoneyBookBackupDocument.BACKUP_VERSION,
-                LocalDateTime.now().toString(), new MoneyBookBackupDocument.BookData(book.getName()),
-                new MoneyBookBackupDocument.SettingData(startDay.name()),
-                categoryRows.stream().map(c -> new MoneyBookBackupDocument.CategoryData(c.getCategoryUid(), c.getName(), c.getTransactionType().name(), c.getSortOrder())).toList(),
-                accountRows.stream().map(a -> new MoneyBookBackupDocument.AccountData(a.getAccountUid(), a.getName(), a.getAccountType().name(), a.getSortOrder())).toList(),
-                transactionRows.stream().map(t -> new MoneyBookBackupDocument.TransactionData(t.getTransactionUid(), t.getTransactionType().name(), t.getAmount().toPlainString(), t.getTransactionDate().toString(), t.getCategory().getCategoryUid(), t.getAccount().getAccountUid(), t.getMemo(), t.getRecurringTransactionUid(), t.getScheduledDate() == null ? null : t.getScheduledDate().toString())).toList(),
-                transferRows.stream().map(t -> new MoneyBookBackupDocument.TransferData(t.getTransferUid(), t.getFromAccount().getAccountUid(), t.getToAccount().getAccountUid(), t.getAmount().toPlainString(), t.getTransferDate().toString(), t.getMemo())).toList(),
-                recurringRows.stream().map(r -> new MoneyBookBackupDocument.RecurringData(r.getRecurringTransactionUid(), r.getTransactionType().name(), r.getAmount().toPlainString(), r.getCategory().getCategoryUid(), r.getAccount().getAccountUid(), r.getFrequency().name(), r.getDayOfMonth(), r.getDayOfWeek(), r.getStartDate().toString(), date(r.getEndDate()), r.getMemo(), r.isActive(), date(r.getLastGeneratedDate()))).toList(),
-                budgetRows.stream().map(b -> new MoneyBookBackupDocument.BudgetData(b.getBudgetUid(), b.getYear(), b.getMonth(), decimal(b.getTotalBudget()), b.getCategories().stream().map(c -> new MoneyBookBackupDocument.CategoryBudgetData(c.getCategory().getCategoryUid(), c.getAmount().toPlainString())).toList())).toList(),
-                closingRows.stream().map(c -> new MoneyBookBackupDocument.ClosingData(c.getYear(), c.getMonth(), c.getIncome().toPlainString(), c.getExpense().toPlainString(), c.getTransactionCount(), c.getPreviousIncome().toPlainString(), c.getPreviousExpense().toPlainString(), c.isBudgetConfigured(), decimal(c.getTotalBudget()), c.getClosedAt().toString())).toList(), orphanRuleIds);
-        try { objectMapper.writeValue(output, doc); output.flush(); }
+        try (JsonGenerator generator = objectMapper.tokenStreamFactory().createGenerator(output)) {
+            Set<Long> orphanRuleIds = findOrphanRuleIds(bookUid, knownRules);
+            generator.writeStartObject();
+            generator.writeNumberProperty("backupVersion", MoneyBookBackupDocument.BACKUP_VERSION);
+            generator.writeStringProperty("exportedAt", LocalDateTime.now().toString());
+            generator.writeName("moneyBook");
+            objectMapper.writeValue(generator, new MoneyBookBackupDocument.BookData(book.getName()));
+            generator.writeName("setting");
+            objectMapper.writeValue(generator, new MoneyBookBackupDocument.SettingData(startDay.name()));
+            writeArray(generator, "categories", categoryRows.stream().map(c -> new MoneyBookBackupDocument.CategoryData(
+                    c.getCategoryUid(), c.getName(), c.getTransactionType().name(), c.getSortOrder())).toList());
+            writeArray(generator, "accounts", accountRows.stream().map(a -> new MoneyBookBackupDocument.AccountData(
+                    a.getAccountUid(), a.getName(), a.getAccountType().name(), a.getSortOrder())).toList());
+            writeTransactions(generator, bookUid);
+            writeTransfers(generator, bookUid);
+            writeArray(generator, "recurringTransactions", recurringRows.stream().map(r -> new MoneyBookBackupDocument.RecurringData(
+                    r.getRecurringTransactionUid(), r.getTransactionType().name(), r.getAmount().toPlainString(),
+                    r.getCategory().getCategoryUid(), r.getAccount().getAccountUid(), r.getFrequency().name(),
+                    r.getDayOfMonth(), r.getDayOfWeek(), r.getStartDate().toString(), date(r.getEndDate()),
+                    r.getMemo(), r.isActive(), date(r.getLastGeneratedDate()))).toList());
+            writeArray(generator, "budgets", budgetRows.stream().map(b -> new MoneyBookBackupDocument.BudgetData(
+                    b.getBudgetUid(), b.getYear(), b.getMonth(), decimal(b.getTotalBudget()),
+                    b.getCategories().stream().map(c -> new MoneyBookBackupDocument.CategoryBudgetData(
+                            c.getCategory().getCategoryUid(), c.getAmount().toPlainString())).toList())).toList());
+            writeArray(generator, "monthClosings", closingRows.stream().map(c -> new MoneyBookBackupDocument.ClosingData(
+                    c.getYear(), c.getMonth(), c.getIncome().toPlainString(), c.getExpense().toPlainString(),
+                    c.getTransactionCount(), c.getPreviousIncome().toPlainString(), c.getPreviousExpense().toPlainString(),
+                    c.isBudgetConfigured(), decimal(c.getTotalBudget()), c.getClosedAt().toString())).toList());
+            writeArray(generator, "orphanRecurringSourceUids", orphanRuleIds.stream().sorted().toList());
+            generator.writeEndObject();
+            generator.flush();
+        }
         catch (IOException exception) { throw new BusinessException(ErrorCode.BACKUP_EXPORT_FAILED); }
+    }
+
+    private Set<Long> findOrphanRuleIds(Long bookUid, Set<Long> knownRules) throws IOException {
+        Set<Long> orphanIds = new HashSet<>();
+        forEachTransactionBatch(bookUid, row -> {
+            Long ruleUid = row.getRecurringTransactionUid();
+            if (ruleUid != null && !knownRules.contains(ruleUid)) orphanIds.add(ruleUid);
+        });
+        return orphanIds;
+    }
+
+    private void writeTransactions(JsonGenerator generator, Long bookUid) throws IOException {
+        generator.writeName("transactions");
+        generator.writeStartArray();
+        forEachTransactionBatch(bookUid, row -> objectMapper.writeValue(generator,
+                new MoneyBookBackupDocument.TransactionData(row.getTransactionUid(), row.getTransactionType().name(),
+                        row.getAmount().toPlainString(), row.getTransactionDate().toString(),
+                        row.getCategory().getCategoryUid(), row.getAccount().getAccountUid(), row.getMemo(),
+                        row.getRecurringTransactionUid(), date(row.getScheduledDate()))));
+        generator.writeEndArray();
+    }
+
+    private void writeTransfers(JsonGenerator generator, Long bookUid) throws IOException {
+        generator.writeName("transfers");
+        generator.writeStartArray();
+        long afterUid = 0;
+        while (true) {
+            List<MoneyBookTransfer> batch = backupRepository.transferBatch(bookUid, afterUid, BATCH_SIZE);
+            if (batch.isEmpty()) break;
+            for (MoneyBookTransfer row : batch) {
+                objectMapper.writeValue(generator, new MoneyBookBackupDocument.TransferData(row.getTransferUid(),
+                        row.getFromAccount().getAccountUid(), row.getToAccount().getAccountUid(),
+                        row.getAmount().toPlainString(), row.getTransferDate().toString(), row.getMemo()));
+            }
+            afterUid = batch.getLast().getTransferUid();
+            if (batch.size() < BATCH_SIZE) break;
+        }
+        generator.writeEndArray();
+    }
+
+    private void forEachTransactionBatch(Long bookUid, TransactionBatchConsumer consumer) throws IOException {
+        long afterUid = 0;
+        while (true) {
+            List<MoneyBookTransaction> batch = backupRepository.transactionBatch(bookUid, afterUid, BATCH_SIZE);
+            if (batch.isEmpty()) break;
+            for (MoneyBookTransaction row : batch) consumer.accept(row);
+            afterUid = batch.getLast().getTransactionUid();
+            if (batch.size() < BATCH_SIZE) break;
+        }
+    }
+
+    private void writeArray(JsonGenerator generator, String name, List<?> values) throws IOException {
+        generator.writeName(name);
+        generator.writeStartArray();
+        for (Object value : values) objectMapper.writeValue(generator, value);
+        generator.writeEndArray();
+    }
+
+    @FunctionalInterface
+    private interface TransactionBatchConsumer {
+        void accept(MoneyBookTransaction transaction) throws IOException;
     }
 
     @Override

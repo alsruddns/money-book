@@ -26,6 +26,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.h2.api.Trigger;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.io.ByteArrayOutputStream;
 import tools.jackson.databind.json.JsonMapper;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -88,6 +89,14 @@ class MoneyBookBackupIntegrationTests {
         MoneyBookMonthClosing snapshot=closings.find(restored.getMoneyBookUid(),2025,11).orElseThrow();
         assertEquals(owner.getUserUid(),snapshot.getClosedByUserUid());
         assertEquals(new BigDecimal("1000.00"),snapshot.getIncome());
+        ByteArrayOutputStream exported=new ByteArrayOutputStream();
+        service.writeBackup(restored.getMoneyBookUid(),auth,exported);
+        MockMultipartFile exportedFile=new MockMultipartFile("file","backup.json","application/json",exported.toByteArray());
+        var preview=service.validate(exportedFile,auth);
+        assertTrue(preview.valid(),preview.errors().toString());
+        assertEquals(1,preview.transactionCount());
+        assertEquals(1,preview.transferCount());
+        assertEquals(1,preview.recurringTransactionCount());
         BusinessException closed=assertThrows(BusinessException.class,()->closingGuard.requireOpen(restored.getMoneyBookUid(), LocalDate.parse("2025-11-10")));
         assertEquals(ErrorCode.MONTH_CLOSED,closed.getErrorCode());
     }

@@ -29,6 +29,16 @@ public class BackupRepositoryImpl implements BackupRepository {
         if (type == MoneyBookSetting.class) return (List<T>) entityManager.createQuery("select e from MoneyBookSetting e where e.moneyBook.moneyBookUid=:uid", type).setParameter("uid", uid).getResultList();
         throw new IllegalArgumentException("Unsupported backup entity type");
     }
+    @Override
+    public List<MoneyBookTransaction> transactionBatch(Long uid, Long afterUid, int limit) {
+        return entityManager.createQuery("select e from MoneyBookTransaction e join fetch e.category join fetch e.account where e.moneyBook.moneyBookUid=:uid and e.transactionUid>:afterUid order by e.transactionUid", MoneyBookTransaction.class)
+                .setParameter("uid", uid).setParameter("afterUid", afterUid).setMaxResults(limit).getResultList();
+    }
+    @Override
+    public List<MoneyBookTransfer> transferBatch(Long uid, Long afterUid, int limit) {
+        return entityManager.createQuery("select e from MoneyBookTransfer e join fetch e.fromAccount join fetch e.toAccount where e.moneyBook.moneyBookUid=:uid and e.transferUid>:afterUid order by e.transferUid", MoneyBookTransfer.class)
+                .setParameter("uid", uid).setParameter("afterUid", afterUid).setMaxResults(limit).getResultList();
+    }
     @Override public <T> T save(T entity) { entityManager.persist(entity); return entity; }
     @Override public void flush() { entityManager.flush(); }
     @Override public void clear() { entityManager.clear(); }
