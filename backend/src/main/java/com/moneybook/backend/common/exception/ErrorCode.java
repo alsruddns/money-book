@@ -3,6 +3,10 @@ package com.moneybook.backend.common.exception;
 import org.springframework.http.HttpStatus;
 
 public enum ErrorCode {
+    MONTH_ALREADY_CLOSED(HttpStatus.CONFLICT, "이미 마감된 월입니다."),
+    MONTH_NOT_CLOSED(HttpStatus.NOT_FOUND, "마감되지 않은 월입니다."),
+    MONTH_CLOSED(HttpStatus.CONFLICT, "마감된 월의 거래, 이체 또는 예산을 변경할 수 없습니다."),
+    FUTURE_MONTH_CLOSING(HttpStatus.BAD_REQUEST, "미래 월은 마감할 수 없습니다."),
     BUDGET_CATEGORY_SUM_EXCEEDED(HttpStatus.BAD_REQUEST, "카테고리 예산 합계가 총예산을 초과합니다."),
     BUDGET_CATEGORY_NOT_EXPENSE(HttpStatus.BAD_REQUEST, "지출 카테고리에만 예산을 설정할 수 있습니다."),
     RECURRING_TRANSACTION_NOT_FOUND(HttpStatus.NOT_FOUND, "정기 거래 규칙을 찾을 수 없습니다."),

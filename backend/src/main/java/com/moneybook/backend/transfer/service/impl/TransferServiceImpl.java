@@ -1,6 +1,7 @@
 package com.moneybook.backend.transfer.service.impl;
 
 import com.moneybook.backend.account.repository.AccountRepository;
+import com.moneybook.backend.closing.MonthClosingGuard;
 import com.moneybook.backend.common.exception.BusinessException;
 import com.moneybook.backend.common.exception.ErrorCode;
 import com.moneybook.backend.entity.MoneyBook;
@@ -29,11 +30,13 @@ public class TransferServiceImpl implements TransferService {
     private final TransferRepository transfers;
     private final AccountRepository accounts;
     private final MoneyBookPermissionProvider permissions;
+    private final MonthClosingGuard closingGuard;
 
     @Override
     @Transactional
     public TransferResponse create(Long bookUid, CreateTransferRequest request, Authentication authentication) {
         MoneyBook book = permissions.require(bookUid, authentication, MoneyBookPermission.CREATE);
+        closingGuard.requireOpen(bookUid, request.transferDate());
         requireDistinct(request.fromAccountUid(), request.toAccountUid());
         validateAmount(request.amount());
         MoneyBookAccount from = account(bookUid, request.fromAccountUid());
@@ -55,6 +58,8 @@ public class TransferServiceImpl implements TransferService {
                                    Authentication authentication) {
         permissions.require(bookUid, authentication, MoneyBookPermission.UPDATE);
         MoneyBookTransfer transfer = transfer(bookUid, transferUid);
+        closingGuard.requireOpen(bookUid, List.of(YearMonth.from(transfer.getTransferDate()),
+                YearMonth.from(request.transferDate())));
         requireDistinct(request.fromAccountUid(), request.toAccountUid());
         validateAmount(request.amount());
         MoneyBookAccount from = account(bookUid, request.fromAccountUid());
@@ -67,7 +72,9 @@ public class TransferServiceImpl implements TransferService {
     @Transactional
     public void delete(Long bookUid, Long transferUid, Authentication authentication) {
         permissions.require(bookUid, authentication, MoneyBookPermission.DELETE);
-        transfers.delete(transfer(bookUid, transferUid));
+        MoneyBookTransfer transfer = transfer(bookUid, transferUid);
+        closingGuard.requireOpen(bookUid, transfer.getTransferDate());
+        transfers.delete(transfer);
     }
 
     @Override

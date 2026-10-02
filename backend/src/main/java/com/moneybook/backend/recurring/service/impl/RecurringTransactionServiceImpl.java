@@ -2,6 +2,7 @@ package com.moneybook.backend.recurring.service.impl;
 
 import com.moneybook.backend.account.repository.AccountRepository;
 import com.moneybook.backend.category.repository.CategoryRepository;
+import com.moneybook.backend.closing.MonthClosingGuard;
 import com.moneybook.backend.common.exception.BusinessException;
 import com.moneybook.backend.common.exception.ErrorCode;
 import com.moneybook.backend.entity.MoneyBook;
@@ -47,6 +48,7 @@ public class RecurringTransactionServiceImpl implements RecurringTransactionServ
     private final CategoryRepository categories;
     private final AccountRepository accounts;
     private final MoneyBookPermissionProvider permissions;
+    private final MonthClosingGuard closingGuard;
 
     @Override
     @Transactional
@@ -128,6 +130,10 @@ public class RecurringTransactionServiceImpl implements RecurringTransactionServ
             Set<LocalDate> existing = new HashSet<>(
                     transactions.findGeneratedDates(ruleUid, through));
             collectPending(rule, through, existing, pending);
+        }
+        if (!pending.isEmpty()) {
+            closingGuard.requireOpen(bookUid, pending.stream()
+                    .map(occurrence -> YearMonth.from(occurrence.date())).toList());
         }
         for (PendingOccurrence occurrence : pending) {
             RecurringTransaction rule = occurrence.rule();

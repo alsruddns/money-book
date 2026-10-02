@@ -7,6 +7,7 @@ import com.moneybook.backend.budget.dto.SaveBudgetRequest;
 import com.moneybook.backend.budget.repository.BudgetRepository;
 import com.moneybook.backend.budget.service.BudgetService;
 import com.moneybook.backend.category.repository.CategoryRepository;
+import com.moneybook.backend.closing.MonthClosingGuard;
 import com.moneybook.backend.common.exception.BusinessException;
 import com.moneybook.backend.common.exception.ErrorCode;
 import com.moneybook.backend.entity.MoneyBook;
@@ -38,6 +39,7 @@ public class BudgetServiceImpl implements BudgetService {
     private final BudgetRepository budgets;
     private final CategoryRepository categories;
     private final MoneyBookPermissionProvider permissions;
+    private final MonthClosingGuard closingGuard;
 
     @Override
     @Transactional(readOnly = true)
@@ -53,6 +55,7 @@ public class BudgetServiceImpl implements BudgetService {
                                       Authentication authentication) {
         MoneyBook book = permissions.require(bookUid, authentication, MoneyBookPermission.UPDATE);
         YearMonth period = period(year, month);
+        closingGuard.requireOpen(bookUid, List.of(period));
         if (request == null || request.categories() == null || !validAmount(request.totalBudget(), true)) {
             throw new BusinessException(ErrorCode.VALIDATION_FAILED);
         }

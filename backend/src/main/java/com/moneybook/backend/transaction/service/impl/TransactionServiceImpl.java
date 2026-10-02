@@ -2,6 +2,7 @@ package com.moneybook.backend.transaction.service.impl;
 
 import com.moneybook.backend.account.repository.AccountRepository;
 import com.moneybook.backend.category.repository.CategoryRepository;
+import com.moneybook.backend.closing.MonthClosingGuard;
 import com.moneybook.backend.common.exception.BusinessException;
 import com.moneybook.backend.common.exception.ErrorCode;
 import com.moneybook.backend.entity.MoneyBook;
@@ -33,11 +34,13 @@ public class TransactionServiceImpl implements TransactionService {
     private final CategoryRepository categories;
     private final AccountRepository accounts;
     private final MoneyBookPermissionProvider permissions;
+    private final MonthClosingGuard closingGuard;
 
     @Override
     @Transactional
     public TransactionResponse create(Long bookUid, CreateTransactionRequest request, Authentication authentication) {
         MoneyBook book = permissions.require(bookUid, authentication, MoneyBookPermission.CREATE);
+        closingGuard.requireOpen(bookUid, request.transactionDate());
         validateAmount(request.amount());
         MoneyBookCategory category = category(bookUid, request.categoryUid(), request.transactionType());
         MoneyBookAccount account = account(bookUid, request.accountUid());
@@ -59,6 +62,8 @@ public class TransactionServiceImpl implements TransactionService {
                                       Authentication authentication) {
         permissions.require(bookUid, authentication, MoneyBookPermission.UPDATE);
         MoneyBookTransaction entry = transaction(bookUid, transactionUid);
+        closingGuard.requireOpen(bookUid, List.of(YearMonth.from(entry.getTransactionDate()),
+                YearMonth.from(request.transactionDate())));
         validateAmount(request.amount());
         MoneyBookCategory category = category(bookUid, request.categoryUid(), request.transactionType());
         MoneyBookAccount account = account(bookUid, request.accountUid());
@@ -71,7 +76,9 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional
     public void delete(Long bookUid, Long transactionUid, Authentication authentication) {
         permissions.require(bookUid, authentication, MoneyBookPermission.DELETE);
-        transactions.delete(transaction(bookUid, transactionUid));
+        MoneyBookTransaction entry = transaction(bookUid, transactionUid);
+        closingGuard.requireOpen(bookUid, entry.getTransactionDate());
+        transactions.delete(entry);
     }
 
     @Override
