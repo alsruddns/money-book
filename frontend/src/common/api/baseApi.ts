@@ -9,25 +9,7 @@ function isPublicAuthRequest(url: string): boolean {
 }
 
 const rawBaseQuery = fetchBaseQuery({
-  baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
-  fetchFn: (input, init) => {
-    const request = new Request(input, init);
-    if (typeof window === "undefined") return fetch(request);
-
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-    if (!apiBaseUrl) return fetch(request);
-
-    const backendUrl = new URL(apiBaseUrl);
-    const requestUrl = new URL(request.url);
-    if (
-      requestUrl.origin === backendUrl.origin &&
-      requestUrl.pathname.startsWith(`${backendUrl.pathname.replace(/\/$/, "")}/`)
-    ) {
-      const localUrl = new URL(requestUrl.pathname + requestUrl.search, window.location.origin);
-      return fetch(new Request(localUrl, request));
-    }
-    return fetch(request);
-  },
+  baseUrl: "/api",
   prepareHeaders: (headers, { arg }) => {
     const url = typeof arg === "string" ? arg : arg.url;
     if (!isPublicAuthRequest(url)) {

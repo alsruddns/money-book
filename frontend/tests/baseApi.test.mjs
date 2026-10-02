@@ -18,6 +18,7 @@ function createHarness(initialTokens, handleRequest) {
   let tokens = initialTokens;
   const calls = [];
   const actions = [];
+  let baseUrl;
   const storage = {
     getTokens: () => tokens,
     setTokens: (next) => { tokens = next; },
@@ -33,12 +34,12 @@ function createHarness(initialTokens, handleRequest) {
     if (name === "@reduxjs/toolkit/query/react") {
       return {
         createApi: () => ({}),
-        fetchBaseQuery: (config) => async (args) => {
+        fetchBaseQuery: (config) => { baseUrl = config.baseUrl; return async (args) => {
           const headers = config.prepareHeaders(new Headers(), { arg: args });
           const url = typeof args === "string" ? args : args.url;
-          calls.push({ url, authorization: headers.get("Authorization"), body: args.body });
+          calls.push({ url, requestUrl: `${config.baseUrl}/${url}`.replace(/([^:]\/)\//g, "$1"), authorization: headers.get("Authorization"), body: args.body });
           return handleRequest(args, headers);
-        },
+        }; },
       };
     }
     if (name === "@/auth/storage/tokenStorage") return { tokenStorage: storage };
@@ -54,13 +55,13 @@ function createHarness(initialTokens, handleRequest) {
     module: compiledModule,
     exports: compiledModule.exports,
     require: requireMock,
-    process: { env: { NEXT_PUBLIC_API_BASE_URL: "http://localhost:8080/api" } },
     Headers,
   });
   const api = { dispatch: (action) => actions.push(action) };
   return {
     query: (args) => compiledModule.exports.baseQueryWithReauth(args, api, {}),
     calls,
+    baseUrl,
     actions,
     getTokens: () => tokens,
   };
@@ -75,6 +76,14 @@ test("protected requests attach only the access token and succeed", async () => 
   assert.equal(result.data.userUid, 1);
   assert.equal(harness.calls[0].authorization, "Bearer valid-access");
   assert.equal(harness.calls.length, 1);
+  assert.equal(harness.baseUrl, "/api");
+  assert.equal(harness.calls[0].requestUrl, "/api/auth/me");
+});
+
+test("signup, login, refresh, MoneyBook, and protected requests stay under the same-origin API prefix", async () => {
+  const harness = createHarness(null, () => ({ data: {} }));
+  for (const path of ["auth/signup", "auth/login", "auth/refresh", "money-books/3/transactions"]) await harness.query(path);
+  assert.deepEqual(harness.calls.map((call) => call.requestUrl), ["/api/auth/signup", "/api/auth/login", "/api/auth/refresh", "/api/money-books/3/transactions"]);
 });
 
 test("a 401 refreshes access token and retries the original request once", async () => {

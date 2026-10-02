@@ -54,6 +54,16 @@ money-book/
 - **운영 API:** 서비스 관리자 기능은 `/api/admin/**`에서 별도로 제공합니다. Admin 권한은 현재 DB의 사용자 역할과 상태를 확인합니다.
 - **SUPER_ADMIN 지정:** 일반 회원가입이나 Admin API로 만들 수 없으며 운영 DB에서 명시적으로 지정합니다.
 
+## 로컬 및 프로덕션 환경
+
+- 로컬 Frontend: `http://localhost:3000`
+- 로컬 Backend: `http://localhost:8080/api`
+- Browser의 API 요청은 항상 `/api/**` same-origin 경로를 사용하며, Next.js rewrite가 Backend로 전달합니다.
+- Frontend 환경변수 `BACKEND_API_URL`에는 Backend origin만 지정합니다. 예시와 로컬 기본값은 `frontend/.env.example`을 참고하세요. 개발 모드에서는 값이 없을 때 `http://localhost:8080`을 사용하고, Production에서는 값이 없으면 Next.js가 시작/빌드 단계에서 오류를 냅니다.
+- Hosting 환경에서는 `BACKEND_API_URL`을 서버 전용 Environment Variable로 설정합니다. 운영 URL은 코드나 `NEXT_PUBLIC_` 변수에 넣지 않습니다.
+- Backend는 기본 `local` profile을 사용합니다. 운영에서는 `SPRING_PROFILES_ACTIVE=prod`를 설정하고, `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`을 Backend 실행 환경에 주입합니다. Local에서도 `DB_PASSWORD`와 `JWT_SECRET`은 환경변수로 설정해야 합니다.
+- Backend의 공통 context path는 `/api`입니다. JWT secret과 DB 비밀번호는 저장소에 기록하지 않습니다.
+
 ## Current Focus
 
 **현재 단계: System Admin Frontend**
