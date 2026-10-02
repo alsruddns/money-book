@@ -26,7 +26,7 @@ test("settings endpoint uses actual URI, method, and invalidates calendar after 
   assert.equal(api.getMoneyBookSetting.query(12), "money-books/12/settings");
   const arg = { moneyBookUid: 12, request: { weekStartDay: "MONDAY" } };
   assert.deepEqual(plain(api.updateMoneyBookSetting.query(arg)), { url: "money-books/12/settings", method: "PUT", body: arg.request });
-  assert.deepEqual(plain(api.updateMoneyBookSetting.invalidatesTags({}, undefined, arg)), [{ type: "MoneyBookSetting", id: 12 }, { type: "Calendar", id: 12 }]);
+  assert.deepEqual(plain(api.updateMoneyBookSetting.invalidatesTags({}, undefined, arg)), [{ type: "MoneyBookSetting", id: 12 }, { type: "Calendar", id: 12 }, { type: "MoneyBookActivity", id: 12 }]);
 });
 
 test("export query sends only backend-supported filters and keeps bearer-authenticated RTK request path", () => {
@@ -53,6 +53,6 @@ test("backup uses implemented routes, multipart file contract, and invalidates M
   assert.equal(validQuery.url, "money-books/backups/validate"); assert.equal(validQuery.method, "POST"); assert.equal(validQuery.body.get("file"), file);
   const restoreQuery = api.restoreMoneyBookBackup.query({ file });
   assert.equal(restoreQuery.url, "money-books/backups/restore"); assert.equal(restoreQuery.body.get("file"), file);
-  assert.deepEqual(plain(api.restoreMoneyBookBackup.invalidatesTags({}, undefined, { file })), ["MoneyBook"]);
+  assert.deepEqual(plain(api.restoreMoneyBookBackup.invalidatesTags({}, undefined, { file })), ["MoneyBook", "MoneyBookActivity"]);
   assert.deepEqual(plain(api.restoreMoneyBookBackup.invalidatesTags(undefined, { status: 400 }, { file })), []);
 });

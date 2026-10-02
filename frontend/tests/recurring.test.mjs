@@ -47,9 +47,9 @@ test("recurring API matches backend routes, methods, active payload, and generat
   assert.deepEqual(plain(api.generateRecurringTransactions.query({ moneyBookUid: 7, request: { baseDate: "2026-10-02" } })), {
     url: "money-books/7/recurring-transactions/generate", method: "POST", body: { baseDate: "2026-10-02" },
   });
-  assert.deepEqual(plain(api.createRecurringTransaction.invalidatesTags({}, undefined, { moneyBookUid: 7 })), [{ type: "Recurring", id: 7 }]);
+  assert.deepEqual(plain(api.createRecurringTransaction.invalidatesTags({}, undefined, { moneyBookUid: 7 })), [{ type: "Recurring", id: 7 }, { type: "MoneyBookActivity", id: 7 }]);
   assert.deepEqual(plain(api.generateRecurringTransactions.invalidatesTags({}, undefined, { moneyBookUid: 7 })), [
-    { type: "Recurring", id: 7 }, { type: "Transaction", id: 7 }, { type: "Calendar", id: 7 }, { type: "Budget", id: 7 }, { type: "Report", id: 7 },
+    { type: "Recurring", id: 7 }, { type: "MoneyBookActivity", id: 7 }, { type: "Transaction", id: 7 }, { type: "Calendar", id: 7 }, { type: "Budget", id: 7 }, { type: "Report", id: 7 },
   ]);
   assert.deepEqual(plain(api.generateRecurringTransactions.invalidatesTags(undefined, { status: 409 }, { moneyBookUid: 7 })), []);
 });

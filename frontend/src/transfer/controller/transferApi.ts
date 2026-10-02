@@ -8,7 +8,7 @@ interface TransferKey { moneyBookUid: number; transferUid: number }
 interface CreateArg { moneyBookUid: number; request: CreateTransferRequest }
 interface UpdateArg extends TransferKey { request: UpdateTransferRequest }
 const affected = (moneyBookUid: number) => [
-  { type: "Transfer" as const, id: moneyBookUid }, { type: "Calendar" as const, id: moneyBookUid }, { type: "Report" as const, id: moneyBookUid },
+  { type: "Transfer" as const, id: moneyBookUid }, { type: "Calendar" as const, id: moneyBookUid }, { type: "Report" as const, id: moneyBookUid }, { type: "MoneyBookActivity" as const, id: moneyBookUid },
 ];
 
 export const transferApi = baseApi.injectEndpoints({

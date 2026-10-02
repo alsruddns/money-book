@@ -96,7 +96,7 @@ test("closing endpoints use the implemented month-closings path and invalidate o
   assert.equal(closingApi.getMonthClosing.query(key), "money-books/11/month-closings/2026/10");
   assert.deepEqual(plain(closingApi.closeMonth.query(key)), { url: "money-books/11/month-closings/2026/10", method: "POST" });
   assert.deepEqual(plain(closingApi.cancelMonthClosing.query(key)), { url: "money-books/11/month-closings/2026/10", method: "DELETE" });
-  const tags = [{ type: "Closing", id: 11 }, { type: "Closing", id: "11-2026-10" }, { type: "Report", id: 11 }];
+  const tags = [{ type: "Closing", id: 11 }, { type: "Closing", id: "11-2026-10" }, { type: "Report", id: 11 }, { type: "MoneyBookActivity", id: 11 }];
   assert.deepEqual(plain(closingApi.closeMonth.invalidatesTags({}, undefined, key)), tags);
   assert.deepEqual(plain(closingApi.cancelMonthClosing.invalidatesTags(undefined, { status: 403 }, key)), []);
 });

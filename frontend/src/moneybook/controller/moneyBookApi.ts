@@ -21,7 +21,7 @@ export const moneyBookApi = baseApi.injectEndpoints({
     }),
     createMoneyBook: builder.mutation<CreateMoneyBookResponse, CreateMoneyBookRequest>({
       query: (body) => ({ url: "money-books", method: "POST", body }),
-      invalidatesTags: (_result, error) => error ? [] : ["MoneyBook"],
+      invalidatesTags: (_result, error) => error ? [] : ["MoneyBook", "MoneyBookActivity"],
     }),
     getPendingInvitations: builder.query<PendingInvitationResponse[], void>({
       query: () => "money-books/invitations",
@@ -31,18 +31,19 @@ export const moneyBookApi = baseApi.injectEndpoints({
       query: ({ moneyBookUid, request }) => ({
         url: `money-books/${moneyBookUid}/invitations`, method: "POST", body: request,
       }),
+      invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : [{ type: "MoneyBookActivity", id: moneyBookUid }],
     }),
     acceptInvitation: builder.mutation<InvitationResponse, InvitationKey>({
       query: ({ moneyBookUid, moneyBookUserUid }) => ({
         url: `money-books/${moneyBookUid}/invitations/${moneyBookUserUid}/accept`, method: "PATCH",
       }),
-      invalidatesTags: (_result, error) => error ? [] : ["MoneyBookInvitation", "MoneyBook"],
+      invalidatesTags: (_result, error) => error ? [] : ["MoneyBookInvitation", "MoneyBook", "MoneyBookActivity"],
     }),
     rejectInvitation: builder.mutation<InvitationResponse, InvitationKey>({
       query: ({ moneyBookUid, moneyBookUserUid }) => ({
         url: `money-books/${moneyBookUid}/invitations/${moneyBookUserUid}/reject`, method: "PATCH",
       }),
-      invalidatesTags: (_result, error) => error ? [] : ["MoneyBookInvitation"],
+      invalidatesTags: (_result, error) => error ? [] : ["MoneyBookInvitation", "MoneyBookActivity"],
     }),
     getMoneyBookMembers: builder.query<MoneyBookMemberResponse[], number>({
       query: (moneyBookUid) => `money-books/${moneyBookUid}/members`,
@@ -54,7 +55,7 @@ export const moneyBookApi = baseApi.injectEndpoints({
         method: "PATCH", body: request,
       }),
       invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : [
-        { type: "MoneyBookMember", id: moneyBookUid }, "MoneyBook",
+        { type: "MoneyBookMember", id: moneyBookUid }, "MoneyBook", { type: "MoneyBookActivity", id: moneyBookUid },
       ],
     }),
     removeMoneyBookMember: builder.mutation<void, MemberKey>({
@@ -62,7 +63,7 @@ export const moneyBookApi = baseApi.injectEndpoints({
         url: `money-books/${moneyBookUid}/members/${moneyBookUserUid}`, method: "DELETE",
       }),
       invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : [
-        { type: "MoneyBookMember", id: moneyBookUid }, "MoneyBook",
+        { type: "MoneyBookMember", id: moneyBookUid }, "MoneyBook", { type: "MoneyBookActivity", id: moneyBookUid },
       ],
     }),
   }),

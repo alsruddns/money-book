@@ -37,10 +37,10 @@ test("category API uses exact paths, optional type filter, and book scoped tags"
   assert.equal(api.updateCategory.query({ moneyBookUid: 4, categoryUid: 8, request: {} }).url, "money-books/4/categories/8");
   assert.equal(api.deleteCategory.query({ moneyBookUid: 4, categoryUid: 8 }).method, "DELETE");
   assert.deepEqual(plain(api.getCategories.providesTags([], undefined, { moneyBookUid: 4 })), [{ type: "Category", id: 4 }]);
-  assert.deepEqual(plain(api.createCategory.invalidatesTags({}, undefined, { moneyBookUid: 4 })), [{ type: "Category", id: 4 }, { type: "Report", id: 4 }]);
+  assert.deepEqual(plain(api.createCategory.invalidatesTags({}, undefined, { moneyBookUid: 4 })), [{ type: "Category", id: 4 }, { type: "Report", id: 4 }, { type: "MoneyBookActivity", id: 4 }]);
   assert.deepEqual(plain(api.updateCategory.invalidatesTags({}, undefined, { moneyBookUid: 4 })), [
     { type: "Category", id: 4 }, { type: "Transaction", id: 4 },
-    { type: "Calendar", id: 4 }, { type: "Budget", id: 4 }, { type: "Recurring", id: 4 }, { type: "Report", id: 4 },
+    { type: "Calendar", id: 4 }, { type: "Budget", id: 4 }, { type: "Recurring", id: 4 }, { type: "Report", id: 4 }, { type: "MoneyBookActivity", id: 4 },
   ]);
   assert.deepEqual(plain(api.deleteCategory.invalidatesTags(undefined, { status: 409 }, { moneyBookUid: 4 })), []);
 });
@@ -51,14 +51,14 @@ test("account API uses exact paths and updates transaction names only after succ
   assert.equal(api.createAccount.query({ moneyBookUid: 5, request: {} }).method, "POST");
   assert.equal(api.updateAccount.query({ moneyBookUid: 5, accountUid: 6, request: {} }).url, "money-books/5/accounts/6");
   assert.equal(api.deleteAccount.query({ moneyBookUid: 5, accountUid: 6 }).method, "DELETE");
-  assert.deepEqual(plain(api.createAccount.invalidatesTags({}, undefined, { moneyBookUid: 5 })), [{ type: "Account", id: 5 }, { type: "Report", id: 5 }]);
+  assert.deepEqual(plain(api.createAccount.invalidatesTags({}, undefined, { moneyBookUid: 5 })), [{ type: "Account", id: 5 }, { type: "Report", id: 5 }, { type: "MoneyBookActivity", id: 5 }]);
   assert.deepEqual(plain(api.getAccounts.providesTags([], undefined, 5)), [{ type: "Account", id: 5 }]);
   assert.deepEqual(plain(api.updateAccount.invalidatesTags({}, undefined, { moneyBookUid: 5 })), [
     { type: "Account", id: 5 }, { type: "Transaction", id: 5 }, { type: "Calendar", id: 5 },
-    { type: "Transfer", id: 5 }, { type: "Recurring", id: 5 }, { type: "Report", id: 5 },
+    { type: "Transfer", id: 5 }, { type: "Recurring", id: 5 }, { type: "Report", id: 5 }, { type: "MoneyBookActivity", id: 5 },
   ]);
   assert.deepEqual(plain(api.deleteAccount.invalidatesTags(undefined, { status: 409 }, { moneyBookUid: 5 })), []);
-  assert.deepEqual(plain(api.deleteAccount.invalidatesTags(undefined, undefined, { moneyBookUid: 5 })), [{ type: "Account", id: 5 }, { type: "Report", id: 5 }]);
+  assert.deepEqual(plain(api.deleteAccount.invalidatesTags(undefined, undefined, { moneyBookUid: 5 })), [{ type: "Account", id: 5 }, { type: "Report", id: 5 }, { type: "MoneyBookActivity", id: 5 }]);
 });
 
 test("transaction API passes year/month, detail UID, methods, and scoped tags", () => {
@@ -71,7 +71,7 @@ test("transaction API passes year/month, detail UID, methods, and scoped tags", 
   assert.equal(api.updateTransaction.query({ moneyBookUid: 7, transactionUid: 9, request: {} }).method, "PATCH");
   assert.equal(api.deleteTransaction.query({ moneyBookUid: 7, transactionUid: 9 }).method, "DELETE");
   assert.deepEqual(plain(api.getMonthlyTransactions.providesTags([], undefined, { moneyBookUid: 7 })), [{ type: "Transaction", id: 7 }]);
-  const dependentTags = [{ type: "Transaction", id: 7 }, { type: "Calendar", id: 7 }, { type: "Budget", id: 7 }, { type: "Report", id: 7 }];
+  const dependentTags = [{ type: "Transaction", id: 7 }, { type: "Calendar", id: 7 }, { type: "Budget", id: 7 }, { type: "Report", id: 7 }, { type: "MoneyBookActivity", id: 7 }];
   assert.deepEqual(plain(api.createTransaction.invalidatesTags({}, undefined, { moneyBookUid: 7 })), dependentTags);
   assert.deepEqual(plain(api.updateTransaction.invalidatesTags({}, undefined, { moneyBookUid: 7 })), dependentTags);
   assert.deepEqual(plain(api.deleteTransaction.invalidatesTags(undefined, { status: 403 }, { moneyBookUid: 7 })), []);

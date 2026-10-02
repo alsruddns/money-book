@@ -10,13 +10,13 @@ export const closingApi = baseApi.injectEndpoints({
     closeMonth: builder.mutation<MonthClosingResponse, ClosingMonthKey>({
       query: ({ moneyBookUid, year, month }) => ({ url: `money-books/${moneyBookUid}/month-closings/${year}/${month}`, method: "POST" }),
       invalidatesTags: (_result, error, { moneyBookUid, year, month }) => error ? [] : [
-        { type: "Closing", id: moneyBookUid }, { type: "Closing", id: `${moneyBookUid}-${year}-${month}` }, { type: "Report", id: moneyBookUid },
+        { type: "Closing", id: moneyBookUid }, { type: "Closing", id: `${moneyBookUid}-${year}-${month}` }, { type: "Report", id: moneyBookUid }, { type: "MoneyBookActivity", id: moneyBookUid },
       ],
     }),
     cancelMonthClosing: builder.mutation<void, ClosingMonthKey>({
       query: ({ moneyBookUid, year, month }) => ({ url: `money-books/${moneyBookUid}/month-closings/${year}/${month}`, method: "DELETE" }),
       invalidatesTags: (_result, error, { moneyBookUid, year, month }) => error ? [] : [
-        { type: "Closing", id: moneyBookUid }, { type: "Closing", id: `${moneyBookUid}-${year}-${month}` }, { type: "Report", id: moneyBookUid },
+        { type: "Closing", id: moneyBookUid }, { type: "Closing", id: `${moneyBookUid}-${year}-${month}` }, { type: "Report", id: moneyBookUid }, { type: "MoneyBookActivity", id: moneyBookUid },
       ],
     }),
   }),

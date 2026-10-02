@@ -58,7 +58,7 @@ test("calendar and budget API match backend paths, methods, and scoped cache tag
   assert.deepEqual(plain(budgetApi.saveMonthlyBudget.query(save)), {
     url: "money-books/7/budgets/2026/10", method: "PUT", body: save.request,
   });
-  assert.deepEqual(plain(budgetApi.saveMonthlyBudget.invalidatesTags({}, undefined, save)), [{ type: "Budget", id: "7-2026-10" }, { type: "Report", id: 7 }]);
+  assert.deepEqual(plain(budgetApi.saveMonthlyBudget.invalidatesTags({}, undefined, save)), [{ type: "Budget", id: "7-2026-10" }, { type: "Report", id: 7 }, { type: "MoneyBookActivity", id: 7 }]);
   assert.deepEqual(plain(budgetApi.saveMonthlyBudget.invalidatesTags(undefined, { status: 403 }, save)), []);
 });
 

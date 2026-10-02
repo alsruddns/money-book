@@ -12,6 +12,7 @@ interface UpdateArg extends RuleKey { request: UpdateRecurringTransactionRequest
 interface ActiveArg extends RuleKey { request: UpdateRecurringTransactionActiveRequest }
 interface GenerateArg { moneyBookUid: number; request: GenerateRecurringTransactionRequest }
 const recurringTag = (moneyBookUid: number) => [{ type: "Recurring" as const, id: moneyBookUid }];
+const changedTag = (moneyBookUid: number) => [...recurringTag(moneyBookUid), { type: "MoneyBookActivity" as const, id: moneyBookUid }];
 
 export const recurringTransactionApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -21,30 +22,30 @@ export const recurringTransactionApi = baseApi.injectEndpoints({
     }),
     createRecurringTransaction: builder.mutation<RecurringTransactionResponse, CreateArg>({
       query: ({ moneyBookUid, request }) => ({ url: `money-books/${moneyBookUid}/recurring-transactions`, method: "POST", body: request }),
-      invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : recurringTag(moneyBookUid),
+      invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : changedTag(moneyBookUid),
     }),
     updateRecurringTransaction: builder.mutation<RecurringTransactionResponse, UpdateArg>({
       query: ({ moneyBookUid, recurringTransactionUid, request }) => ({
         url: `money-books/${moneyBookUid}/recurring-transactions/${recurringTransactionUid}`, method: "PATCH", body: request,
       }),
-      invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : recurringTag(moneyBookUid),
+      invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : changedTag(moneyBookUid),
     }),
     changeRecurringTransactionActive: builder.mutation<RecurringTransactionResponse, ActiveArg>({
       query: ({ moneyBookUid, recurringTransactionUid, request }) => ({
         url: `money-books/${moneyBookUid}/recurring-transactions/${recurringTransactionUid}/active`, method: "PATCH", body: request,
       }),
-      invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : recurringTag(moneyBookUid),
+      invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : changedTag(moneyBookUid),
     }),
     deleteRecurringTransaction: builder.mutation<void, RuleKey>({
       query: ({ moneyBookUid, recurringTransactionUid }) => ({
         url: `money-books/${moneyBookUid}/recurring-transactions/${recurringTransactionUid}`, method: "DELETE",
       }),
-      invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : recurringTag(moneyBookUid),
+      invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : changedTag(moneyBookUid),
     }),
     generateRecurringTransactions: builder.mutation<GenerateRecurringTransactionResponse, GenerateArg>({
       query: ({ moneyBookUid, request }) => ({ url: `money-books/${moneyBookUid}/recurring-transactions/generate`, method: "POST", body: request }),
       invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : [
-        ...recurringTag(moneyBookUid), { type: "Transaction", id: moneyBookUid },
+        ...changedTag(moneyBookUid), { type: "Transaction", id: moneyBookUid },
         { type: "Calendar", id: moneyBookUid }, { type: "Budget", id: moneyBookUid }, { type: "Report", id: moneyBookUid },
       ],
     }),

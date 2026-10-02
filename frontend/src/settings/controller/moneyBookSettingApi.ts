@@ -11,7 +11,7 @@ export const moneyBookSettingApi = baseApi.injectEndpoints({
     updateMoneyBookSetting: builder.mutation<MoneyBookSettingResponse, UpdateArg>({
       query: ({ moneyBookUid, request }) => ({ url: `money-books/${moneyBookUid}/settings`, method: "PUT", body: request }),
       invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : [
-        { type: "MoneyBookSetting", id: moneyBookUid }, { type: "Calendar", id: moneyBookUid },
+        { type: "MoneyBookSetting", id: moneyBookUid }, { type: "Calendar", id: moneyBookUid }, { type: "MoneyBookActivity", id: moneyBookUid },
       ],
     }),
   }),

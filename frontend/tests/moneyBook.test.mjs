@@ -57,12 +57,12 @@ test("money book API uses backend paths and invalidates only affected cache tags
   assert.equal(api.getMoneyBookMembers.query(7), "money-books/7/members");
   assert.equal(api.updateMoneyBookMemberPermission.query({ ...key, request: {} }).url, "money-books/7/members/9/permissions");
   assert.equal(api.removeMoneyBookMember.query(key).url, "money-books/7/members/9");
-  assert.deepEqual(asLocal(api.createMoneyBook.invalidatesTags({}, undefined)), ["MoneyBook"]);
-  assert.deepEqual(asLocal(api.acceptInvitation.invalidatesTags({}, undefined)), ["MoneyBookInvitation", "MoneyBook"]);
-  assert.deepEqual(asLocal(api.rejectInvitation.invalidatesTags({}, undefined)), ["MoneyBookInvitation"]);
+  assert.deepEqual(asLocal(api.createMoneyBook.invalidatesTags({}, undefined)), ["MoneyBook", "MoneyBookActivity"]);
+  assert.deepEqual(asLocal(api.acceptInvitation.invalidatesTags({}, undefined)), ["MoneyBookInvitation", "MoneyBook", "MoneyBookActivity"]);
+  assert.deepEqual(asLocal(api.rejectInvitation.invalidatesTags({}, undefined)), ["MoneyBookInvitation", "MoneyBookActivity"]);
   assert.deepEqual(asLocal(api.getMoneyBookMembers.providesTags([], undefined, 7)), [{ type: "MoneyBookMember", id: 7 }]);
-  assert.deepEqual(asLocal(api.updateMoneyBookMemberPermission.invalidatesTags(undefined, undefined, key)), [{ type: "MoneyBookMember", id: 7 }, "MoneyBook"]);
-  assert.deepEqual(asLocal(api.removeMoneyBookMember.invalidatesTags(undefined, undefined, key)), [{ type: "MoneyBookMember", id: 7 }, "MoneyBook"]);
+  assert.deepEqual(asLocal(api.updateMoneyBookMemberPermission.invalidatesTags(undefined, undefined, key)), [{ type: "MoneyBookMember", id: 7 }, "MoneyBook", { type: "MoneyBookActivity", id: 7 }]);
+  assert.deepEqual(asLocal(api.removeMoneyBookMember.invalidatesTags(undefined, undefined, key)), [{ type: "MoneyBookMember", id: 7 }, "MoneyBook", { type: "MoneyBookActivity", id: 7 }]);
   assert.deepEqual(asLocal(api.createMoneyBook.invalidatesTags(undefined, { status: 400 })), []);
 });
 
@@ -89,6 +89,8 @@ test("money book menu keeps readable pages visible without edit rights and avoid
   assert.equal(items.find((item) => item.label === "예산").disabled, undefined);
   assert.equal(items.find((item) => item.label === "정기 수입/지출").disabled, undefined);
   assert.equal(items.find((item) => item.label === "이체").disabled, undefined);
+  assert.equal(items.find((item) => item.label === "활동내역").href, "/books/7/activities");
+  assert.equal(getMoneyBookMenu(7, false).flatMap((group) => group.items).some((item) => item.label === "활동내역"), false);
   assert.equal(getMoneyBookMenu(7, false).flatMap((group) => group.items).some((item) => item.label === "카테고리"), false);
   assert.equal(isMoneyBookRouteActive("/books/7/categories/12", "/books/7/categories", "/books/7"), true);
   assert.equal(isMoneyBookRouteActive("/books/7/categories", "/books/7", "/books/7"), false);
