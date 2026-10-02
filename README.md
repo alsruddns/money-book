@@ -42,7 +42,7 @@ money-book/
 - **설정과 데이터:** 주 시작 요일 설정, CSV/XLSX 내보내기, JSON 백업·검증·미리보기·복원
 - **레이아웃:** 데스크톱 사이드바, 모바일 내비게이션, 광고 슬롯 대응 구조
 
-> Backend에 구현된 기능이라도 Frontend 화면이 없으면 Frontend 완료 항목으로 간주하지 않습니다. 현재 가계부 활동내역과 System Admin 화면은 아직 구현 전입니다.
+> Backend에 구현된 기능이라도 Frontend 화면이 없으면 Frontend 완료 항목으로 간주하지 않습니다. System Admin 화면은 아직 구현 전입니다.
 
 ## 권한 구조
 
@@ -56,20 +56,19 @@ money-book/
 
 ## Current Focus
 
-**현재 단계: 가계부 활동내역 Frontend**
+**현재 단계: System Admin Frontend**
 
 다음 작업 순서:
 
-1. System Admin Frontend
-2. 계정 관리 Backend
-3. 계정 관리 Frontend
-4. 가계부 OWNER 이전 및 계정 탈퇴
-5. 세션 및 Refresh Token 관리
-6. Rate limiting 및 보안 강화
-7. UX 일관성 개선
-8. 모니터링
-9. CI/CD
-10. 운영 배포
+1. 계정 관리 Backend
+2. 계정 관리 Frontend
+3. 가계부 OWNER 이전 및 계정 탈퇴
+4. 세션 및 Refresh Token 관리
+5. Rate limiting 및 보안 강화
+6. UX 일관성 개선
+7. 모니터링
+8. CI/CD
+9. 운영 배포
 
 ## Development Roadmap
 
@@ -117,7 +116,7 @@ money-book/
 ### Phase 7 — 감사와 서비스 운영
 
 - [x] MoneyBook Activity Backend
-- [ ] MoneyBook Activity Frontend
+- [x] MoneyBook Activity Frontend
 - [x] System Admin Backend
 - [ ] System Admin Frontend
 
