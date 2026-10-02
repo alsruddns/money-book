@@ -2,6 +2,9 @@ import { baseApi } from "@/common/api/baseApi";
 import type { CreateAccountRequest } from "../dto/req/CreateAccountRequest";
 import type { UpdateAccountRequest } from "../dto/req/UpdateAccountRequest";
 import type { AccountResponse } from "../dto/res/AccountResponse";
+import type { AccountProfileUpdateReqDto } from "../dto/req/AccountProfileUpdateReqDto";
+import type { AccountPasswordUpdateReqDto } from "../dto/req/AccountPasswordUpdateReqDto";
+import type { AccountMeResDto } from "../dto/res/AccountMeResDto";
 
 interface AccountKey { moneyBookUid: number; accountUid: number }
 interface CreateArg { moneyBookUid: number; request: CreateAccountRequest }
@@ -9,6 +12,18 @@ interface UpdateArg extends AccountKey { request: UpdateAccountRequest }
 
 export const accountApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    getAccountMe: builder.query<AccountMeResDto, void>({
+      query: () => "account/me",
+      providesTags: ["AccountMe"],
+    }),
+    updateAccountProfile: builder.mutation<AccountMeResDto, AccountProfileUpdateReqDto>({
+      query: (body) => ({ url: "account/profile", method: "PATCH", body }),
+      invalidatesTags: (_result, error) => error ? [] : ["AccountMe", "AuthMe"],
+    }),
+    updateAccountPassword: builder.mutation<AccountMeResDto, AccountPasswordUpdateReqDto>({
+      query: (body) => ({ url: "account/password", method: "PATCH", body }),
+      invalidatesTags: (_result, error) => error ? [] : ["AccountMe"],
+    }),
     getAccounts: builder.query<AccountResponse[], number>({
       query: (moneyBookUid) => `money-books/${moneyBookUid}/accounts`,
       providesTags: (_result, _error, moneyBookUid) => [{ type: "Account", id: moneyBookUid }],
@@ -35,4 +50,12 @@ export const accountApi = baseApi.injectEndpoints({
   }),
 });
 
-export const { useGetAccountsQuery, useCreateAccountMutation, useUpdateAccountMutation, useDeleteAccountMutation } = accountApi;
+export const {
+  useGetAccountMeQuery,
+  useUpdateAccountProfileMutation,
+  useUpdateAccountPasswordMutation,
+  useGetAccountsQuery,
+  useCreateAccountMutation,
+  useUpdateAccountMutation,
+  useDeleteAccountMutation,
+} = accountApi;

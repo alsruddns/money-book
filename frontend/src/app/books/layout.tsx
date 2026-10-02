@@ -11,6 +11,7 @@ export default function BooksLayout({ children }: { children: React.ReactNode })
             <div className="flex gap-4 text-sm font-medium">
               <Link href="/books" className="hover:text-blue-700">내 가계부</Link>
               <Link href="/books/invitations" className="hover:text-blue-700">받은 초대</Link>
+              <Link href="/account" className="hover:text-blue-700">계정 관리</Link>
             </div>
           </nav>
         </header>
