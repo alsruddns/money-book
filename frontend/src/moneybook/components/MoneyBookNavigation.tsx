@@ -13,13 +13,13 @@ type MenuGroup = { label: string; items: MenuItem[] };
 export function getMoneyBookMenu(moneyBookUid: number, canRead: boolean): MenuGroup[] {
   const root = `/books/${moneyBookUid}`;
   const readable = canRead ? [
-    { label: "캘린더", href: `${root}/calendar`, disabled: true },
+    { label: "캘린더", href: `${root}/calendar` },
     { label: "거래내역", href: `${root}/transactions` },
   ] : [];
   const management = canRead ? [
     { label: "카테고리", href: `${root}/categories` },
     { label: "계좌/결제수단", href: `${root}/accounts` },
-    { label: "예산", href: `${root}/budgets`, disabled: true },
+    { label: "예산", href: `${root}/budgets` },
     { label: "정기 수입/지출", href: `${root}/recurring-transactions`, disabled: true },
   ] : [];
   return [

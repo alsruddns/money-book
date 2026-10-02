@@ -16,5 +16,10 @@ export function useMonthNavigation() {
     }
   }
 
-  return { ...selectedMonth, moveMonth };
+  function goToToday() {
+    const today = new Date();
+    router.push(`${pathname}?year=${today.getFullYear()}&month=${today.getMonth() + 1}`);
+  }
+
+  return { ...selectedMonth, moveMonth, goToToday };
 }

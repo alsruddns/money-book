@@ -22,7 +22,7 @@ export const accountApi = baseApi.injectEndpoints({
         url: `money-books/${moneyBookUid}/accounts/${accountUid}`, method: "PATCH", body: request,
       }),
       invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : [
-        { type: "Account", id: moneyBookUid }, { type: "Transaction", id: moneyBookUid },
+        { type: "Account", id: moneyBookUid }, { type: "Transaction", id: moneyBookUid }, { type: "Calendar", id: moneyBookUid },
       ],
     }),
     deleteAccount: builder.mutation<void, AccountKey>({

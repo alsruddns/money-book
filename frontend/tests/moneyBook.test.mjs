@@ -85,8 +85,8 @@ test("money book menu keeps readable pages visible without edit rights and avoid
   const groups = getMoneyBookMenu(7, true);
   const items = groups.flatMap((group) => group.items);
   assert.equal(items.find((item) => item.label === "카테고리").disabled, undefined);
-  assert.equal(items.find((item) => item.label === "캘린더").disabled, true);
-  assert.equal(items.find((item) => item.label === "예산").disabled, true);
+  assert.equal(items.find((item) => item.label === "캘린더").disabled, undefined);
+  assert.equal(items.find((item) => item.label === "예산").disabled, undefined);
   assert.equal(items.find((item) => item.label === "정기 수입/지출").disabled, true);
   assert.equal(getMoneyBookMenu(7, false).flatMap((group) => group.items).some((item) => item.label === "카테고리"), false);
   assert.equal(isMoneyBookRouteActive("/books/7/categories/12", "/books/7/categories", "/books/7"), true);
@@ -109,7 +109,8 @@ test("money book sidebar renders name, role, active route, and disabled entries"
   assert.match(markup, /href="\/books\/7\/categories" aria-current="page"/);
   assert.match(markup, /href="\/books"/);
   assert.match(markup, /aria-disabled="true"/);
-  assert.doesNotMatch(markup, /href="\/books\/7\/budgets"/);
+  assert.match(markup, /href="\/books\/7\/budgets"/);
+  assert.doesNotMatch(markup, /href="\/books\/7\/recurring-transactions"/);
   assert.match(markup, /md:grid-cols-\[15rem_minmax\(0,1fr\)\]/);
   assert.match(markup, /overflow-x-auto/);
   assert.doesNotMatch(markup, /aria-label="광고"/);

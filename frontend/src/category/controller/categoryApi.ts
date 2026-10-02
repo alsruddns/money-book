@@ -28,6 +28,7 @@ export const categoryApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : [
         { type: "Category", id: moneyBookUid }, { type: "Transaction", id: moneyBookUid },
+        { type: "Calendar", id: moneyBookUid }, { type: "Budget", id: moneyBookUid },
       ],
     }),
     deleteCategory: builder.mutation<void, CategoryKey>({
