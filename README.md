@@ -36,6 +36,8 @@ money-book/
 - **탈퇴 토큰 차단:** 인증 요청마다 사용자 활성 상태를 확인해 탈퇴한 사용자의 Access Token을 거부하고, Refresh 요청도 WITHDRAWN 상태에서 실패
 - **감사 및 운영:** 가계부 활동내역, 서비스 전역 System Admin API, 관리자 운영 조회 및 감사로그
 
+- **운영 모니터링:** Actuator Health/Liveness/Readiness, JVM·HTTP·HikariCP 지표, 인증된 Prometheus endpoint
+
 ### Frontend
 
 - **인증과 공유:** 로그인·회원가입, 인증 상태 복원 및 Refresh Token rotation, 로그인 세션 조회·개별/전체 로그아웃, 가계부 목록·생성, 초대·멤버·권한 관리
@@ -71,16 +73,13 @@ money-book/
 
 ## Current Focus
 
-**현재 단계: Rate Limiting / Security Hardening Backend**
+**현재 단계: CI/CD**
 
 다음 작업 순서:
 
-1. Session 및 Refresh Token 관리
-2. Rate limiting 및 보안 강화
-3. UX 일관성 개선
-4. 모니터링
-5. CI/CD
-6. 운영 배포
+1. CI
+2. CD
+3. 프로덕션 배포
 
 ## Development Roadmap
 
@@ -148,8 +147,7 @@ money-book/
 - [x] Session / Refresh Token Management Backend
 - [x] Session / Refresh Token Management Frontend
 - [x] 전체 기기 로그아웃
-- [ ] Rate limiting
-- [ ] 보안 강화
+- [x] Rate Limiting 및 Security Hardening
 
 ### Phase 10 — UX와 제품 기능
 
@@ -159,8 +157,8 @@ money-book/
 
 ### Phase 11 — 운영
 
-- [ ] Health 및 metrics 운영 구성
-- [ ] 모니터링
+- [x] Monitoring / Health / Metrics Backend
+- [ ] Prometheus 서버 및 운영 모니터링 연동
 - [ ] CI
 - [ ] CD
 - [ ] 프로덕션 배포
