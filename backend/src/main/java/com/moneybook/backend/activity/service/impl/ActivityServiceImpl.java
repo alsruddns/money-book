@@ -29,7 +29,8 @@ public class ActivityServiceImpl implements ActivityService {
                                       ActivityType type, ActivityTargetType target, int page, int size,
                                       Authentication authentication) {
         permissions.require(bookUid, authentication, MoneyBookPermission.READ);
-        if ((start != null && end != null && start.isAfter(end)) || page < 0 || size < 1 || size > 100) {
+        if ((start != null && end != null && start.isAfter(end)) || LocalDate.MAX.equals(end)
+                || page < 0 || size < 1 || size > 100) {
             throw new BusinessException(ErrorCode.VALIDATION_FAILED);
         }
         var result = activities.search(bookUid, start, end, actor, type, target,

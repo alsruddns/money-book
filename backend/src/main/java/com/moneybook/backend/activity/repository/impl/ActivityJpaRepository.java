@@ -9,11 +9,11 @@ import org.springframework.data.domain.Pageable;
 import java.time.LocalDateTime;
 
 interface ActivityJpaRepository extends JpaRepository<MoneyBookActivity, Long> {
-    @Query(value = "select a from MoneyBookActivity a where a.moneyBookUid = :book " +
+    @Query(value = "select a from MoneyBookActivity a where (:book is null or a.moneyBookUid = :book) " +
             "and (:start is null or a.occurredAt >= :start) and (:end is null or a.occurredAt < :end) " +
             "and (:actor is null or a.actorUserUid = :actor) " +
             "and (:type is null or a.activityType = :type) and (:target is null or a.targetType = :target)",
-            countQuery = "select count(a.activityUid) from MoneyBookActivity a where a.moneyBookUid = :book " +
+            countQuery = "select count(a.activityUid) from MoneyBookActivity a where (:book is null or a.moneyBookUid = :book) " +
                     "and (:start is null or a.occurredAt >= :start) and (:end is null or a.occurredAt < :end) " +
                     "and (:actor is null or a.actorUserUid = :actor) " +
                     "and (:type is null or a.activityType = :type) and (:target is null or a.targetType = :target)")
