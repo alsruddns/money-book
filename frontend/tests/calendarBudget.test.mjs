@@ -80,6 +80,15 @@ test("calendar grid aligns first weekday and handles 28, 29, 30, and 31 day mont
   }
 });
 
+test("calendar weekday order and first-cell offset follow the configured Monday start", () => {
+  const { buildCalendarGrid, getWeekdayLabels } = loadModule("calendar/calendarGrid.ts");
+  const mondayFirst = [day("2026-06-01", "MONDAY"), day("2026-06-02", "TUESDAY")];
+  assert.deepEqual(plain(getWeekdayLabels("MONDAY")), ["월", "화", "수", "목", "금", "토", "일"]);
+  assert.equal(buildCalendarGrid(mondayFirst, "MONDAY")[0].date, "2026-06-01");
+  assert.equal(buildCalendarGrid(mondayFirst, "SUNDAY")[0], null);
+  assert.equal(buildCalendarGrid(mondayFirst, "SUNDAY")[1].date, "2026-06-01");
+});
+
 test("calendar hook aggregates income, expense, and transfers without mixing them", () => {
   const calendarResponse = { days: [
     day("2026-10-01", "THURSDAY", { incomeAmount: 300000, expenseAmount: 50000, transferInAmount: 10000, transferOutAmount: 10000 }),
@@ -102,6 +111,7 @@ test("calendar renders weekend, holiday, amounts, transfers, and empty dates", (
   const View = loadModule("calendar/components/CalendarView.tsx", {
     "@/common/format/money": { formatMoney },
     "@/moneybook/hooks/useMoneyBookPermission": { useMoneyBookPermission: () => ({ canRead: true }) },
+    "@/settings/hooks/useMoneyBookSetting": { useMoneyBookSetting: () => ({ setting: { weekStartDay: "SUNDAY" } }) },
     "@/transaction/hooks/useMonthNavigation": { useMonthNavigation: () => ({ year: 2026, month: 10, moveMonth: () => {}, goToToday: () => {} }) },
     "@/transaction/components/MonthSelector": { default: () => React.createElement("span", null, "2026년 10월") },
     "../calendarGrid": grid,

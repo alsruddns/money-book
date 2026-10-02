@@ -5,8 +5,9 @@ import { formatMoney } from "@/common/format/money";
 import { useMoneyBookPermission } from "@/moneybook/hooks/useMoneyBookPermission";
 import { useMonthNavigation } from "@/transaction/hooks/useMonthNavigation";
 import MonthSelector from "@/transaction/components/MonthSelector";
-import { buildCalendarGrid, dayNumber, weekdayLabels } from "../calendarGrid";
+import { buildCalendarGrid, dayNumber, getWeekdayLabels } from "../calendarGrid";
 import { useMonthlyCalendar } from "../hooks/useMonthlyCalendar";
+import { useMoneyBookSetting } from "@/settings/hooks/useMoneyBookSetting";
 import type { CalendarDayResponse } from "../dto/res/MonthlyCalendarResponse";
 import CalendarDayDetailDialog from "./CalendarDayDetailDialog";
 
@@ -14,8 +15,10 @@ export default function CalendarView({ moneyBookUid }: { moneyBookUid: number })
   const [selectedDay, setSelectedDay] = useState<CalendarDayResponse | null>(null);
   const { canRead } = useMoneyBookPermission(moneyBookUid);
   const { year, month, moveMonth, goToToday } = useMonthNavigation();
+  const { setting } = useMoneyBookSetting(moneyBookUid, canRead);
+  const weekStartDay = setting?.weekStartDay ?? "SUNDAY";
   const { calendar, isLoading, isFetching, isError, errorMessage } = useMonthlyCalendar(moneyBookUid, year, month, canRead);
-  const cells = buildCalendarGrid(calendar?.days ?? []);
+  const cells = buildCalendarGrid(calendar?.days ?? [], weekStartDay);
   function changeMonth(offset: -1 | 1) { setSelectedDay(null); moveMonth(offset); }
 
   return <div className="space-y-5">
@@ -32,7 +35,7 @@ export default function CalendarView({ moneyBookUid }: { moneyBookUid: number })
       calendar && <div className="min-w-0 overflow-hidden rounded-xl border border-zinc-200 bg-white">
         {isFetching && <p role="status" className="border-b border-zinc-200 px-3 py-2 text-sm">달력을 새로고침하는 중...</p>}
         <div className="grid grid-cols-7 border-b border-zinc-200 bg-zinc-50 text-center text-xs font-semibold sm:text-sm">
-          {weekdayLabels.map((label, index) => <div key={label} className={`py-2 ${index === 0 ? "text-red-700" : index === 6 ? "text-blue-700" : ""}`}>{label}</div>)}
+          {getWeekdayLabels(weekStartDay).map((label) => <div key={label} className={`py-2 ${label === "일" ? "text-red-700" : label === "토" ? "text-blue-700" : ""}`}>{label}</div>)}
         </div>
         <div className="grid grid-cols-7">
           {cells.map((day, index) => day ?
