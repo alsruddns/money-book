@@ -22,4 +22,14 @@ public class MoneyBookRepositoryImpl implements MoneyBookRepository {
     public Optional<MoneyBook> findById(Long moneyBookUid) {
         return moneyBookJpaRepository.findById(moneyBookUid);
     }
+
+    @Override
+    public Optional<MoneyBook> findByIdForUpdate(Long moneyBookUid) {
+        return moneyBookJpaRepository.findForUpdate(moneyBookUid);
+    }
+
+    @Override
+    public long countOwnedByUserUid(Long userUid) {
+        return moneyBookJpaRepository.countByOwnerUserUid(userUid);
+    }
 }

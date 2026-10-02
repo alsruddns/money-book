@@ -32,6 +32,11 @@ public class MoneyBookUserRepositoryImpl implements MoneyBookUserRepository {
     }
 
     @Override
+    public Optional<MoneyBookUser> findByMoneyBookUidAndUserUidForUpdate(Long moneyBookUid, Long userUid) {
+        return moneyBookUserJpaRepository.findForUpdate(moneyBookUid, userUid);
+    }
+
+    @Override
     public Optional<MoneyBookUser> findById(Long moneyBookUserUid) {
         return moneyBookUserJpaRepository.findById(moneyBookUserUid);
     }
@@ -51,5 +56,10 @@ public class MoneyBookUserRepositoryImpl implements MoneyBookUserRepository {
     @Override
     public void delete(MoneyBookUser membership) {
         moneyBookUserJpaRepository.delete(membership);
+    }
+
+    @Override
+    public int deleteAllByUserUid(Long userUid) {
+        return moneyBookUserJpaRepository.deleteAllForUser(userUid);
     }
 }

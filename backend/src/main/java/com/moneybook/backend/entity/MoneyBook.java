@@ -40,4 +40,13 @@ public class MoneyBook extends BaseEntity {
     public static MoneyBook create(String name, Long ownerUserUid) {
         return new MoneyBook(name, ownerUserUid);
     }
+
+    /** Changes only the owner identity; former membership permissions are managed separately. */
+    public void transferOwnershipTo(Long newOwnerUserUid) {
+        Objects.requireNonNull(newOwnerUserUid, "newOwnerUserUid");
+        if (ownerUserUid.equals(newOwnerUserUid)) {
+            throw new IllegalArgumentException("new owner must differ from current owner");
+        }
+        this.ownerUserUid = newOwnerUserUid;
+    }
 }

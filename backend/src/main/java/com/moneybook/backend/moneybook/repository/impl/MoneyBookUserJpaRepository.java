@@ -3,7 +3,10 @@ package com.moneybook.backend.moneybook.repository.impl;
 import com.moneybook.backend.entity.MoneyBookUser;
 import com.moneybook.backend.enums.InvitationStatus;
 import com.moneybook.backend.moneybook.repository.MoneyBookMemberRow;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -26,6 +29,14 @@ public interface MoneyBookUserJpaRepository extends JpaRepository<MoneyBookUser,
             @Param("userUid") Long userUid, @Param("status") InvitationStatus status);
 
     Optional<MoneyBookUser> findByMoneyBook_MoneyBookUidAndUserUid(Long moneyBookUid, Long userUid);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select membership from MoneyBookUser membership where membership.moneyBook.moneyBookUid = :bookUid and membership.userUid = :userUid")
+    Optional<MoneyBookUser> findForUpdate(@Param("bookUid") Long bookUid, @Param("userUid") Long userUid);
+
+    @Modifying
+    @Query("delete from MoneyBookUser membership where membership.userUid = :userUid")
+    int deleteAllForUser(@Param("userUid") Long userUid);
 
     /** Fetches each pending invitation with its book so list mapping does not trigger N+1 queries. */
     @Query("""

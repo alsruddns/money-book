@@ -64,6 +64,13 @@ public class User extends BaseEntity {
         this.status = Objects.requireNonNull(status, "status");
     }
 
+    /** Retains the audit identity while removing profile data and preventing future authentication. */
+    public void withdraw() {
+        this.status = UserStatus.WITHDRAWN;
+        this.nickname = "탈퇴회원-" + userUid;
+        this.profileImageUrl = null;
+    }
+
     public void changeSystemRole(SystemRole systemRole) {
         this.systemRole = Objects.requireNonNull(systemRole, "systemRole");
     }

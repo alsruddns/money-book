@@ -22,6 +22,8 @@ import com.moneybook.backend.moneybook.dto.MoneyBookListResponse;
 import com.moneybook.backend.moneybook.dto.PendingInvitationResponse;
 import com.moneybook.backend.moneybook.dto.MoneyBookMemberResponse;
 import com.moneybook.backend.moneybook.dto.UpdateMoneyBookMemberPermissionRequest;
+import com.moneybook.backend.moneybook.dto.TransferMoneyBookOwnerRequest;
+import com.moneybook.backend.moneybook.dto.MoneyBookOwnerTransferResponse;
 import com.moneybook.backend.moneybook.repository.MoneyBookRepository;
 import com.moneybook.backend.moneybook.repository.MoneyBookUserRepository;
 import com.moneybook.backend.moneybook.repository.MoneyBookSettingRepository;
@@ -176,7 +178,7 @@ public class MoneyBookServiceImpl implements MoneyBookService {
                                         UpdateMoneyBookMemberPermissionRequest request,
                                         Authentication authentication) {
         Long actorUid = activeUserUid(authentication);
-        MoneyBook book = moneyBook(moneyBookUid);
+        MoneyBook book = moneyBookForUpdate(moneyBookUid);
         requireManager(book, actorUid, ErrorCode.MONEY_BOOK_MEMBER_PERMISSION_FORBIDDEN);
         MoneyBookUser member = acceptedMember(moneyBookUid, moneyBookUserUid);
         if (book.getOwnerUserUid().equals(member.getUserUid())) {
@@ -195,7 +197,7 @@ public class MoneyBookServiceImpl implements MoneyBookService {
     @Transactional
     public void removeMember(Long moneyBookUid, Long moneyBookUserUid, Authentication authentication) {
         Long actorUid = activeUserUid(authentication);
-        MoneyBook book = moneyBook(moneyBookUid);
+        MoneyBook book = moneyBookForUpdate(moneyBookUid);
         requireManager(book, actorUid, ErrorCode.MONEY_BOOK_MEMBER_REMOVAL_FORBIDDEN);
         MoneyBookUser member = acceptedMember(moneyBookUid, moneyBookUserUid);
         if (book.getOwnerUserUid().equals(member.getUserUid())) {
@@ -206,8 +208,63 @@ public class MoneyBookServiceImpl implements MoneyBookService {
                 ActivityTargetType.MEMBER, member.getMoneyBookUserUid(), "멤버를 제거했습니다.", null);
     }
 
+    /** Transfers ownership only to an active, accepted member and records the change after commit. */
+    @Override
+    @Transactional
+    public MoneyBookOwnerTransferResponse transferOwner(Long moneyBookUid, TransferMoneyBookOwnerRequest request,
+                                                        Authentication authentication) {
+        Long actorUid = activeUserUid(authentication);
+        MoneyBook observedBook = moneyBook(moneyBookUid);
+        if (!observedBook.getOwnerUserUid().equals(actorUid)) {
+            throw new BusinessException(ErrorCode.MONEY_BOOK_OWNER_TRANSFER_FORBIDDEN);
+        }
+        Long targetUid = request.targetUserUid();
+        if (actorUid.equals(targetUid)) {
+            throw new BusinessException(ErrorCode.MONEY_BOOK_OWNER_TRANSFER_TO_SELF);
+        }
+
+        // Lock both identities in stable order so concurrent transfers and withdrawal serialize consistently.
+        List<User> lockedUsers = userRepository.findByIdsForUpdate(
+                java.util.stream.Stream.of(actorUid, targetUid).sorted().toList());
+        User actor = lockedUsers.stream().filter(user -> user.getUserUid().equals(actorUid)).findFirst()
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        User target = lockedUsers.stream().filter(user -> user.getUserUid().equals(targetUid)).findFirst()
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        if (actor.getStatus() != UserStatus.ACTIVE || target.getStatus() != UserStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.USER_INACTIVE);
+        }
+
+        MoneyBook book = moneyBookRepository.findByIdForUpdate(moneyBookUid)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MONEY_BOOK_NOT_FOUND));
+        if (!book.getOwnerUserUid().equals(actorUid)) {
+            throw new BusinessException(ErrorCode.MONEY_BOOK_OWNER_TRANSFER_FORBIDDEN);
+        }
+        MoneyBookUser targetMembership = moneyBookUserRepository
+                .findByMoneyBookUidAndUserUidForUpdate(moneyBookUid, targetUid)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MONEY_BOOK_MEMBER_NOT_FOUND));
+        if (targetMembership.getInvitationStatus() != InvitationStatus.ACCEPTED) {
+            throw new BusinessException(ErrorCode.MONEY_BOOK_MEMBER_NOT_ACCEPTED);
+        }
+
+        Long previousOwnerUid = actorUid;
+        book.transferOwnershipTo(targetUid);
+        targetMembership.grantOwnerPermissions();
+        moneyBookRepository.save(book);
+        moneyBookUserRepository.save(targetMembership);
+        String summary = book.getName() + " 소유자를 " + target.getNickname() + "님으로 변경했습니다.";
+        activityRecorder.record(moneyBookUid, authentication, ActivityType.OWNER_TRANSFERRED,
+                ActivityTargetType.MONEY_BOOK, moneyBookUid, summary,
+                "{\"previousOwnerUserUid\":" + previousOwnerUid + ",\"newOwnerUserUid\":" + targetUid + "}");
+        return new MoneyBookOwnerTransferResponse(moneyBookUid, previousOwnerUid, targetUid);
+    }
+
     private MoneyBook moneyBook(Long moneyBookUid) {
         return moneyBookRepository.findById(moneyBookUid)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MONEY_BOOK_NOT_FOUND));
+    }
+
+    private MoneyBook moneyBookForUpdate(Long moneyBookUid) {
+        return moneyBookRepository.findByIdForUpdate(moneyBookUid)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MONEY_BOOK_NOT_FOUND));
     }
 

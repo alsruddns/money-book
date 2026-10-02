@@ -9,6 +9,7 @@ import com.moneybook.backend.moneybook.dto.InvitationResponse;
 import com.moneybook.backend.moneybook.dto.MoneyBookListResponse;
 import com.moneybook.backend.moneybook.dto.PendingInvitationResponse;
 import com.moneybook.backend.moneybook.dto.MoneyBookMemberResponse;
+import com.moneybook.backend.moneybook.dto.MoneyBookOwnerTransferResponse;
 import com.moneybook.backend.moneybook.service.MoneyBookService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -255,6 +256,33 @@ class MoneyBookControllerTests {
                     .andExpect(status().isUnauthorized());
             mockMvc.perform(delete("/api/money-books/7/members/11").contextPath("/api")
                             .header("Authorization", bearer))
+                    .andExpect(status().isUnauthorized());
+        }
+    }
+
+    @Test
+    void ownerTransferRequiresAccessTokenAndReturnsNewOwner() throws Exception {
+        when(moneyBookService.transferOwner(any(), any(), any()))
+                .thenReturn(new MoneyBookOwnerTransferResponse(7L, 42L, 55L));
+        mockMvc.perform(patch("/api/money-books/7/owner").contextPath("/api")
+                        .header("Authorization", "Bearer " + token(JwtTokenType.ACCESS))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"targetUserUid\":55}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.previousOwnerUserUid").value(42))
+                .andExpect(jsonPath("$.ownerUserUid").value(55));
+        mockMvc.perform(patch("/api/money-books/7/owner").contextPath("/api")
+                        .header("Authorization", "Bearer " + token(JwtTokenType.ACCESS))
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    void ownerTransferRejectsMissingAndRefreshBearerTokens() throws Exception {
+        for (String bearer : List.of("", "Bearer " + token(JwtTokenType.REFRESH))) {
+            mockMvc.perform(patch("/api/money-books/7/owner").contextPath("/api")
+                            .header("Authorization", bearer).contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"targetUserUid\":55}"))
                     .andExpect(status().isUnauthorized());
         }
     }

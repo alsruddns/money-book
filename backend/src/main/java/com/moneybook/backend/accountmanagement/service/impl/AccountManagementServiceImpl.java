@@ -3,6 +3,7 @@ package com.moneybook.backend.accountmanagement.service.impl;
 import com.moneybook.backend.accountmanagement.dto.AccountMeResDto;
 import com.moneybook.backend.accountmanagement.dto.AccountPasswordUpdateReqDto;
 import com.moneybook.backend.accountmanagement.dto.AccountProfileUpdateReqDto;
+import com.moneybook.backend.accountmanagement.dto.AccountWithdrawalRequest;
 import com.moneybook.backend.accountmanagement.service.AccountManagementService;
 import com.moneybook.backend.auth.repository.UserAuthRepository;
 import com.moneybook.backend.common.exception.BusinessException;
@@ -10,8 +11,11 @@ import com.moneybook.backend.common.exception.ErrorCode;
 import com.moneybook.backend.entity.User;
 import com.moneybook.backend.entity.UserAuth;
 import com.moneybook.backend.enums.AuthProvider;
+import com.moneybook.backend.enums.SystemRole;
 import com.moneybook.backend.enums.UserStatus;
 import com.moneybook.backend.user.repository.UserRepository;
+import com.moneybook.backend.moneybook.repository.MoneyBookRepository;
+import com.moneybook.backend.moneybook.repository.MoneyBookUserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -29,6 +33,8 @@ public class AccountManagementServiceImpl implements AccountManagementService {
     private final UserRepository userRepository;
     private final UserAuthRepository userAuthRepository;
     private final PasswordEncoder passwordEncoder;
+    private final MoneyBookRepository moneyBookRepository;
+    private final MoneyBookUserRepository moneyBookUserRepository;
 
     /** Returns the authenticated user's current profile and non-secret provider information. */
     @Override
@@ -77,17 +83,42 @@ public class AccountManagementServiceImpl implements AccountManagementService {
         return toResponse(user);
     }
 
-    private User requireActiveUser(Authentication authentication) {
-        if (!(authentication instanceof JwtAuthenticationToken)) {
-            throw new BusinessException(ErrorCode.INVALID_ACCESS_TOKEN);
+    /** Re-authenticates a LOCAL user, refuses owned books and anonymizes the retained account row. */
+    @Override
+    @Transactional
+    public void withdraw(Authentication authentication, AccountWithdrawalRequest request) {
+        Long userUid = authenticatedUserUid(authentication);
+        User user = userRepository.findByIdForUpdate(userUid)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.USER_INACTIVE);
+        }
+        if (user.getSystemRole() == SystemRole.SUPER_ADMIN) {
+            throw new BusinessException(ErrorCode.SUPER_ADMIN_WITHDRAWAL_FORBIDDEN);
         }
 
-        Long userUid;
-        try {
-            userUid = Long.valueOf(authentication.getName());
-        } catch (NumberFormatException exception) {
-            throw new BusinessException(ErrorCode.INVALID_ACCESS_TOKEN);
+        UserAuth localAuth = userAuthRepository.findByUserUid(userUid).stream()
+                .filter(userAuth -> userAuth.getProvider() == AuthProvider.LOCAL)
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(ErrorCode.LOCAL_AUTH_NOT_FOUND));
+        if (request.currentPassword().getBytes(StandardCharsets.UTF_8).length > 72) {
+            throw new BusinessException(ErrorCode.INVALID_PASSWORD_LENGTH);
         }
+        if (!passwordEncoder.matches(request.currentPassword(), localAuth.getPasswordHash())) {
+            throw new BusinessException(ErrorCode.INVALID_CURRENT_PASSWORD);
+        }
+        if (moneyBookRepository.countOwnedByUserUid(userUid) > 0) {
+            throw new BusinessException(ErrorCode.OWNED_MONEY_BOOK_EXISTS);
+        }
+
+        // Invitation states are stored in membership rows; all are removed while immutable activity snapshots remain.
+        moneyBookUserRepository.deleteAllByUserUid(userUid);
+        userAuthRepository.deleteAllByUserUid(userUid);
+        user.withdraw();
+    }
+
+    private User requireActiveUser(Authentication authentication) {
+        Long userUid = authenticatedUserUid(authentication);
 
         User user = userRepository.findById(userUid)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
@@ -95,6 +126,17 @@ public class AccountManagementServiceImpl implements AccountManagementService {
             throw new BusinessException(ErrorCode.USER_INACTIVE);
         }
         return user;
+    }
+
+    private Long authenticatedUserUid(Authentication authentication) {
+        if (!(authentication instanceof JwtAuthenticationToken)) {
+            throw new BusinessException(ErrorCode.INVALID_ACCESS_TOKEN);
+        }
+        try {
+            return Long.valueOf(authentication.getName());
+        } catch (NumberFormatException exception) {
+            throw new BusinessException(ErrorCode.INVALID_ACCESS_TOKEN);
+        }
     }
 
     private AccountMeResDto toResponse(User user) {

@@ -111,6 +111,14 @@ public class MoneyBookUser extends BaseEntity {
         applyPermissions(admin, canCreate, canRead, canUpdate, canDelete);
     }
 
+    /** Ensures an accepted member receives full permissions when ownership is transferred to them. */
+    public void grantOwnerPermissions() {
+        if (invitationStatus != InvitationStatus.ACCEPTED) {
+            throw new IllegalStateException("Only accepted members can become owner");
+        }
+        applyPermissions(true, true, true, true, true);
+    }
+
     private void requirePending() {
         if (invitationStatus != InvitationStatus.PENDING) {
             throw new IllegalStateException("Only pending invitations can be answered");

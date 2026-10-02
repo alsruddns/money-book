@@ -8,6 +8,8 @@ import com.moneybook.backend.moneybook.dto.MoneyBookListResponse;
 import com.moneybook.backend.moneybook.dto.PendingInvitationResponse;
 import com.moneybook.backend.moneybook.dto.MoneyBookMemberResponse;
 import com.moneybook.backend.moneybook.dto.UpdateMoneyBookMemberPermissionRequest;
+import com.moneybook.backend.moneybook.dto.TransferMoneyBookOwnerRequest;
+import com.moneybook.backend.moneybook.dto.MoneyBookOwnerTransferResponse;
 import com.moneybook.backend.moneybook.service.MoneyBookService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -153,5 +155,17 @@ public class MoneyBookController {
             Authentication authentication) {
         moneyBookService.removeMember(moneyBookUid, moneyBookUserUid, authentication);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * 현재 OWNER만 소유권을 이전할 수 있으며, 대상은 ACTIVE 상태의 ACCEPTED 멤버여야 한다.
+     * 대상 멤버에게 O/C/R/U/D 전체 권한을 보장하고 기존 OWNER membership은 유지한다.
+     */
+    @PatchMapping("/{moneyBookUid}/owner")
+    public ResponseEntity<MoneyBookOwnerTransferResponse> transferOwner(
+            @PathVariable Long moneyBookUid,
+            @Valid @RequestBody TransferMoneyBookOwnerRequest request,
+            Authentication authentication) {
+        return ResponseEntity.ok(moneyBookService.transferOwner(moneyBookUid, request, authentication));
     }
 }

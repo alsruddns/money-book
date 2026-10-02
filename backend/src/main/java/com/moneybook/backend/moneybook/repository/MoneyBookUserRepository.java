@@ -13,6 +13,8 @@ public interface MoneyBookUserRepository {
 
     Optional<MoneyBookUser> findByMoneyBookUidAndUserUid(Long moneyBookUid, Long userUid);
 
+    Optional<MoneyBookUser> findByMoneyBookUidAndUserUidForUpdate(Long moneyBookUid, Long userUid);
+
     Optional<MoneyBookUser> findById(Long moneyBookUserUid);
 
     List<MoneyBookUser> findPendingByUserUid(Long userUid);
@@ -20,4 +22,6 @@ public interface MoneyBookUserRepository {
     List<MoneyBookMemberRow> findAcceptedMembersByBookUid(Long moneyBookUid);
 
     void delete(MoneyBookUser membership);
+
+    int deleteAllByUserUid(Long userUid);
 }

@@ -189,6 +189,7 @@ class MoneyBookMemberServiceTests {
         MoneyBook book = MoneyBook.create("shared", OWNER);
         ReflectionTestUtils.setField(book, "moneyBookUid", BOOK);
         when(books.findById(BOOK)).thenReturn(Optional.of(book));
+        when(books.findByIdForUpdate(BOOK)).thenReturn(Optional.of(book));
         return book;
     }
 

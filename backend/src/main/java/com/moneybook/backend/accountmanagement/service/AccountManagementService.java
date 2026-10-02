@@ -3,6 +3,7 @@ package com.moneybook.backend.accountmanagement.service;
 import com.moneybook.backend.accountmanagement.dto.AccountMeResDto;
 import com.moneybook.backend.accountmanagement.dto.AccountPasswordUpdateReqDto;
 import com.moneybook.backend.accountmanagement.dto.AccountProfileUpdateReqDto;
+import com.moneybook.backend.accountmanagement.dto.AccountWithdrawalRequest;
 import org.springframework.security.core.Authentication;
 
 public interface AccountManagementService {
@@ -12,4 +13,6 @@ public interface AccountManagementService {
     AccountMeResDto updateProfile(Authentication authentication, AccountProfileUpdateReqDto request);
 
     AccountMeResDto updatePassword(Authentication authentication, AccountPasswordUpdateReqDto request);
+
+    void withdraw(Authentication authentication, AccountWithdrawalRequest request);
 }

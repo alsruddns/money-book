@@ -8,6 +8,8 @@ import com.moneybook.backend.moneybook.dto.MoneyBookListResponse;
 import com.moneybook.backend.moneybook.dto.PendingInvitationResponse;
 import com.moneybook.backend.moneybook.dto.MoneyBookMemberResponse;
 import com.moneybook.backend.moneybook.dto.UpdateMoneyBookMemberPermissionRequest;
+import com.moneybook.backend.moneybook.dto.TransferMoneyBookOwnerRequest;
+import com.moneybook.backend.moneybook.dto.MoneyBookOwnerTransferResponse;
 import org.springframework.security.core.Authentication;
 
 import java.util.List;
@@ -32,4 +34,7 @@ public interface MoneyBookService {
                                  UpdateMoneyBookMemberPermissionRequest request, Authentication authentication);
 
     void removeMember(Long moneyBookUid, Long moneyBookUserUid, Authentication authentication);
+
+    MoneyBookOwnerTransferResponse transferOwner(Long moneyBookUid, TransferMoneyBookOwnerRequest request,
+                                                 Authentication authentication);
 }

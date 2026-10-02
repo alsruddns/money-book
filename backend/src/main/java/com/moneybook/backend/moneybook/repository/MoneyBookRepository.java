@@ -9,4 +9,8 @@ public interface MoneyBookRepository {
     MoneyBook save(MoneyBook moneyBook);
 
     Optional<MoneyBook> findById(Long moneyBookUid);
+
+    Optional<MoneyBook> findByIdForUpdate(Long moneyBookUid);
+
+    long countOwnedByUserUid(Long userUid);
 }

@@ -31,6 +31,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -128,16 +129,43 @@ class AccountManagementControllerTests {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    void withdrawalRequiresCurrentPasswordAndReturnsNoContent() throws Exception {
+        mockMvc.perform(delete("/api/account").contextPath("/api")
+                        .header("Authorization", bearer(SystemRole.USER))
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        mockMvc.perform(delete("/api/account").contextPath("/api")
+                        .header("Authorization", bearer(SystemRole.USER))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"currentPassword\":\"current\"}"))
+                .andExpect(status().isNoContent());
+        verify(accountManagementService).withdraw(any(), any());
+    }
+
+    @Test
+    void withdrawalRequiresAccessToken() throws Exception {
+        for (String authorization : new String[]{"", bearer(JwtTokenType.REFRESH)}) {
+            mockMvc.perform(delete("/api/account").contextPath("/api")
+                            .header("Authorization", authorization).contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"currentPassword\":\"pw\"}"))
+                    .andExpect(status().isUnauthorized());
+        }
+    }
+
     private AccountMeResDto accountResponse() {
         return new AccountMeResDto(42L, "회원", UserStatus.ACTIVE, SystemRole.USER,
                 List.of(AuthProvider.LOCAL), "member-id", null, null);
     }
 
     private String bearer(SystemRole role) {
+        return bearer(JwtTokenType.ACCESS);
+    }
+
+    private String bearer(JwtTokenType tokenType) {
         Instant now = Instant.now();
         JwtClaimsSet claims = JwtClaimsSet.builder().subject("42").issuedAt(now).expiresAt(now.plusSeconds(3600))
-                .claim(JwtTokenType.CLAIM_NAME, JwtTokenType.ACCESS.name())
-                .claim("systemRole", role.name()).build();
+                .claim(JwtTokenType.CLAIM_NAME, tokenType.name()).build();
         return "Bearer " + jwtEncoder.encode(JwtEncoderParameters.from(
                 JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
     }

@@ -17,4 +17,6 @@ public interface UserAuthRepository {
     Optional<UserAuth> findByProviderUserId(AuthProvider provider, String providerUserId);
 
     List<UserAuth> findByUserUid(Long userUid);
+
+    int deleteAllByUserUid(Long userUid);
 }

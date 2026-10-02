@@ -34,4 +34,9 @@ public class UserAuthRepositoryImpl implements UserAuthRepository {
     public List<UserAuth> findByUserUid(Long userUid) {
         return userAuthJpaRepository.findByUser_UserUid(userUid);
     }
+
+    @Override
+    public int deleteAllByUserUid(Long userUid) {
+        return userAuthJpaRepository.deleteAllForUser(userUid);
+    }
 }
