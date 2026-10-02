@@ -13,6 +13,7 @@ import com.moneybook.backend.moneybook.dto.CreateInvitationRequest;
 import com.moneybook.backend.moneybook.dto.InvitationResponse;
 import com.moneybook.backend.moneybook.repository.MoneyBookRepository;
 import com.moneybook.backend.moneybook.repository.MoneyBookUserRepository;
+import com.moneybook.backend.moneybook.repository.MoneyBookSettingRepository;
 import com.moneybook.backend.moneybook.service.impl.MoneyBookServiceImpl;
 import com.moneybook.backend.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -45,7 +46,8 @@ class MoneyBookInvitationServiceTests {
     private final MoneyBookUserRepository moneyBookUserRepository = mock(MoneyBookUserRepository.class);
     private final UserAuthRepository userAuthRepository = mock(UserAuthRepository.class);
     private final MoneyBookServiceImpl service = new MoneyBookServiceImpl(
-            userRepository, moneyBookRepository, moneyBookUserRepository, userAuthRepository);
+            userRepository, moneyBookRepository, moneyBookUserRepository, userAuthRepository,
+            mock(MoneyBookSettingRepository.class));
 
     @Test
     void ownerInvitesLocalUserAndAdminGetsAllPermissions() {

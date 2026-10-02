@@ -5,6 +5,7 @@ import com.moneybook.backend.common.exception.BusinessException;
 import com.moneybook.backend.common.exception.ErrorCode;
 import com.moneybook.backend.entity.MoneyBook;
 import com.moneybook.backend.entity.MoneyBookUser;
+import com.moneybook.backend.entity.MoneyBookSetting;
 import com.moneybook.backend.entity.User;
 import com.moneybook.backend.enums.InvitationStatus;
 import com.moneybook.backend.enums.UserStatus;
@@ -13,6 +14,7 @@ import com.moneybook.backend.moneybook.dto.CreateMoneyBookResponse;
 import com.moneybook.backend.moneybook.dto.MoneyBookListResponse;
 import com.moneybook.backend.moneybook.repository.MoneyBookRepository;
 import com.moneybook.backend.moneybook.repository.MoneyBookUserRepository;
+import com.moneybook.backend.moneybook.repository.MoneyBookSettingRepository;
 import com.moneybook.backend.moneybook.service.impl.MoneyBookServiceImpl;
 import com.moneybook.backend.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -47,8 +49,9 @@ class MoneyBookServiceImplTests {
     private final MoneyBookRepository moneyBookRepository = mock(MoneyBookRepository.class);
     private final MoneyBookUserRepository moneyBookUserRepository = mock(MoneyBookUserRepository.class);
     private final UserAuthRepository userAuthRepository = mock(UserAuthRepository.class);
+    private final MoneyBookSettingRepository settingRepository = mock(MoneyBookSettingRepository.class);
     private final MoneyBookServiceImpl service = new MoneyBookServiceImpl(
-            userRepository, moneyBookRepository, moneyBookUserRepository, userAuthRepository);
+            userRepository, moneyBookRepository, moneyBookUserRepository, userAuthRepository, settingRepository);
 
     @Test
     void createSavesBookAndAcceptedOwnerMembershipWithAllPermissions() {
@@ -66,6 +69,8 @@ class MoneyBookServiceImplTests {
         ArgumentCaptor<MoneyBookUser> memberCaptor = ArgumentCaptor.forClass(MoneyBookUser.class);
         verify(moneyBookRepository).save(bookCaptor.capture());
         verify(moneyBookUserRepository).save(memberCaptor.capture());
+        ArgumentCaptor<MoneyBookSetting> settingCaptor = ArgumentCaptor.forClass(MoneyBookSetting.class);
+        verify(settingRepository).save(settingCaptor.capture());
         MoneyBook book = bookCaptor.getValue();
         MoneyBookUser member = memberCaptor.getValue();
         assertEquals(7L, response.moneyBookUid());
@@ -80,6 +85,8 @@ class MoneyBookServiceImplTests {
         assertTrue(member.isCanUpdate());
         assertTrue(member.isCanDelete());
         assertEquals(InvitationStatus.ACCEPTED, member.getInvitationStatus());
+        assertSame(book, settingCaptor.getValue().getMoneyBook());
+        assertEquals(com.moneybook.backend.enums.WeekStartDay.SUNDAY, settingCaptor.getValue().getWeekStartDay());
     }
 
     @Test
@@ -157,7 +164,7 @@ class MoneyBookServiceImplTests {
                 () -> service.create(new CreateMoneyBookRequest("우리집 가계부"), authentication("42")));
 
         assertEquals(ErrorCode.USER_NOT_FOUND, exception.getErrorCode());
-        verifyNoInteractions(moneyBookRepository, moneyBookUserRepository);
+        verifyNoInteractions(moneyBookRepository, moneyBookUserRepository, settingRepository);
     }
 
     @Test
@@ -170,7 +177,7 @@ class MoneyBookServiceImplTests {
                 () -> service.create(new CreateMoneyBookRequest("우리집 가계부"), authentication("42")));
 
         assertEquals(ErrorCode.USER_INACTIVE, exception.getErrorCode());
-        verifyNoInteractions(moneyBookRepository, moneyBookUserRepository);
+        verifyNoInteractions(moneyBookRepository, moneyBookUserRepository, settingRepository);
     }
 
     private void activeUser(Long userUid) {

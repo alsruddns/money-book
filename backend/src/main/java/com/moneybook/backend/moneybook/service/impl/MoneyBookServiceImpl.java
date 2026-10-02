@@ -5,9 +5,11 @@ import com.moneybook.backend.common.exception.BusinessException;
 import com.moneybook.backend.common.exception.ErrorCode;
 import com.moneybook.backend.entity.MoneyBook;
 import com.moneybook.backend.entity.MoneyBookUser;
+import com.moneybook.backend.entity.MoneyBookSetting;
 import com.moneybook.backend.entity.User;
 import com.moneybook.backend.entity.UserAuth;
 import com.moneybook.backend.enums.InvitationStatus;
+import com.moneybook.backend.enums.WeekStartDay;
 import com.moneybook.backend.enums.UserStatus;
 import com.moneybook.backend.moneybook.dto.CreateInvitationRequest;
 import com.moneybook.backend.moneybook.dto.CreateMoneyBookRequest;
@@ -19,6 +21,7 @@ import com.moneybook.backend.moneybook.dto.MoneyBookMemberResponse;
 import com.moneybook.backend.moneybook.dto.UpdateMoneyBookMemberPermissionRequest;
 import com.moneybook.backend.moneybook.repository.MoneyBookRepository;
 import com.moneybook.backend.moneybook.repository.MoneyBookUserRepository;
+import com.moneybook.backend.moneybook.repository.MoneyBookSettingRepository;
 import com.moneybook.backend.moneybook.service.MoneyBookService;
 import com.moneybook.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +40,7 @@ public class MoneyBookServiceImpl implements MoneyBookService {
     private final MoneyBookRepository moneyBookRepository;
     private final MoneyBookUserRepository moneyBookUserRepository;
     private final UserAuthRepository userAuthRepository;
+    private final MoneyBookSettingRepository settingRepository;
 
     /** Saves the workspace and its owner's accepted, full-permission membership atomically. */
     @Override
@@ -44,6 +48,7 @@ public class MoneyBookServiceImpl implements MoneyBookService {
     public CreateMoneyBookResponse create(CreateMoneyBookRequest request, Authentication authentication) {
         Long userUid = activeUserUid(authentication);
         MoneyBook moneyBook = moneyBookRepository.save(MoneyBook.create(request.name(), userUid));
+        settingRepository.save(MoneyBookSetting.create(moneyBook, WeekStartDay.SUNDAY));
         moneyBookUserRepository.save(MoneyBookUser.owner(moneyBook, userUid));
         return new CreateMoneyBookResponse(moneyBook.getMoneyBookUid(), moneyBook.getName(), userUid);
     }

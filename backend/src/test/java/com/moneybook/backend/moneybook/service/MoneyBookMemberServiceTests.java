@@ -11,6 +11,7 @@ import com.moneybook.backend.moneybook.dto.UpdateMoneyBookMemberPermissionReques
 import com.moneybook.backend.moneybook.repository.MoneyBookMemberRow;
 import com.moneybook.backend.moneybook.repository.MoneyBookRepository;
 import com.moneybook.backend.moneybook.repository.MoneyBookUserRepository;
+import com.moneybook.backend.moneybook.repository.MoneyBookSettingRepository;
 import com.moneybook.backend.moneybook.service.impl.MoneyBookServiceImpl;
 import com.moneybook.backend.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -42,7 +43,7 @@ class MoneyBookMemberServiceTests {
     private final MoneyBookRepository books = mock(MoneyBookRepository.class);
     private final MoneyBookUserRepository memberships = mock(MoneyBookUserRepository.class);
     private final MoneyBookServiceImpl service = new MoneyBookServiceImpl(
-            users, books, memberships, mock(UserAuthRepository.class));
+            users, books, memberships, mock(UserAuthRepository.class), mock(MoneyBookSettingRepository.class));
 
     @Test
     void ownerAndReadableAcceptedMemberCanViewRosterWithProtectedOwnerRights() {
