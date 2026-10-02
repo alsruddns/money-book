@@ -7,6 +7,8 @@ import type { MoneyBookListResponse } from "../dto/res/MoneyBookListResponse";
 import type { PendingInvitationResponse } from "../dto/res/PendingInvitationResponse";
 import type { InvitationResponse } from "../dto/res/InvitationResponse";
 import type { MoneyBookMemberResponse } from "../dto/res/MoneyBookMemberResponse";
+import type { TransferMoneyBookOwnerRequest } from "../dto/req/TransferMoneyBookOwnerRequest";
+import type { MoneyBookOwnerTransferResponse } from "../dto/res/MoneyBookOwnerTransferResponse";
 
 interface InvitationKey { moneyBookUid: number; moneyBookUserUid: number }
 type MemberKey = InvitationKey;
@@ -66,6 +68,14 @@ export const moneyBookApi = baseApi.injectEndpoints({
         { type: "MoneyBookMember", id: moneyBookUid }, "MoneyBook", { type: "MoneyBookActivity", id: moneyBookUid },
       ],
     }),
+    transferMoneyBookOwner: builder.mutation<MoneyBookOwnerTransferResponse, { moneyBookUid: number; request: TransferMoneyBookOwnerRequest }>({
+      query: ({ moneyBookUid, request }) => ({
+        url: `money-books/${moneyBookUid}/owner`, method: "PATCH", body: request,
+      }),
+      invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : [
+        "MoneyBook", { type: "MoneyBookMember", id: moneyBookUid }, { type: "MoneyBookActivity", id: moneyBookUid },
+      ],
+    }),
   }),
 });
 
@@ -79,4 +89,5 @@ export const {
   useGetMoneyBookMembersQuery,
   useUpdateMoneyBookMemberPermissionMutation,
   useRemoveMoneyBookMemberMutation,
+  useTransferMoneyBookOwnerMutation,
 } = moneyBookApi;

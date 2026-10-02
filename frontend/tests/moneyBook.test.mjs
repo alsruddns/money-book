@@ -63,7 +63,30 @@ test("money book API uses backend paths and invalidates only affected cache tags
   assert.deepEqual(asLocal(api.getMoneyBookMembers.providesTags([], undefined, 7)), [{ type: "MoneyBookMember", id: 7 }]);
   assert.deepEqual(asLocal(api.updateMoneyBookMemberPermission.invalidatesTags(undefined, undefined, key)), [{ type: "MoneyBookMember", id: 7 }, "MoneyBook", { type: "MoneyBookActivity", id: 7 }]);
   assert.deepEqual(asLocal(api.removeMoneyBookMember.invalidatesTags(undefined, undefined, key)), [{ type: "MoneyBookMember", id: 7 }, "MoneyBook", { type: "MoneyBookActivity", id: 7 }]);
+  assert.deepEqual(asLocal(api.transferMoneyBookOwner.query({ moneyBookUid: 7, request: { targetUserUid: 9 } })), {
+    url: "money-books/7/owner", method: "PATCH", body: { targetUserUid: 9 },
+  });
+  assert.deepEqual(asLocal(api.transferMoneyBookOwner.invalidatesTags({}, undefined, { moneyBookUid: 7, request: { targetUserUid: 9 } })), [
+    "MoneyBook", { type: "MoneyBookMember", id: 7 }, { type: "MoneyBookActivity", id: 7 },
+  ]);
+  assert.deepEqual(asLocal(api.transferMoneyBookOwner.invalidatesTags(undefined, { status: 403 }, { moneyBookUid: 7, request: { targetUserUid: 9 } })), []);
   assert.deepEqual(asLocal(api.createMoneyBook.invalidatesTags(undefined, { status: 400 })), []);
+});
+
+test("owner transfer hook confirms selected member and sends only targetUserUid", async () => {
+  const calls = [];
+  const confirmations = [];
+  const state = { error: null };
+  const { useTransferMoneyBookOwner } = loadModule("moneybook/hooks/useTransferMoneyBookOwner.ts", {
+    react: { useState: (initial) => [initial, (next) => { state.error = next; }] },
+    "@/common/api/getApiErrorMessage": { getApiErrorMessage: () => "이전 실패" },
+    "../controller/moneyBookApi": { useTransferMoneyBookOwnerMutation: () => [(arg) => ({ unwrap: async () => { calls.push(arg); } }), { isLoading: false }] },
+  }, { window: { confirm: (message) => { confirmations.push(message); return true; } } });
+  const hook = useTransferMoneyBookOwner(7);
+  assert.equal(await hook.transferOwner(9, "홍길동"), true);
+  assert.deepEqual(asLocal(calls), [{ moneyBookUid: 7, request: { targetUserUid: 9 } }]);
+  assert.match(confirmations[0], /홍길동님/);
+  assert.match(confirmations[0], /현재 계정은 멤버로 남습니다/);
 });
 
 test("book UID parser rejects missing, malformed, and unsafe values", () => {
@@ -254,6 +277,7 @@ test("member list shows management only to owner or admin, with loading and empt
       "next/link": { default: link },
       "../hooks/useMoneyBookDetail": { useMoneyBookDetail: () => ({ moneyBook: book, isLoading: false, isError: false }) },
       "../hooks/useMoneyBookMembers": { useMoneyBookMembers: () => memberState },
+      "../hooks/useTransferMoneyBookOwner": { useTransferMoneyBookOwner: () => ({ isLoading: false, errorMessage: null, transferOwner: async () => true }) },
       "./InviteMemberDialog": { default: () => null },
       "./MemberRow": { default: ({ member: row }) => React.createElement("div", null, row.nickname) },
     });
@@ -262,6 +286,14 @@ test("member list shows management only to owner or admin, with loading and empt
   const book = { moneyBookUid: 1, name: "집", isOwner: false, isAdmin: false };
   assert.doesNotMatch(render(book), /사용자 초대/);
   assert.match(render({ ...book, isOwner: true }), /사용자 초대/);
+  const ownerMarkup = render({ ...book, isOwner: true }, { members: [
+    { userUid: 1, nickname: "현재 소유자", isOwner: true },
+    { userUid: 2, nickname: "이전 후보", isOwner: false },
+  ], isLoading: false, isError: false });
+  assert.match(ownerMarkup, /소유권 이전/);
+  assert.match(ownerMarkup, /<option value="2">이전 후보/);
+  assert.doesNotMatch(ownerMarkup, /<option value="1">현재 소유자/);
+  assert.doesNotMatch(render({ ...book, isAdmin: true }), /소유권 이전/);
   assert.match(render({ ...book, isAdmin: true }), /사용자 초대/);
   assert.match(render(book, { members: [], isLoading: true }), /멤버를 불러오는 중/);
   assert.match(render(book, { members: [], isLoading: false, isError: false }), /가입한 멤버가 없습니다/);

@@ -19,7 +19,8 @@ test("activity API matches controller query contract and exposes paged response 
 
 test("activity page renders snapshot actor and summary and keeps loading, error, empty, and R permission states",()=>{
   const React=require("react"); const {renderToStaticMarkup}=require("react-dom/server");
-  const sample={activityUid:1,actorUserUid:3,actorNickname:"과거 이름",activityType:"TRANSACTION_CREATED",targetType:"TRANSACTION",targetUid:4,summary:"거래를 등록했습니다.",metadataJson:null,occurredAt:"2026-10-02T14:31:00"};
+  const todaySeoul=new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+  const sample={activityUid:1,actorUserUid:3,actorNickname:"과거 이름",activityType:"TRANSACTION_CREATED",targetType:"TRANSACTION",targetUid:4,summary:"거래를 등록했습니다.",metadataJson:null,occurredAt:`${todaySeoul}T14:31:00`};
   function render({canRead=true,result={content:[sample],page:0,size:20,totalElements:1,totalPages:1,first:true,last:true},isLoading=false,isError=false}={}) {
     const {default:View}=load("activity/components/MoneyBookActivityView.tsx",{
       "react":React,

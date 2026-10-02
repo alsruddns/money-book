@@ -5,6 +5,7 @@ import type { AccountResponse } from "../dto/res/AccountResponse";
 import type { AccountProfileUpdateReqDto } from "../dto/req/AccountProfileUpdateReqDto";
 import type { AccountPasswordUpdateReqDto } from "../dto/req/AccountPasswordUpdateReqDto";
 import type { AccountMeResDto } from "../dto/res/AccountMeResDto";
+import type { AccountWithdrawalRequest } from "../dto/req/AccountWithdrawalRequest";
 
 interface AccountKey { moneyBookUid: number; accountUid: number }
 interface CreateArg { moneyBookUid: number; request: CreateAccountRequest }
@@ -23,6 +24,9 @@ export const accountApi = baseApi.injectEndpoints({
     updateAccountPassword: builder.mutation<AccountMeResDto, AccountPasswordUpdateReqDto>({
       query: (body) => ({ url: "account/password", method: "PATCH", body }),
       invalidatesTags: (_result, error) => error ? [] : ["AccountMe"],
+    }),
+    withdrawAccount: builder.mutation<void, AccountWithdrawalRequest>({
+      query: (body) => ({ url: "account", method: "DELETE", body }),
     }),
     getAccounts: builder.query<AccountResponse[], number>({
       query: (moneyBookUid) => `money-books/${moneyBookUid}/accounts`,
@@ -54,6 +58,7 @@ export const {
   useGetAccountMeQuery,
   useUpdateAccountProfileMutation,
   useUpdateAccountPasswordMutation,
+  useWithdrawAccountMutation,
   useGetAccountsQuery,
   useCreateAccountMutation,
   useUpdateAccountMutation,

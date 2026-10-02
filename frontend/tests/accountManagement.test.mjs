@@ -44,6 +44,9 @@ test("Account endpoints match backend routes and invalidate AccountMe/AuthMe nar
   assert.deepEqual(plain(api.updateAccountPassword.query(passwordRequest)), {
     url: "account/password", method: "PATCH", body: passwordRequest,
   });
+  assert.deepEqual(plain(api.withdrawAccount.query({ currentPassword: "verify" })), {
+    url: "account", method: "DELETE", body: { currentPassword: "verify" },
+  });
   assert.deepEqual(plain(api.getAccountMe.providesTags), ["AccountMe"]);
   assert.deepEqual(plain(api.updateAccountProfile.invalidatesTags({}, undefined)), ["AccountMe", "AuthMe"]);
   assert.deepEqual(plain(api.updateAccountProfile.invalidatesTags(undefined, { status: 400 })), []);
@@ -126,6 +129,7 @@ function renderAccountView(accountResponse) {
     "../hooks/useAccountMe": { useAccountMe: () => ({ account: accountResponse, isLoading: false, isError: false }) },
     "../hooks/useUpdateAccountProfile": { useUpdateAccountProfile: () => ({ isLoading: false }) },
     "../hooks/useUpdateAccountPassword": { useUpdateAccountPassword: () => ({ isLoading: false }) },
+    "../hooks/useWithdrawAccount": { useWithdrawAccount: () => ({ isLoading: false, errorMessage: null, withdraw: async () => true }) },
   });
   return renderToStaticMarkup(React.createElement(View));
 }
@@ -138,6 +142,52 @@ test("LOCAL users see password form; OAuth-only users get guidance and no passwo
   assert.match(oauthMarkup, /소셜 로그인 계정은 이 화면에서 비밀번호를 변경할 수 없습니다/);
   assert.doesNotMatch(oauthMarkup, /type="password"|현재 비밀번호/);
   assert.match(oauthMarkup, /Google/);
+});
+
+test("withdrawal UI is available to LOCAL USER and SYSTEM_ADMIN but blocked for SUPER_ADMIN and OAuth-only accounts", () => {
+  const localMarkup = renderAccountView(account);
+  assert.match(localMarkup, /회원 탈퇴/);
+  assert.match(localMarkup, /소유권을 이전/);
+  const adminMarkup = renderAccountView({ ...account, systemRole: "SYSTEM_ADMIN" });
+  assert.match(adminMarkup, /회원 탈퇴 진행/);
+  const superAdminMarkup = renderAccountView({ ...account, systemRole: "SUPER_ADMIN" });
+  assert.match(superAdminMarkup, /최고 관리자는 이 화면에서 탈퇴할 수 없습니다/);
+  assert.doesNotMatch(superAdminMarkup, /회원 탈퇴 진행/);
+  const oauthMarkup = renderAccountView({ ...account, providers: ["GOOGLE"], loginId: null });
+  assert.match(oauthMarkup, /현재 소셜 로그인 계정은 이 화면에서 탈퇴할 수 없습니다/);
+  assert.doesNotMatch(oauthMarkup, /회원 탈퇴 진행/);
+});
+
+test("withdrawal keeps auth on failure and clears tokens, auth and API cache only after success", async () => {
+  const tokenEvents = [];
+  const dispatched = [];
+  const routes = [];
+  let responseError = { data: { code: "OWNED_MONEY_BOOK_EXISTS", message: "owned" } };
+  let sent;
+  const { useWithdrawAccount } = loadModule("account/hooks/useWithdrawAccount.ts", {
+    react: { useState: (initial) => [initial, (next) => { tokenEvents.push(["error", next]); }] },
+    "next/navigation": { useRouter: () => ({ replace: (path) => routes.push(path) }) },
+    "react-redux": { useDispatch: () => (action) => dispatched.push(action) },
+    "@/common/api/getApiErrorMessage": { getApiErrorMessage: () => "fallback" },
+    "@/common/api/baseApi": { baseApi: { util: { resetApiState: () => ({ type: "RESET_API" }) } } },
+    "@/auth/storage/tokenStorage": { tokenStorage: { clearTokens: () => tokenEvents.push(["clear"]) } },
+    "@/auth/store/authSlice": { clearAuth: () => ({ type: "CLEAR_AUTH" }) },
+    "@/store/store": {},
+    "../controller/accountApi": { useWithdrawAccountMutation: () => [(body) => ({ unwrap: async () => { sent = body; if (responseError) throw responseError; } }), { isLoading: false }] },
+  }, { TextEncoder });
+  const hook = useWithdrawAccount();
+  assert.equal(await hook.withdraw("pass"), false);
+  assert.deepEqual(plain(sent), { currentPassword: "pass" });
+  assert.match(tokenEvents.at(-1)[1], /소유 중인 가계부/);
+  assert.deepEqual(dispatched, []);
+  assert.deepEqual(routes, []);
+  responseError = null;
+  assert.equal(await hook.withdraw("pass"), true);
+  assert.deepEqual(tokenEvents.filter(([event]) => event === "clear"), [["clear"]]);
+  assert.deepEqual(plain(dispatched), [{ type: "CLEAR_AUTH" }, { type: "RESET_API" }]);
+  assert.deepEqual(routes, ["/login"]);
+  const source = fs.readFileSync(path.join(testDirectory, "../src/account/hooks/useWithdrawAccount.ts"), "utf8");
+  assert.doesNotMatch(source, /console\.(log|error)|sessionStorage|localStorage/);
 });
 
 test("account screen shows read-only role/status/provider labels and account load retry", () => {
@@ -154,6 +204,7 @@ test("account screen shows read-only role/status/provider labels and account loa
     "../hooks/useAccountMe": { useAccountMe: () => ({ account: null, isLoading: false, isError: true, errorMessage: "잠시 후 다시 시도해 주세요.", retry: () => {} }) },
     "../hooks/useUpdateAccountProfile": { useUpdateAccountProfile: () => ({ isLoading: false }) },
     "../hooks/useUpdateAccountPassword": { useUpdateAccountPassword: () => ({ isLoading: false }) },
+    "../hooks/useWithdrawAccount": { useWithdrawAccount: () => ({ isLoading: false, errorMessage: null, withdraw: async () => true }) },
   });
   const markup = renderToStaticMarkup(React.createElement(View));
   assert.match(markup, /잠시 후 다시 시도해 주세요/);
@@ -209,6 +260,7 @@ test("profile form starts with current nickname, skips unchanged values, and cle
       isLoading: false,
       updatePassword: async (request) => { calls.password.push(request); return true; },
     }) },
+    "../hooks/useWithdrawAccount": { useWithdrawAccount: () => ({ isLoading: false, errorMessage: null, withdraw: async () => true }) },
   });
   function visit(value, elements) {
     if (!value || typeof value !== "object") return;

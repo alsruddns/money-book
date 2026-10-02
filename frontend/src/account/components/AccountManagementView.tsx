@@ -5,6 +5,7 @@ import { accountProviderLabel, accountRoleLabel, accountStatusLabel, formatAccou
 import { useAccountMe } from "../hooks/useAccountMe";
 import { useUpdateAccountPassword } from "../hooks/useUpdateAccountPassword";
 import { useUpdateAccountProfile } from "../hooks/useUpdateAccountProfile";
+import { useWithdrawAccount } from "../hooks/useWithdrawAccount";
 
 const emptyPassword = { currentPassword: "", newPassword: "", newPasswordConfirm: "" };
 const fieldClass = "mt-1 min-h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-zinc-900";
@@ -22,10 +23,13 @@ export default function AccountManagementView() {
 function AccountDetailsView({ account }: { account: NonNullable<ReturnType<typeof useAccountMe>["account"]> }) {
   const profile = useUpdateAccountProfile();
   const password = useUpdateAccountPassword();
+  const withdrawal = useWithdrawAccount();
   const [nickname, setNickname] = useState(account.nickname);
   const [profileSuccess, setProfileSuccess] = useState(false);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [passwordValues, setPasswordValues] = useState(emptyPassword);
+  const [isWithdrawalOpen, setWithdrawalOpen] = useState(false);
+  const [withdrawalPassword, setWithdrawalPassword] = useState("");
 
   async function submitProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -44,6 +48,15 @@ function AccountDetailsView({ account }: { account: NonNullable<ReturnType<typeo
     if (await password.updatePassword(passwordValues)) {
       setPasswordValues({ ...emptyPassword });
       setPasswordSuccess(true);
+    }
+  }
+
+  async function submitWithdrawal(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (withdrawal.isLoading || account.systemRole === "SUPER_ADMIN" || !hasLocalProvider) return;
+    if (await withdrawal.withdraw(withdrawalPassword)) {
+      setWithdrawalPassword("");
+      setWithdrawalOpen(false);
     }
   }
 
@@ -113,5 +126,35 @@ function AccountDetailsView({ account }: { account: NonNullable<ReturnType<typeo
           </button>
         </form>}
     </section>
+
+    <section aria-labelledby="withdrawal-title" className="rounded-xl border border-red-300 bg-red-50 p-5 sm:p-6">
+      <h2 id="withdrawal-title" className="text-lg font-semibold text-red-950">회원 탈퇴</h2>
+      <p className="mt-2 text-sm text-red-900">탈퇴하면 로그인할 수 없고 가계부 멤버십과 초대가 정리됩니다. 소유 중인 가계부가 있으면 탈퇴 전에 다른 멤버에게 소유권을 이전해야 합니다.</p>
+      {account.systemRole === "SUPER_ADMIN" ? <p className="mt-3 text-sm font-medium text-red-900">최고 관리자는 이 화면에서 탈퇴할 수 없습니다.</p> : !hasLocalProvider ?
+        <p className="mt-3 text-sm text-red-900">현재 소셜 로그인 계정은 이 화면에서 탈퇴할 수 없습니다.</p> : <>
+          <button type="button" onClick={() => { setWithdrawalPassword(""); setWithdrawalOpen(true); }} className="mt-4 min-h-11 rounded-lg border border-red-700 px-4 text-sm font-semibold text-red-900 hover:bg-red-100">회원 탈퇴 진행</button>
+          {withdrawal.errorMessage && <p role="alert" className="mt-3 text-sm text-red-800">{withdrawal.errorMessage}</p>}
+        </>}
+    </section>
+
+    {isWithdrawalOpen && hasLocalProvider && account.systemRole !== "SUPER_ADMIN" && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="presentation">
+      <section role="dialog" aria-modal="true" aria-labelledby="withdrawal-confirm-title" className="w-full max-w-lg rounded-xl bg-white p-5 shadow-xl sm:p-6">
+        <h2 id="withdrawal-confirm-title" className="text-xl font-semibold text-red-900">회원 탈퇴를 확인해주세요</h2>
+        <p className="mt-3 text-sm text-zinc-700">계정은 탈퇴 처리되고 LOCAL 인증정보와 가계부 멤버십 및 초대가 삭제됩니다. 소유 중인 가계부가 있으면 탈퇴가 거절되므로 먼저 소유권을 이전해주세요. 활동 기록은 서버 정책에 따라 보존됩니다.</p>
+        <form className="mt-5 space-y-4" onSubmit={submitWithdrawal}>
+          <div>
+            <label htmlFor="withdrawal-current-password" className="text-sm font-medium">현재 비밀번호</label>
+            <input id="withdrawal-current-password" name="currentPassword" type="password" autoComplete="current-password" maxLength={72} required value={withdrawalPassword}
+              onChange={(event) => setWithdrawalPassword(event.target.value)} className={fieldClass} />
+            <p className="mt-1 text-xs text-zinc-600">현재 비밀번호로 본인 확인이 필요합니다.</p>
+          </div>
+          {withdrawal.errorMessage && <p role="alert" className="text-sm text-red-700">{withdrawal.errorMessage}</p>}
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button type="button" disabled={withdrawal.isLoading} onClick={() => { setWithdrawalOpen(false); setWithdrawalPassword(""); }} className="min-h-11 rounded-lg border border-zinc-300 px-4 text-sm font-medium">취소</button>
+            <button type="submit" disabled={withdrawal.isLoading || !withdrawalPassword.trim() || new TextEncoder().encode(withdrawalPassword).length > 72} className="min-h-11 rounded-lg bg-red-700 px-4 text-sm font-semibold text-white disabled:opacity-50">{withdrawal.isLoading ? "탈퇴 처리 중..." : "확인 후 탈퇴"}</button>
+          </div>
+        </form>
+      </section>
+    </div>}
   </div>;
 }
