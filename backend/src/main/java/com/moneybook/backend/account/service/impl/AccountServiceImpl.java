@@ -1,5 +1,6 @@
 package com.moneybook.backend.account.service.impl;
 
+import com.moneybook.backend.activity.ActivityRecorder;
 import com.moneybook.backend.account.dto.AccountResponse;
 import com.moneybook.backend.account.dto.CreateAccountRequest;
 import com.moneybook.backend.account.dto.UpdateAccountRequest;
@@ -10,6 +11,8 @@ import com.moneybook.backend.common.exception.ErrorCode;
 import com.moneybook.backend.entity.MoneyBook;
 import com.moneybook.backend.entity.MoneyBookAccount;
 import com.moneybook.backend.enums.MoneyBookPermission;
+import com.moneybook.backend.enums.ActivityTargetType;
+import com.moneybook.backend.enums.ActivityType;
 import com.moneybook.backend.moneybook.provider.MoneyBookPermissionProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -24,6 +27,7 @@ import java.util.List;
 public class AccountServiceImpl implements AccountService {
     private final AccountRepository accounts;
     private final MoneyBookPermissionProvider permissions;
+    private final ActivityRecorder activityRecorder;
 
     @Override
     @Transactional
@@ -33,8 +37,10 @@ public class AccountServiceImpl implements AccountService {
             throw new BusinessException(ErrorCode.ACCOUNT_ALREADY_EXISTS);
         }
         try {
-            return AccountResponse.from(accounts.save(MoneyBookAccount.create(
-                    book, request.name(), request.accountType(), request.sortOrder())));
+            var saved = accounts.save(MoneyBookAccount.create(book, request.name(), request.accountType(), request.sortOrder()));
+            activityRecorder.record(bookUid, authentication, ActivityType.ACCOUNT_CREATED, ActivityTargetType.ACCOUNT,
+                    saved.getAccountUid(), "계좌 '" + saved.getName() + "'를 만들었습니다.", null);
+            return AccountResponse.from(saved);
         } catch (DataIntegrityViolationException exception) {
             throw new BusinessException(ErrorCode.ACCOUNT_ALREADY_EXISTS);
         }
@@ -62,6 +68,8 @@ public class AccountServiceImpl implements AccountService {
         } catch (DataIntegrityViolationException exception) {
             throw new BusinessException(ErrorCode.ACCOUNT_ALREADY_EXISTS);
         }
+        activityRecorder.record(bookUid, authentication, ActivityType.ACCOUNT_UPDATED, ActivityTargetType.ACCOUNT,
+                accountUid, "계좌 '" + account.getName() + "'를 수정했습니다.", null);
         return AccountResponse.from(account);
     }
 
@@ -76,6 +84,8 @@ public class AccountServiceImpl implements AccountService {
         try {
             accounts.delete(account);
             accounts.flush();
+            activityRecorder.record(bookUid, authentication, ActivityType.ACCOUNT_DELETED, ActivityTargetType.ACCOUNT,
+                    accountUid, "계좌 '" + account.getName() + "'를 삭제했습니다.", null);
         } catch (DataIntegrityViolationException exception) {
             throw new BusinessException(ErrorCode.ACCOUNT_IN_USE);
         }

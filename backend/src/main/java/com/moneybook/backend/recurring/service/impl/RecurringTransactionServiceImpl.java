@@ -1,5 +1,6 @@
 package com.moneybook.backend.recurring.service.impl;
 
+import com.moneybook.backend.activity.ActivityRecorder;
 import com.moneybook.backend.account.repository.AccountRepository;
 import com.moneybook.backend.category.repository.CategoryRepository;
 import com.moneybook.backend.closing.MonthClosingGuard;
@@ -11,6 +12,8 @@ import com.moneybook.backend.entity.MoneyBookCategory;
 import com.moneybook.backend.entity.MoneyBookTransaction;
 import com.moneybook.backend.entity.RecurringTransaction;
 import com.moneybook.backend.enums.MoneyBookPermission;
+import com.moneybook.backend.enums.ActivityTargetType;
+import com.moneybook.backend.enums.ActivityType;
 import com.moneybook.backend.enums.RecurringFrequency;
 import com.moneybook.backend.enums.TransactionType;
 import com.moneybook.backend.moneybook.provider.MoneyBookPermissionProvider;
@@ -49,6 +52,7 @@ public class RecurringTransactionServiceImpl implements RecurringTransactionServ
     private final AccountRepository accounts;
     private final MoneyBookPermissionProvider permissions;
     private final MonthClosingGuard closingGuard;
+    private final ActivityRecorder activityRecorder;
 
     @Override
     @Transactional
@@ -59,9 +63,13 @@ public class RecurringTransactionServiceImpl implements RecurringTransactionServ
                 request.dayOfWeek(), request.startDate(), request.endDate());
         MoneyBookCategory category = category(bookUid, request.categoryUid(), request.transactionType());
         MoneyBookAccount account = account(bookUid, request.accountUid());
-        return RecurringTransactionResponse.from(rules.save(RecurringTransaction.create(book,
+        var saved = rules.save(RecurringTransaction.create(book,
                 request.transactionType(), request.amount(), category, account, request.frequency(),
-                request.dayOfMonth(), request.dayOfWeek(), request.startDate(), request.endDate(), request.memo())));
+                request.dayOfMonth(), request.dayOfWeek(), request.startDate(), request.endDate(), request.memo()));
+        activityRecorder.record(bookUid, authentication, ActivityType.RECURRING_CREATED,
+                ActivityTargetType.RECURRING_TRANSACTION, saved.getRecurringTransactionUid(),
+                "정기 거래를 만들었습니다.", null);
+        return RecurringTransactionResponse.from(saved);
     }
 
     @Override
@@ -84,6 +92,8 @@ public class RecurringTransactionServiceImpl implements RecurringTransactionServ
         MoneyBookAccount account = account(bookUid, request.accountUid());
         rule.change(request.transactionType(), request.amount(), category, account, request.frequency(),
                 request.dayOfMonth(), request.dayOfWeek(), request.startDate(), request.endDate(), request.memo());
+        activityRecorder.record(bookUid, authentication, ActivityType.RECURRING_UPDATED,
+                ActivityTargetType.RECURRING_TRANSACTION, ruleUid, "정기 거래를 수정했습니다.", null);
         return RecurringTransactionResponse.from(rules.save(rule));
     }
 
@@ -94,7 +104,14 @@ public class RecurringTransactionServiceImpl implements RecurringTransactionServ
                                                      Authentication authentication) {
         permissions.require(bookUid, authentication, MoneyBookPermission.UPDATE);
         RecurringTransaction rule = rule(bookUid, ruleUid);
+        boolean wasActive = rule.isActive();
         rule.changeActive(request.active());
+        if (wasActive != request.active()) {
+            activityRecorder.record(bookUid, authentication, request.active() ? ActivityType.RECURRING_ACTIVATED
+                            : ActivityType.RECURRING_DEACTIVATED,
+                    ActivityTargetType.RECURRING_TRANSACTION, ruleUid,
+                    request.active() ? "정기 거래를 활성화했습니다." : "정기 거래를 비활성화했습니다.", null);
+        }
         return RecurringTransactionResponse.from(rules.save(rule));
     }
 
@@ -103,6 +120,8 @@ public class RecurringTransactionServiceImpl implements RecurringTransactionServ
     public void delete(Long bookUid, Long ruleUid, Authentication authentication) {
         permissions.require(bookUid, authentication, MoneyBookPermission.DELETE);
         rules.delete(rule(bookUid, ruleUid));
+        activityRecorder.record(bookUid, authentication, ActivityType.RECURRING_DELETED,
+                ActivityTargetType.RECURRING_TRANSACTION, ruleUid, "정기 거래를 삭제했습니다.", null);
     }
 
     /** Locks each rule before checking occurrence rows; all generated transactions commit or roll back together. */
@@ -141,6 +160,11 @@ public class RecurringTransactionServiceImpl implements RecurringTransactionServ
                     rule.getAmount(), occurrence.date(), rule.getCategory(), rule.getAccount(),
                     rule.getMemo(), rule.getRecurringTransactionUid()));
             rule.recordGeneratedThrough(occurrence.date());
+        }
+        if (!pending.isEmpty()) {
+            activityRecorder.record(bookUid, authentication, ActivityType.RECURRING_GENERATED,
+                    ActivityTargetType.RECURRING_TRANSACTION, null, "정기 거래를 생성했습니다.",
+                    "{\"generatedCount\":" + pending.size() + "}");
         }
         return new GenerateRecurringTransactionResponse(baseDate, pending.size());
     }

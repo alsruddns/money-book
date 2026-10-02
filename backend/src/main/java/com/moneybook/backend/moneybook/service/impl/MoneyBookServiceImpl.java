@@ -1,5 +1,6 @@
 package com.moneybook.backend.moneybook.service.impl;
 
+import com.moneybook.backend.activity.ActivityRecorder;
 import com.moneybook.backend.auth.repository.UserAuthRepository;
 import com.moneybook.backend.common.exception.BusinessException;
 import com.moneybook.backend.common.exception.ErrorCode;
@@ -9,6 +10,8 @@ import com.moneybook.backend.entity.MoneyBookSetting;
 import com.moneybook.backend.entity.User;
 import com.moneybook.backend.entity.UserAuth;
 import com.moneybook.backend.enums.InvitationStatus;
+import com.moneybook.backend.enums.ActivityTargetType;
+import com.moneybook.backend.enums.ActivityType;
 import com.moneybook.backend.enums.WeekStartDay;
 import com.moneybook.backend.enums.UserStatus;
 import com.moneybook.backend.moneybook.dto.CreateInvitationRequest;
@@ -41,6 +44,7 @@ public class MoneyBookServiceImpl implements MoneyBookService {
     private final MoneyBookUserRepository moneyBookUserRepository;
     private final UserAuthRepository userAuthRepository;
     private final MoneyBookSettingRepository settingRepository;
+    private final ActivityRecorder activityRecorder;
 
     /** Saves the workspace and its owner's accepted, full-permission membership atomically. */
     @Override
@@ -50,6 +54,8 @@ public class MoneyBookServiceImpl implements MoneyBookService {
         MoneyBook moneyBook = moneyBookRepository.save(MoneyBook.create(request.name(), userUid));
         settingRepository.save(MoneyBookSetting.create(moneyBook, WeekStartDay.SUNDAY));
         moneyBookUserRepository.save(MoneyBookUser.owner(moneyBook, userUid));
+        activityRecorder.record(moneyBook.getMoneyBookUid(), authentication, ActivityType.MONEY_BOOK_CREATED,
+                ActivityTargetType.MONEY_BOOK, moneyBook.getMoneyBookUid(), "가계부를 만들었습니다.", null);
         return new CreateMoneyBookResponse(moneyBook.getMoneyBookUid(), moneyBook.getName(), userUid);
     }
 
@@ -95,7 +101,10 @@ public class MoneyBookServiceImpl implements MoneyBookService {
                 .orElseGet(() -> MoneyBookUser.invite(book, targetUid,
                         request.isAdmin(), request.canCreate(), request.canRead(),
                         request.canUpdate(), request.canDelete()));
-        return invitationResponse(moneyBookUserRepository.save(membership));
+        membership = moneyBookUserRepository.save(membership);
+        activityRecorder.record(moneyBookUid, authentication, ActivityType.MEMBER_INVITED,
+                ActivityTargetType.INVITATION, membership.getMoneyBookUserUid(), "사용자를 초대했습니다.", null);
+        return invitationResponse(membership);
     }
 
     /** Pending invitations are visible even when the proposed membership lacks read permission. */
@@ -121,6 +130,8 @@ public class MoneyBookServiceImpl implements MoneyBookService {
                                                Authentication authentication) {
         MoneyBookUser membership = pendingOwnInvitation(moneyBookUid, moneyBookUserUid, authentication);
         membership.acceptInvitation();
+        activityRecorder.record(moneyBookUid, authentication, ActivityType.MEMBER_INVITATION_ACCEPTED,
+                ActivityTargetType.INVITATION, membership.getMoneyBookUserUid(), "가계부 초대를 수락했습니다.", null);
         return invitationResponse(membership);
     }
 
@@ -130,6 +141,8 @@ public class MoneyBookServiceImpl implements MoneyBookService {
                                                Authentication authentication) {
         MoneyBookUser membership = pendingOwnInvitation(moneyBookUid, moneyBookUserUid, authentication);
         membership.rejectInvitation();
+        activityRecorder.record(moneyBookUid, authentication, ActivityType.MEMBER_INVITATION_REJECTED,
+                ActivityTargetType.INVITATION, membership.getMoneyBookUserUid(), "가계부 초대를 거절했습니다.", null);
         return invitationResponse(membership);
     }
 
@@ -171,6 +184,11 @@ public class MoneyBookServiceImpl implements MoneyBookService {
         }
         member.changePermissions(request.isAdmin(), request.canCreate(), request.canRead(),
                 request.canUpdate(), request.canDelete());
+        activityRecorder.record(moneyBookUid, authentication, ActivityType.MEMBER_PERMISSION_UPDATED,
+                ActivityTargetType.MEMBER, member.getMoneyBookUserUid(), "멤버 권한을 변경했습니다.",
+                "{\"admin\":" + member.isAdmin() + ",\"create\":" + member.isCanCreate()
+                        + ",\"read\":" + member.isCanRead() + ",\"update\":" + member.isCanUpdate()
+                        + ",\"delete\":" + member.isCanDelete() + "}");
     }
 
     @Override
@@ -184,6 +202,8 @@ public class MoneyBookServiceImpl implements MoneyBookService {
             throw new BusinessException(ErrorCode.MONEY_BOOK_OWNER_REMOVAL_PROTECTED);
         }
         moneyBookUserRepository.delete(member);
+        activityRecorder.record(moneyBookUid, authentication, ActivityType.MEMBER_REMOVED,
+                ActivityTargetType.MEMBER, member.getMoneyBookUserUid(), "멤버를 제거했습니다.", null);
     }
 
     private MoneyBook moneyBook(Long moneyBookUid) {

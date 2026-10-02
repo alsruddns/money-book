@@ -1,5 +1,6 @@
 package com.moneybook.backend.transfer.service.impl;
 
+import com.moneybook.backend.activity.ActivityRecorder;
 import com.moneybook.backend.account.repository.AccountRepository;
 import com.moneybook.backend.closing.MonthClosingGuard;
 import com.moneybook.backend.common.exception.BusinessException;
@@ -8,6 +9,8 @@ import com.moneybook.backend.entity.MoneyBook;
 import com.moneybook.backend.entity.MoneyBookAccount;
 import com.moneybook.backend.entity.MoneyBookTransfer;
 import com.moneybook.backend.enums.MoneyBookPermission;
+import com.moneybook.backend.enums.ActivityTargetType;
+import com.moneybook.backend.enums.ActivityType;
 import com.moneybook.backend.moneybook.provider.MoneyBookPermissionProvider;
 import com.moneybook.backend.transfer.dto.CreateTransferRequest;
 import com.moneybook.backend.transfer.dto.TransferResponse;
@@ -31,6 +34,7 @@ public class TransferServiceImpl implements TransferService {
     private final AccountRepository accounts;
     private final MoneyBookPermissionProvider permissions;
     private final MonthClosingGuard closingGuard;
+    private final ActivityRecorder activityRecorder;
 
     @Override
     @Transactional
@@ -41,8 +45,11 @@ public class TransferServiceImpl implements TransferService {
         validateAmount(request.amount());
         MoneyBookAccount from = account(bookUid, request.fromAccountUid());
         MoneyBookAccount to = account(bookUid, request.toAccountUid());
-        return TransferResponse.from(transfers.save(MoneyBookTransfer.create(
-                book, from, to, request.amount(), request.transferDate(), request.memo())));
+        var saved = transfers.save(MoneyBookTransfer.create(
+                book, from, to, request.amount(), request.transferDate(), request.memo()));
+        activityRecorder.record(bookUid, authentication, ActivityType.TRANSFER_CREATED,
+                ActivityTargetType.TRANSFER, saved.getTransferUid(), "계좌 이체를 등록했습니다.", null);
+        return TransferResponse.from(saved);
     }
 
     @Override
@@ -65,6 +72,8 @@ public class TransferServiceImpl implements TransferService {
         MoneyBookAccount from = account(bookUid, request.fromAccountUid());
         MoneyBookAccount to = account(bookUid, request.toAccountUid());
         transfer.change(from, to, request.amount(), request.transferDate(), request.memo());
+        activityRecorder.record(bookUid, authentication, ActivityType.TRANSFER_UPDATED,
+                ActivityTargetType.TRANSFER, transferUid, "계좌 이체를 수정했습니다.", null);
         return TransferResponse.from(transfers.save(transfer));
     }
 
@@ -75,6 +84,8 @@ public class TransferServiceImpl implements TransferService {
         MoneyBookTransfer transfer = transfer(bookUid, transferUid);
         closingGuard.requireOpen(bookUid, transfer.getTransferDate());
         transfers.delete(transfer);
+        activityRecorder.record(bookUid, authentication, ActivityType.TRANSFER_DELETED,
+                ActivityTargetType.TRANSFER, transferUid, "계좌 이체를 삭제했습니다.", null);
     }
 
     @Override

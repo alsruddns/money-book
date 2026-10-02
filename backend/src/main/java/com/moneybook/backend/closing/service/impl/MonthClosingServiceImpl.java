@@ -1,5 +1,6 @@
 package com.moneybook.backend.closing.service.impl;
 
+import com.moneybook.backend.activity.ActivityRecorder;
 import com.moneybook.backend.budget.repository.BudgetRepository;
 import com.moneybook.backend.closing.dto.MonthClosingResponse;
 import com.moneybook.backend.closing.repository.MonthClosingRepository;
@@ -10,6 +11,8 @@ import com.moneybook.backend.dashboard.repository.DashboardRepository;
 import com.moneybook.backend.entity.MoneyBook;
 import com.moneybook.backend.entity.MoneyBookMonthClosing;
 import com.moneybook.backend.enums.MoneyBookPermission;
+import com.moneybook.backend.enums.ActivityTargetType;
+import com.moneybook.backend.enums.ActivityType;
 import com.moneybook.backend.enums.TransactionType;
 import com.moneybook.backend.moneybook.provider.MoneyBookPermissionProvider;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +34,7 @@ public class MonthClosingServiceImpl implements MonthClosingService {
     private final DashboardRepository dashboard;
     private final BudgetRepository budgets;
     private final MoneyBookPermissionProvider permissions;
+    private final ActivityRecorder activityRecorder;
 
     /** Locks the book before capturing totals, so concurrent ledger writes cannot pass the closed-month guard. */
     @Override
@@ -48,7 +52,11 @@ public class MonthClosingServiceImpl implements MonthClosingService {
                 current.income(), current.expense(), current.count(), previous.income(), previous.expense(),
                 budget != null, budget == null ? null : budget.getTotalBudget(),
                 Long.parseLong(authentication.getName()), LocalDateTime.now(KOREA));
-        return MonthClosingResponse.from(closings.save(closing));
+        var saved = closings.save(closing);
+        activityRecorder.record(bookUid, authentication, ActivityType.MONTH_CLOSED,
+                ActivityTargetType.MONTH_CLOSING, null, year + "년 " + month + "월을 마감했습니다.",
+                "{\"year\":" + year + ",\"month\":" + month + "}");
+        return MonthClosingResponse.from(saved);
     }
 
     @Override
@@ -69,6 +77,9 @@ public class MonthClosingServiceImpl implements MonthClosingService {
         var closing = closings.find(bookUid, year, month)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MONTH_NOT_CLOSED));
         closings.delete(closing);
+        activityRecorder.record(bookUid, authentication, ActivityType.MONTH_CLOSING_CANCELLED,
+                ActivityTargetType.MONTH_CLOSING, null, year + "년 " + month + "월 마감을 취소했습니다.",
+                "{\"year\":" + year + ",\"month\":" + month + "}");
     }
 
     private Totals totals(Long bookUid, YearMonth period) {

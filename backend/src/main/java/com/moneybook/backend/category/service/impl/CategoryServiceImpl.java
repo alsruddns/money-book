@@ -1,5 +1,6 @@
 package com.moneybook.backend.category.service.impl;
 
+import com.moneybook.backend.activity.ActivityRecorder;
 import com.moneybook.backend.category.dto.CategoryResponse;
 import com.moneybook.backend.category.dto.CreateCategoryRequest;
 import com.moneybook.backend.category.dto.UpdateCategoryRequest;
@@ -11,6 +12,8 @@ import com.moneybook.backend.entity.MoneyBook;
 import com.moneybook.backend.entity.MoneyBookCategory;
 import com.moneybook.backend.enums.MoneyBookPermission;
 import com.moneybook.backend.enums.TransactionType;
+import com.moneybook.backend.enums.ActivityTargetType;
+import com.moneybook.backend.enums.ActivityType;
 import com.moneybook.backend.moneybook.provider.MoneyBookPermissionProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -25,6 +28,7 @@ import java.util.List;
 public class CategoryServiceImpl implements CategoryService {
     private final CategoryRepository categories;
     private final MoneyBookPermissionProvider permissions;
+    private final ActivityRecorder activityRecorder;
 
     @Override
     @Transactional
@@ -34,8 +38,10 @@ public class CategoryServiceImpl implements CategoryService {
             throw new BusinessException(ErrorCode.CATEGORY_ALREADY_EXISTS);
         }
         try {
-            return CategoryResponse.from(categories.save(MoneyBookCategory.create(
-                    book, request.name(), request.transactionType(), request.sortOrder())));
+            var saved = categories.save(MoneyBookCategory.create(book, request.name(), request.transactionType(), request.sortOrder()));
+            activityRecorder.record(bookUid, authentication, ActivityType.CATEGORY_CREATED, ActivityTargetType.CATEGORY,
+                    saved.getCategoryUid(), "카테고리 '" + saved.getName() + "'를 만들었습니다.", null);
+            return CategoryResponse.from(saved);
         } catch (DataIntegrityViolationException exception) {
             throw new BusinessException(ErrorCode.CATEGORY_ALREADY_EXISTS);
         }
@@ -63,6 +69,8 @@ public class CategoryServiceImpl implements CategoryService {
         } catch (DataIntegrityViolationException exception) {
             throw new BusinessException(ErrorCode.CATEGORY_ALREADY_EXISTS);
         }
+        activityRecorder.record(bookUid, authentication, ActivityType.CATEGORY_UPDATED, ActivityTargetType.CATEGORY,
+                categoryUid, "카테고리 '" + category.getName() + "'를 수정했습니다.", null);
         return CategoryResponse.from(category);
     }
 
@@ -77,6 +85,8 @@ public class CategoryServiceImpl implements CategoryService {
         try {
             categories.delete(category);
             categories.flush();
+            activityRecorder.record(bookUid, authentication, ActivityType.CATEGORY_DELETED, ActivityTargetType.CATEGORY,
+                    categoryUid, "카테고리 '" + category.getName() + "'를 삭제했습니다.", null);
         } catch (DataIntegrityViolationException exception) {
             throw new BusinessException(ErrorCode.CATEGORY_IN_USE);
         }

@@ -1,5 +1,6 @@
 package com.moneybook.backend.moneybook.service;
 
+import com.moneybook.backend.activity.ActivityRecorder;
 import com.moneybook.backend.common.exception.BusinessException;
 import com.moneybook.backend.common.exception.ErrorCode;
 import com.moneybook.backend.entity.MoneyBook;
@@ -19,7 +20,7 @@ import static org.mockito.Mockito.*;
 class MoneyBookSettingServiceTests {
     private final MoneyBookPermissionProvider permissions=mock(MoneyBookPermissionProvider.class);
     private final MoneyBookSettingRepository settings=mock(MoneyBookSettingRepository.class);
-    private final MoneyBookSettingServiceImpl service=new MoneyBookSettingServiceImpl(permissions,settings);
+    private final MoneyBookSettingServiceImpl service=new MoneyBookSettingServiceImpl(permissions,settings,mock(ActivityRecorder.class));
     private final Authentication authentication=mock(Authentication.class);
 
     @Test void missingSettingReadsAsSundayWithReadPermission() {

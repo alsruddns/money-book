@@ -1,5 +1,6 @@
 package com.moneybook.backend.backup;
 
+import com.moneybook.backend.activity.ActivityRecorder;
 import com.moneybook.backend.account.repository.AccountRepository;
 import com.moneybook.backend.backup.dto.MoneyBookBackupDocument;
 import com.moneybook.backend.backup.repository.BackupRepository;
@@ -37,8 +38,9 @@ class MoneyBookBackupServiceTests {
     private final RecurringTransactionRepository recurring = mock(RecurringTransactionRepository.class);
     private final BudgetRepository budgets = mock(BudgetRepository.class);
     private final MonthClosingRepository closings = mock(MonthClosingRepository.class);
+    private final ActivityRecorder activityRecorder = mock(ActivityRecorder.class);
     private final MoneyBookBackupServiceImpl service = new MoneyBookBackupServiceImpl(JsonMapper.builder().build(), backup,
-            permissions, books, memberships, categories, accounts, recurring, budgets, closings);
+            permissions, books, memberships, categories, accounts, recurring, budgets, closings, activityRecorder);
     private final Authentication authentication = mock(Authentication.class);
 
     @BeforeEach void setUp() { when(permissions.currentActiveUserUid(authentication)).thenReturn(42L); }

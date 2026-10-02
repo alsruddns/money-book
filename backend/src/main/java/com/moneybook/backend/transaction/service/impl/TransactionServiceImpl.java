@@ -1,5 +1,6 @@
 package com.moneybook.backend.transaction.service.impl;
 
+import com.moneybook.backend.activity.ActivityRecorder;
 import com.moneybook.backend.account.repository.AccountRepository;
 import com.moneybook.backend.category.repository.CategoryRepository;
 import com.moneybook.backend.closing.MonthClosingGuard;
@@ -10,6 +11,8 @@ import com.moneybook.backend.entity.MoneyBookAccount;
 import com.moneybook.backend.entity.MoneyBookCategory;
 import com.moneybook.backend.entity.MoneyBookTransaction;
 import com.moneybook.backend.enums.MoneyBookPermission;
+import com.moneybook.backend.enums.ActivityTargetType;
+import com.moneybook.backend.enums.ActivityType;
 import com.moneybook.backend.enums.TransactionType;
 import com.moneybook.backend.moneybook.provider.MoneyBookPermissionProvider;
 import com.moneybook.backend.transaction.dto.CreateTransactionRequest;
@@ -35,6 +38,7 @@ public class TransactionServiceImpl implements TransactionService {
     private final AccountRepository accounts;
     private final MoneyBookPermissionProvider permissions;
     private final MonthClosingGuard closingGuard;
+    private final ActivityRecorder activityRecorder;
 
     @Override
     @Transactional
@@ -44,9 +48,12 @@ public class TransactionServiceImpl implements TransactionService {
         validateAmount(request.amount());
         MoneyBookCategory category = category(bookUid, request.categoryUid(), request.transactionType());
         MoneyBookAccount account = account(bookUid, request.accountUid());
-        return TransactionResponse.from(transactions.save(MoneyBookTransaction.create(
+        var saved = transactions.save(MoneyBookTransaction.create(
                 book, request.transactionType(), request.amount(), request.transactionDate(),
-                category, account, request.memo())));
+                category, account, request.memo()));
+        activityRecorder.record(bookUid, authentication, ActivityType.TRANSACTION_CREATED,
+                ActivityTargetType.TRANSACTION, saved.getTransactionUid(), "거래를 등록했습니다.", null);
+        return TransactionResponse.from(saved);
     }
 
     @Override
@@ -69,6 +76,8 @@ public class TransactionServiceImpl implements TransactionService {
         MoneyBookAccount account = account(bookUid, request.accountUid());
         entry.change(request.transactionType(), request.amount(), request.transactionDate(),
                 category, account, request.memo());
+        activityRecorder.record(bookUid, authentication, ActivityType.TRANSACTION_UPDATED,
+                ActivityTargetType.TRANSACTION, transactionUid, "거래를 수정했습니다.", null);
         return TransactionResponse.from(transactions.save(entry));
     }
 
@@ -79,6 +88,8 @@ public class TransactionServiceImpl implements TransactionService {
         MoneyBookTransaction entry = transaction(bookUid, transactionUid);
         closingGuard.requireOpen(bookUid, entry.getTransactionDate());
         transactions.delete(entry);
+        activityRecorder.record(bookUid, authentication, ActivityType.TRANSACTION_DELETED,
+                ActivityTargetType.TRANSACTION, transactionUid, "거래를 삭제했습니다.", null);
     }
 
     @Override

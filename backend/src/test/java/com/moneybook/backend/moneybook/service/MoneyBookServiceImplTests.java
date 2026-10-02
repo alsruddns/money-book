@@ -1,5 +1,6 @@
 package com.moneybook.backend.moneybook.service;
 
+import com.moneybook.backend.activity.ActivityRecorder;
 import com.moneybook.backend.auth.repository.UserAuthRepository;
 import com.moneybook.backend.common.exception.BusinessException;
 import com.moneybook.backend.common.exception.ErrorCode;
@@ -51,7 +52,8 @@ class MoneyBookServiceImplTests {
     private final UserAuthRepository userAuthRepository = mock(UserAuthRepository.class);
     private final MoneyBookSettingRepository settingRepository = mock(MoneyBookSettingRepository.class);
     private final MoneyBookServiceImpl service = new MoneyBookServiceImpl(
-            userRepository, moneyBookRepository, moneyBookUserRepository, userAuthRepository, settingRepository);
+            userRepository, moneyBookRepository, moneyBookUserRepository, userAuthRepository, settingRepository,
+            mock(ActivityRecorder.class));
 
     @Test
     void createSavesBookAndAcceptedOwnerMembershipWithAllPermissions() {

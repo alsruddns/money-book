@@ -1,5 +1,6 @@
 package com.moneybook.backend.moneybook.service;
 
+import com.moneybook.backend.activity.ActivityRecorder;
 import com.moneybook.backend.auth.repository.UserAuthRepository;
 import com.moneybook.backend.common.exception.BusinessException;
 import com.moneybook.backend.common.exception.ErrorCode;
@@ -43,7 +44,8 @@ class MoneyBookMemberServiceTests {
     private final MoneyBookRepository books = mock(MoneyBookRepository.class);
     private final MoneyBookUserRepository memberships = mock(MoneyBookUserRepository.class);
     private final MoneyBookServiceImpl service = new MoneyBookServiceImpl(
-            users, books, memberships, mock(UserAuthRepository.class), mock(MoneyBookSettingRepository.class));
+            users, books, memberships, mock(UserAuthRepository.class), mock(MoneyBookSettingRepository.class),
+            mock(ActivityRecorder.class));
 
     @Test
     void ownerAndReadableAcceptedMemberCanViewRosterWithProtectedOwnerRights() {

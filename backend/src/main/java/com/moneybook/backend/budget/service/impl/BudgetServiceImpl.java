@@ -1,5 +1,6 @@
 package com.moneybook.backend.budget.service.impl;
 
+import com.moneybook.backend.activity.ActivityRecorder;
 import com.moneybook.backend.budget.dto.CategoryBudgetRequest;
 import com.moneybook.backend.budget.dto.CategoryBudgetResponse;
 import com.moneybook.backend.budget.dto.MonthlyBudgetResponse;
@@ -15,6 +16,8 @@ import com.moneybook.backend.entity.MoneyBookBudget;
 import com.moneybook.backend.entity.MoneyBookCategory;
 import com.moneybook.backend.entity.MoneyBookCategoryBudget;
 import com.moneybook.backend.enums.MoneyBookPermission;
+import com.moneybook.backend.enums.ActivityTargetType;
+import com.moneybook.backend.enums.ActivityType;
 import com.moneybook.backend.enums.TransactionType;
 import com.moneybook.backend.moneybook.provider.MoneyBookPermissionProvider;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +43,7 @@ public class BudgetServiceImpl implements BudgetService {
     private final CategoryRepository categories;
     private final MoneyBookPermissionProvider permissions;
     private final MonthClosingGuard closingGuard;
+    private final ActivityRecorder activityRecorder;
 
     @Override
     @Transactional(readOnly = true)
@@ -96,7 +100,11 @@ public class BudgetServiceImpl implements BudgetService {
             if (entry == null) budget.addCategory(validCategories.get(item.categoryUid()), item.amount());
             else entry.changeAmount(item.amount());
         }
-        budgets.save(budget);
+        budget = budgets.save(budget);
+        activityRecorder.record(bookUid, authentication, ActivityType.BUDGET_UPDATED,
+                ActivityTargetType.BUDGET, budget.getBudgetUid(),
+                period.getYear() + "년 " + period.getMonthValue() + "월 예산을 변경했습니다.",
+                "{\"year\":" + year + ",\"month\":" + month + "}");
         return response(bookUid, period, budget);
     }
 

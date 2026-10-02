@@ -1,5 +1,6 @@
 package com.moneybook.backend.backup.service.impl;
 
+import com.moneybook.backend.activity.ActivityRecorder;
 import com.moneybook.backend.backup.dto.*;
 import com.moneybook.backend.backup.repository.BackupRepository;
 import com.moneybook.backend.backup.service.MoneyBookBackupService;
@@ -53,6 +54,7 @@ public class MoneyBookBackupServiceImpl implements MoneyBookBackupService {
     private final RecurringTransactionRepository recurring;
     private final BudgetRepository budgets;
     private final MonthClosingRepository closings;
+    private final ActivityRecorder activityRecorder;
 
     /** 관리자 수준 권한으로 가계부 업무 데이터만 명시적 DTO에 기록한다. */
     @Override
@@ -98,6 +100,8 @@ public class MoneyBookBackupServiceImpl implements MoneyBookBackupService {
             writeArray(generator, "orphanRecurringSourceUids", orphanRuleIds.stream().sorted().toList());
             generator.writeEndObject();
             generator.flush();
+            activityRecorder.record(bookUid, authentication, ActivityType.BACKUP_EXPORTED,
+                    ActivityTargetType.BACKUP, null, "가계부 전체 데이터를 백업했습니다.", null);
         }
         catch (IOException exception) { throw new BusinessException(ErrorCode.BACKUP_EXPORT_FAILED); }
     }
@@ -239,6 +243,8 @@ public class MoneyBookBackupServiceImpl implements MoneyBookBackupService {
         for (var row : doc.monthClosings()) closings.save(MoneyBookMonthClosing.create(book, row.year(), row.month(), amount(row.income()), amount(row.expense()), row.transactionCount(), amount(row.previousIncome()), amount(row.previousExpense()), row.budgetConfigured(), nullableAmount(row.totalBudget()), userUid, LocalDateTime.parse(row.closedAt())));
         backupRepository.flush();
         int categoryBudgetCount = doc.budgets().stream().mapToInt(b -> b.categories().size()).sum();
+        activityRecorder.record(book.getMoneyBookUid(), authentication, ActivityType.BACKUP_RESTORED,
+                ActivityTargetType.BACKUP, null, "백업 데이터로 가계부를 복원했습니다.", null);
         return new BackupRestoreResponse(book.getMoneyBookUid(), book.getName(), doc.categories().size(), doc.accounts().size(), doc.transactions().size(), doc.transfers().size(), doc.recurringTransactions().size(), doc.budgets().size(), categoryBudgetCount, doc.monthClosings().size());
         } catch (BusinessException exception) {
             throw exception;

@@ -1,9 +1,12 @@
 package com.moneybook.backend.moneybook.service.impl;
 
+import com.moneybook.backend.activity.ActivityRecorder;
 import com.moneybook.backend.common.exception.BusinessException;
 import com.moneybook.backend.common.exception.ErrorCode;
 import com.moneybook.backend.entity.MoneyBookSetting;
 import com.moneybook.backend.enums.MoneyBookPermission;
+import com.moneybook.backend.enums.ActivityTargetType;
+import com.moneybook.backend.enums.ActivityType;
 import com.moneybook.backend.enums.WeekStartDay;
 import com.moneybook.backend.moneybook.dto.MoneyBookSettingRequest;
 import com.moneybook.backend.moneybook.dto.MoneyBookSettingResponse;
@@ -20,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class MoneyBookSettingServiceImpl implements MoneyBookSettingService {
     private final MoneyBookPermissionProvider permissions;
     private final MoneyBookSettingRepository settings;
+    private final ActivityRecorder activityRecorder;
 
     @Override
     @Transactional(readOnly = true)
@@ -40,7 +44,14 @@ public class MoneyBookSettingServiceImpl implements MoneyBookSettingService {
         }
         MoneyBookSetting setting = settings.findByMoneyBookUid(bookUid)
                 .orElseGet(() -> MoneyBookSetting.create(book, WeekStartDay.SUNDAY));
+        var previous = setting.getWeekStartDay();
         setting.changeWeekStartDay(request.weekStartDay());
-        return new MoneyBookSettingResponse(bookUid, settings.save(setting).getWeekStartDay());
+        var saved = settings.save(setting);
+        if (previous != saved.getWeekStartDay()) {
+            activityRecorder.record(bookUid, authentication, ActivityType.SETTING_UPDATED,
+                    ActivityTargetType.SETTING, saved.getMoneyBookSettingUid(), "가계부 설정을 변경했습니다.",
+                    "{\"weekStartDay\":\"" + saved.getWeekStartDay().name() + "\"}");
+        }
+        return new MoneyBookSettingResponse(bookUid, saved.getWeekStartDay());
     }
 }
