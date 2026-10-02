@@ -73,6 +73,8 @@ public class SecurityConfig {
                                 writeSecurityError(response, 403, "FORBIDDEN", "접근 권한이 없습니다.")))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/health").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                        .requestMatchers("/actuator/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/auth/signup", "/auth/login", "/auth/refresh").permitAll()
                         .requestMatchers("/admin/**")
                         .access(new SystemAdminAuthorizationManager(systemAdminAuthorizationProvider.getIfAvailable()))
