@@ -74,6 +74,97 @@ test("book UID parser rejects missing, malformed, and unsafe values", () => {
   }
 });
 
+test("money book menu keeps readable pages visible without edit rights and avoids dead links", () => {
+  const { getMoneyBookMenu, isMoneyBookRouteActive } = loadModule("moneybook/components/MoneyBookNavigation.tsx", {
+    react: { useEffect: () => {}, useState: () => [false, () => {}] },
+    "next/link": { default: link },
+    "next/navigation": { usePathname: () => "/books/7/categories" },
+    "@/common/components/advertisement/DesktopAdRail": { default: () => null },
+    "../hooks/useMoneyBookPermission": { useMoneyBookPermission: () => ({}) },
+  });
+  const groups = getMoneyBookMenu(7, true);
+  const items = groups.flatMap((group) => group.items);
+  assert.equal(items.find((item) => item.label === "카테고리").disabled, undefined);
+  assert.equal(items.find((item) => item.label === "캘린더").disabled, true);
+  assert.equal(items.find((item) => item.label === "예산").disabled, true);
+  assert.equal(items.find((item) => item.label === "정기 수입/지출").disabled, true);
+  assert.equal(getMoneyBookMenu(7, false).flatMap((group) => group.items).some((item) => item.label === "카테고리"), false);
+  assert.equal(isMoneyBookRouteActive("/books/7/categories/12", "/books/7/categories", "/books/7"), true);
+  assert.equal(isMoneyBookRouteActive("/books/7/categories", "/books/7", "/books/7"), false);
+  assert.equal(isMoneyBookRouteActive("/books/7/accounts", "/books/7/categories", "/books/7"), false);
+});
+
+test("money book sidebar renders name, role, active route, and disabled entries", () => {
+  const book = { moneyBookUid: 7, name: "우리 집", isOwner: true, isAdmin: true };
+  const { default: Navigation } = loadModule("moneybook/components/MoneyBookNavigation.tsx", {
+    react: { useEffect: () => {}, useState: () => [false, () => {}] },
+    "next/link": { default: ({ href, children, ...props }) => React.createElement("a", { href, ...props }, children) },
+    "next/navigation": { usePathname: () => "/books/7/categories" },
+    "@/common/components/advertisement/DesktopAdRail": { default: () => null },
+    "../hooks/useMoneyBookPermission": { useMoneyBookPermission: () => ({ moneyBook: book, canRead: true }) },
+  });
+  const markup = renderToStaticMarkup(React.createElement(Navigation, { moneyBookUid: 7 }, React.createElement("p", null, "본문")));
+  assert.match(markup, /우리 집/);
+  assert.match(markup, /소유자/);
+  assert.match(markup, /href="\/books\/7\/categories" aria-current="page"/);
+  assert.match(markup, /href="\/books"/);
+  assert.match(markup, /aria-disabled="true"/);
+  assert.doesNotMatch(markup, /href="\/books\/7\/budgets"/);
+  assert.match(markup, /md:grid-cols-\[15rem_minmax\(0,1fr\)\]/);
+  assert.match(markup, /overflow-x-auto/);
+  assert.doesNotMatch(markup, /aria-label="광고"/);
+});
+
+test("mobile drawer opens, closes from overlay and navigation, and handles Escape", () => {
+  let open = false;
+  let effect;
+  let keyHandler;
+  const documentMock = {
+    body: { style: { overflow: "" } },
+    addEventListener: (_name, handler) => { keyHandler = handler; },
+    removeEventListener: () => {},
+  };
+  const { default: Navigation } = loadModule("moneybook/components/MoneyBookNavigation.tsx", {
+    react: { useEffect: (callback) => { effect = callback; }, useState: () => [open, (value) => { open = value; }] },
+    "next/link": { default: link },
+    "next/navigation": { usePathname: () => "/books/7/transactions" },
+    "@/common/components/advertisement/DesktopAdRail": { default: () => null },
+    "../hooks/useMoneyBookPermission": { useMoneyBookPermission: () => ({
+      moneyBook: { moneyBookUid: 7, name: "집", isOwner: false, isAdmin: true }, canRead: true,
+    }) },
+  }, { document: documentMock });
+  const navigationProps = { moneyBookUid: 7, children: null };
+  const render = () => Navigation(navigationProps);
+  const children = (element) => React.Children.toArray(element.props.children);
+  let page = render();
+  const header = children(page)[0];
+  const menuButton = children(header)[0];
+  assert.equal(menuButton.props["aria-expanded"], false);
+  menuButton.props.onClick();
+  page = render();
+  assert.equal(children(page).length, 3);
+  const drawer = children(page)[2];
+  const overlay = children(drawer)[0];
+  overlay.props.onClick();
+  assert.equal(open, false);
+
+  menuButton.props.onClick();
+  page = render();
+  const mobileAside = children(children(page)[2])[1];
+  const sidebar = children(mobileAside)[1];
+  sidebar.props.onNavigate();
+  assert.equal(open, false);
+
+  menuButton.props.onClick();
+  render();
+  const cleanup = effect();
+  assert.equal(documentMock.body.style.overflow, "hidden");
+  keyHandler({ key: "Escape" });
+  assert.equal(open, false);
+  cleanup();
+  assert.equal(documentMock.body.style.overflow, "");
+});
+
 test("admin permission forces create, read, update, and delete", () => {
   const { normalizePermissions, permissionSummary } = loadModule("moneybook/permissions.ts");
   const requested = { isAdmin: true, canCreate: false, canRead: false, canUpdate: false, canDelete: false };

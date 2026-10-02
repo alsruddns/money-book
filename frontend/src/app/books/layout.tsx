@@ -14,7 +14,7 @@ export default function BooksLayout({ children }: { children: React.ReactNode })
             </div>
           </nav>
         </header>
-        <main className="mx-auto w-full max-w-6xl px-4 py-7 sm:px-6 sm:py-10">{children}</main>
+        <main className="mx-auto w-full max-w-screen-2xl min-w-0 px-4 py-7 sm:px-6 sm:py-10">{children}</main>
       </div>
     </AuthGuard>
   );
