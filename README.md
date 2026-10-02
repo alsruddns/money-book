@@ -42,7 +42,8 @@ money-book/
 - **원장:** 카테고리, 계좌/결제수단, 수입·지출 거래 및 거래 검색
 - **가계부 기능:** 이체, 정기 거래, 대시보드, 캘린더, 예산, 월간·연간 리포트, 월 결산
 - **설정과 데이터:** 주 시작 요일 설정, CSV/XLSX 내보내기, JSON 백업·검증·미리보기·복원
-- **계정 관리:** 내 계정 정보 조회, 닉네임 변경, LOCAL 비밀번호 변경
+- **계정 관리:** 내 계정 정보 조회, 닉네임 변경, LOCAL 비밀번호 변경, 가계부 OWNER 이전, 회원 탈퇴
+  - OWNER 이전 UI, 탈퇴 전 소유권 이전 안내, LOCAL 비밀번호 재인증, 탈퇴 성공 후 토큰·인증 상태·API 캐시 정리
 - **레이아웃:** 데스크톱 사이드바, 모바일 내비게이션, 광고 슬롯 대응 구조
 - **System Admin:** 관리자 대시보드, 사용자 상태/역할 관리, 가계부 운영 조회, 전체 활동내역, SUPER_ADMIN 감사로그
 
@@ -70,7 +71,7 @@ money-book/
 
 ## Current Focus
 
-**현재 단계: OWNER 이전 / 회원 탈퇴 Frontend**
+**현재 단계: Session / Refresh Token Management Backend**
 
 다음 작업 순서:
 
@@ -137,9 +138,9 @@ money-book/
 - [x] LOCAL 비밀번호 변경 Backend
 - [x] Account Management Frontend
 - [x] OWNER 이전 Backend
-- [ ] OWNER 이전 Frontend
+- [x] OWNER 이전 Frontend
 - [x] 계정 탈퇴 Backend
-- [ ] 계정 탈퇴 Frontend
+- [x] 계정 탈퇴 Frontend
 - [ ] 개인정보 삭제 정책
 
 ### Phase 9 — 보안
