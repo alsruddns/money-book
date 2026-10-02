@@ -11,6 +11,7 @@ import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Path;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -48,6 +49,26 @@ public class TransactionSearchRepositoryImpl implements TransactionSearchReposit
         countQuery.select(cb.count(countRoot));
         countQuery.where(predicates(cb, countRoot, bookUid, request).toArray(Predicate[]::new));
         return new SearchResult(rows, em.createQuery(countQuery).getSingleResult());
+    }
+
+    /** Keyset batch for exports; memory and query cost do not grow with the number of prior pages. */
+    @Override
+    public List<MoneyBookTransaction> findNextBatch(Long bookUid, TransactionSearchRequest filters,
+                                                    java.time.LocalDate afterDate, Long afterUid, int limit) {
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery<MoneyBookTransaction> query = cb.createQuery(MoneyBookTransaction.class);
+        Root<MoneyBookTransaction> root = query.from(MoneyBookTransaction.class);
+        root.fetch("category");
+        root.fetch("account");
+        List<Predicate> where = predicates(cb, root, bookUid, filters);
+        if (afterDate != null && afterUid != null) {
+            Path<java.time.LocalDate> date = root.get("transactionDate");
+            Path<Long> uid = root.get("transactionUid");
+            where.add(cb.or(cb.lessThan(date, afterDate), cb.and(cb.equal(date, afterDate), cb.lessThan(uid, afterUid))));
+        }
+        query.where(where.toArray(Predicate[]::new));
+        query.orderBy(cb.desc(root.get("transactionDate")), cb.desc(root.get("transactionUid")));
+        return em.createQuery(query).setMaxResults(limit).getResultList();
     }
 
     private List<Predicate> predicates(CriteriaBuilder cb, Root<MoneyBookTransaction> root, Long bookUid,
