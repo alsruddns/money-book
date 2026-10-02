@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import com.moneybook.backend.security.ratelimit.RateLimitExceededException;
+import org.springframework.http.HttpHeaders;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -19,6 +21,14 @@ public class GlobalExceptionHandler {
         ErrorCode errorCode = exception.getErrorCode();
         return ResponseEntity.status(errorCode.getStatus())
                 .body(new ErrorResponse(errorCode.name(), errorCode.getMessage()));
+    }
+
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<ErrorResponse> handleRateLimitExceeded(RateLimitExceededException exception) {
+        return ResponseEntity.status(ErrorCode.RATE_LIMIT_EXCEEDED.getStatus())
+                .header(HttpHeaders.RETRY_AFTER, Long.toString(exception.getRetryAfterSeconds()))
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(new ErrorResponse(ErrorCode.RATE_LIMIT_EXCEEDED.name(), ErrorCode.RATE_LIMIT_EXCEEDED.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

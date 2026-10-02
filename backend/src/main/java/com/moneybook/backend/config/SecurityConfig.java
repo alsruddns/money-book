@@ -18,6 +18,11 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
+import org.springframework.security.config.Customizer;
+import org.springframework.http.MediaType;
+import java.nio.charset.StandardCharsets;
 
 @Configuration
 public class SecurityConfig {
@@ -49,18 +54,48 @@ public class SecurityConfig {
                         "/auth/logout", "/money-books", "/money-books/**", "/admin/**", "/account",
                         "/account/sessions/**"))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .headers(headers -> {
+                    headers.contentTypeOptions(Customizer.withDefaults());
+                    headers.frameOptions(frame -> frame.deny());
+                    headers.referrerPolicy(referrer -> referrer.policy(
+                            ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN));
+                    headers.httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true)
+                            .maxAgeInSeconds(31536000));
+                    headers.addHeaderWriter(new StaticHeadersWriter("Permissions-Policy",
+                            "camera=(), microphone=(), geolocation=()"));
+                    headers.addHeaderWriter(new StaticHeadersWriter("Content-Security-Policy",
+                            "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"));
+                })
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint((request, response, exception) ->
+                                writeSecurityError(response, 401, "UNAUTHORIZED", "인증이 필요합니다."))
+                        .accessDeniedHandler((request, response, exception) ->
+                                writeSecurityError(response, 403, "FORBIDDEN", "접근 권한이 없습니다.")))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/health").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/signup", "/auth/login", "/auth/refresh").permitAll()
                         .requestMatchers("/admin/**")
                         .access(new SystemAdminAuthorizationManager(systemAdminAuthorizationProvider.getIfAvailable()))
                         .anyRequest().authenticated())
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(activeUserConverter)))
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .authenticationEntryPoint((request, response, exception) ->
+                                writeSecurityError(response, 401, "UNAUTHORIZED", "인증이 필요합니다."))
+                        .accessDeniedHandler((request, response, exception) ->
+                                writeSecurityError(response, 403, "FORBIDDEN", "접근 권한이 없습니다."))
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(activeUserConverter)))
                 .build();
     }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    private static void writeSecurityError(jakarta.servlet.http.HttpServletResponse response,
+                                           int status, String code, String message) throws java.io.IOException {
+        response.setStatus(status);
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.getWriter().write("{\"code\":\"" + code + "\",\"message\":\"" + message + "\"}");
     }
 }

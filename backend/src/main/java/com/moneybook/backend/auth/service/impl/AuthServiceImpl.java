@@ -16,6 +16,9 @@ import com.moneybook.backend.entity.User;
 import com.moneybook.backend.entity.UserAuth;
 import com.moneybook.backend.entity.RefreshTokenSession;
 import com.moneybook.backend.session.repository.RefreshSessionRepository;
+import com.moneybook.backend.security.ratelimit.RateLimitExceededException;
+import com.moneybook.backend.security.ratelimit.RateLimitProperties;
+import com.moneybook.backend.security.ratelimit.RateLimiter;
 import com.moneybook.backend.enums.UserStatus;
 import com.moneybook.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +26,7 @@ import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,18 +36,25 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
+import java.util.Locale;
+import java.time.Duration;
 
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
     private static final String LOCAL_LOGIN_ID_CONSTRAINT = "uq_user_auth_local_login_id";
+    private static final String DUMMY_PASSWORD_HASH = new BCryptPasswordEncoder().encode(UUID.randomUUID().toString());
 
     private final UserRepository userRepository;
     private final UserAuthRepository userAuthRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshSessionRepository refreshSessions;
+    private final RateLimiter rateLimiter;
+    private final RateLimitProperties rateLimitProperties;
 
     /** Creates the user and LOCAL credentials atomically; a duplicate login ID rolls both inserts back. */
     @Override
@@ -76,8 +87,15 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public LoginResponse login(LoginRequest request, String userAgent, String ipAddress) {
-        UserAuth userAuth = userAuthRepository.findByLocalLoginId(request.loginId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.LOGIN_FAILED));
+        String normalizedLoginId = request.loginId().strip().toLowerCase(Locale.ROOT);
+        var loginLimit = rateLimiter.tryAcquire("login-id-5m", hashLoginId(normalizedLoginId),
+                rateLimitProperties.getLoginIdPer5Minutes(), Duration.ofMinutes(5));
+        if (!loginLimit.allowed()) throw new RateLimitExceededException(loginLimit.retryAfterSeconds());
+        UserAuth userAuth = userAuthRepository.findByLocalLoginId(request.loginId()).orElse(null);
+        if (userAuth == null) {
+            passwordEncoder.matches(request.password(), DUMMY_PASSWORD_HASH);
+            throw new BusinessException(ErrorCode.LOGIN_FAILED);
+        }
         if (!passwordEncoder.matches(request.password(), userAuth.getPasswordHash())) {
             throw new BusinessException(ErrorCode.LOGIN_FAILED);
         }
@@ -178,4 +196,14 @@ public class AuthServiceImpl implements AuthService {
         }
         return false;
     }
+
+    private String hashLoginId(String loginId) {
+        try {
+            return HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(loginId.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable", exception);
+        }
+    }
+
 }

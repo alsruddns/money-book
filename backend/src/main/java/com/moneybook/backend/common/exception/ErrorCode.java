@@ -52,6 +52,7 @@ public enum ErrorCode {
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "Refresh Token이 유효하지 않습니다."),
     REFRESH_SESSION_NOT_FOUND(HttpStatus.NOT_FOUND, "Refresh Session을 찾을 수 없습니다."),
     SESSION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "해당 Refresh Session에 접근할 수 없습니다."),
+    RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "요청 횟수 제한을 초과했습니다. 잠시 후 다시 시도해 주세요."),
     INVALID_ACCESS_TOKEN(HttpStatus.UNAUTHORIZED, "Access Token이 유효하지 않습니다."),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."),
     LOCAL_AUTH_NOT_FOUND(HttpStatus.BAD_REQUEST, "LOCAL 계정만 비밀번호를 변경할 수 있습니다."),

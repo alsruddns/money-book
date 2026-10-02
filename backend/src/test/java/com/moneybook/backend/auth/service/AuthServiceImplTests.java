@@ -11,6 +11,10 @@ import com.moneybook.backend.auth.repository.UserAuthRepository;
 import com.moneybook.backend.auth.service.impl.AuthServiceImpl;
 import com.moneybook.backend.auth.token.JwtTokenProvider;
 import com.moneybook.backend.session.repository.RefreshSessionRepository;
+import com.moneybook.backend.security.ratelimit.RateLimitDecision;
+import com.moneybook.backend.security.ratelimit.RateLimitProperties;
+import com.moneybook.backend.security.ratelimit.RateLimiter;
+import com.moneybook.backend.security.ratelimit.RateLimitExceededException;
 import com.moneybook.backend.common.exception.BusinessException;
 import com.moneybook.backend.common.exception.ErrorCode;
 import com.moneybook.backend.entity.User;
@@ -20,6 +24,7 @@ import com.moneybook.backend.enums.AuthProvider;
 import com.moneybook.backend.enums.UserStatus;
 import com.moneybook.backend.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.mockito.ArgumentCaptor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -33,6 +38,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -45,8 +52,17 @@ class AuthServiceImplTests {
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final JwtTokenProvider jwtTokenProvider = mock(JwtTokenProvider.class);
     private final RefreshSessionRepository refreshSessions = mock(RefreshSessionRepository.class);
+    private final RateLimiter rateLimiter = mock(RateLimiter.class);
+    private final RateLimitProperties rateLimitProperties = new RateLimitProperties();
     private final AuthServiceImpl service = new AuthServiceImpl(
-            userRepository, userAuthRepository, passwordEncoder, jwtTokenProvider, refreshSessions);
+            userRepository, userAuthRepository, passwordEncoder, jwtTokenProvider, refreshSessions,
+            rateLimiter, rateLimitProperties);
+
+    @BeforeEach
+    void allowLoginRateLimitByDefault() {
+        when(rateLimiter.tryAcquire(anyString(), anyString(), anyInt(), any()))
+                .thenReturn(new RateLimitDecision(true, 0));
+    }
 
     @Test
     void signUpStoresOnlyBcryptHashAndLocalIdentity() {
@@ -212,6 +228,24 @@ class AuthServiceImplTests {
                 () -> service.refresh(new RefreshRequest("refresh-token")));
 
         assertEquals(ErrorCode.USER_INACTIVE, exception.getErrorCode());
+    }
+
+    @Test
+    void loginRateLimitUsesNormalizedHashedLoginIdAndStopsBeforeCredentialLookup() {
+        when(rateLimiter.tryAcquire(org.mockito.ArgumentMatchers.eq("login-id-5m"), anyString(), anyInt(), any()))
+                .thenReturn(new RateLimitDecision(false, 37));
+
+        RateLimitExceededException exception = assertThrows(RateLimitExceededException.class,
+                () -> service.login(new LoginRequest(" Member ", "wrong-password"), null, null));
+
+        assertEquals(37, exception.getRetryAfterSeconds());
+        verifyNoInteractions(userAuthRepository);
+        ArgumentCaptor<String> key = ArgumentCaptor.forClass(String.class);
+        verify(rateLimiter).tryAcquire(org.mockito.ArgumentMatchers.eq("login-id-5m"), key.capture(),
+                org.mockito.ArgumentMatchers.eq(rateLimitProperties.getLoginIdPer5Minutes()),
+                org.mockito.ArgumentMatchers.eq(java.time.Duration.ofMinutes(5)));
+        assertEquals(64, key.getValue().length());
+        assertFalse("member".equals(key.getValue()));
     }
 
     @Test
