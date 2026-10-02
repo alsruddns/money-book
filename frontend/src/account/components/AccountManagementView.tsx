@@ -6,6 +6,7 @@ import { useAccountMe } from "../hooks/useAccountMe";
 import { useUpdateAccountPassword } from "../hooks/useUpdateAccountPassword";
 import { useUpdateAccountProfile } from "../hooks/useUpdateAccountProfile";
 import { useWithdrawAccount } from "../hooks/useWithdrawAccount";
+import SessionSection from "./SessionSection";
 
 const emptyPassword = { currentPassword: "", newPassword: "", newPasswordConfirm: "" };
 const fieldClass = "mt-1 min-h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-zinc-900";
@@ -126,6 +127,8 @@ function AccountDetailsView({ account }: { account: NonNullable<ReturnType<typeo
           </button>
         </form>}
     </section>
+
+    <SessionSection />
 
     <section aria-labelledby="withdrawal-title" className="rounded-xl border border-red-300 bg-red-50 p-5 sm:p-6">
       <h2 id="withdrawal-title" className="text-lg font-semibold text-red-950">회원 탈퇴</h2>

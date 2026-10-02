@@ -33,7 +33,7 @@ function createHarness(initialTokens, handleRequest) {
   const requireMock = (name) => {
     if (name === "@reduxjs/toolkit/query/react") {
       return {
-        createApi: () => ({}),
+        createApi: () => ({ util: { resetApiState: () => ({ type: "api/reset" }) } }),
         fetchBaseQuery: (config) => { baseUrl = config.baseUrl; return async (args) => {
           const headers = config.prepareHeaders(new Headers(), { arg: args });
           const url = typeof args === "string" ? args : args.url;
@@ -49,6 +49,9 @@ function createHarness(initialTokens, handleRequest) {
         setTokens: (payload) => ({ type: "auth/setTokens", payload }),
       };
     }
+    if (name === "@/auth/session/clearLocalSession") return {
+      clearLocalSession: (dispatch, resetCache) => { storage.clearTokens(); dispatch({ type: "auth/clearAuth" }); resetCache?.(); },
+    };
     throw new Error(`Unexpected import: ${name}`);
   };
   vm.runInNewContext(compiled, {
@@ -91,7 +94,7 @@ test("a 401 refreshes access token and retries the original request once", async
     { accessToken: "expired", refreshToken: "refresh-secret" },
     (args, headers) => {
       const url = typeof args === "string" ? args : args.url;
-      if (url === "auth/refresh") return { data: { accessToken: "new-access" } };
+      if (url === "auth/refresh") return { data: { accessToken: "new-access", refreshToken: "rotated-refresh" } };
       if (headers.get("Authorization") === "Bearer expired") return { error: { status: 401 } };
       return { data: { userUid: 1 } };
     },
@@ -104,7 +107,7 @@ test("a 401 refreshes access token and retries the original request once", async
   assert.equal(harness.calls[1].body.refreshToken, "refresh-secret");
   assert.equal(harness.calls[2].authorization, "Bearer new-access");
   assert.equal(harness.getTokens().accessToken, "new-access");
-  assert.equal(harness.getTokens().refreshToken, "refresh-secret");
+  assert.equal(harness.getTokens().refreshToken, "rotated-refresh");
   assert.equal(harness.actions[0].type, "auth/setTokens");
 });
 
@@ -113,7 +116,7 @@ test("a stored refresh token can restore a session without an access token", asy
     { accessToken: "", refreshToken: "refresh-secret" },
     (args, headers) => {
       const url = typeof args === "string" ? args : args.url;
-      if (url === "auth/refresh") return { data: { accessToken: "restored-access" } };
+      if (url === "auth/refresh") return { data: { accessToken: "restored-access", refreshToken: "restored-refresh" } };
       if (!headers.get("Authorization")) return { error: { status: 401 } };
       return { data: { userUid: 1 } };
     },
@@ -133,7 +136,7 @@ test("simultaneous 401 responses share one refresh request", async () => {
       if (url === "auth/refresh") {
         refreshCount++;
         await new Promise((resolve) => setTimeout(resolve, 10));
-        return { data: { accessToken: "new-access" } };
+        return { data: { accessToken: "new-access", refreshToken: "rotated-refresh" } };
       }
       if (headers.get("Authorization") === "Bearer expired") return { error: { status: 401 } };
       return { data: { userUid: 1 } };
@@ -154,6 +157,7 @@ test("failed refresh clears tokens and auth state without repeating", async () =
   assert.equal(result.error.status, 401);
   assert.equal(harness.getTokens(), null);
   assert.equal(harness.actions[0].type, "auth/clearAuth");
+  assert.equal(harness.actions[1].type, "api/reset");
   assert.equal(harness.calls.length, 2);
 });
 
@@ -175,14 +179,15 @@ test("a second 401 after retry clears auth without another refresh", async () =>
     (args) => {
       const url = typeof args === "string" ? args : args.url;
       return url === "auth/refresh"
-        ? { data: { accessToken: "new-access" } }
+        ? { data: { accessToken: "new-access", refreshToken: "rotated-refresh" } }
         : { error: { status: 401 } };
     },
   );
   await harness.query("auth/me");
   assert.equal(harness.calls.length, 3);
   assert.equal(harness.getTokens(), null);
-  assert.equal(harness.actions.at(-1).type, "auth/clearAuth");
+  assert.equal(harness.actions.some((action) => action.type === "auth/clearAuth"), true);
+  assert.equal(harness.actions.at(-1).type, "api/reset");
 });
 
 test("auth state initializes from stored tokens and clears after recovery failure", () => {

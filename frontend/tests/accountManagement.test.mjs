@@ -60,6 +60,7 @@ test("Account endpoints match backend routes and invalidate AccountMe/AuthMe nar
 test("auth/me has a cache tag for nickname refresh after profile updates", () => {
   const { authApi } = loadModule("auth/controller/authApi.ts", { "@/common/api/baseApi": baseApi });
   assert.equal(authApi.getCurrentUser.query(), "auth/me");
+  assert.deepEqual(plain(authApi.logout.query()), { url: "auth/logout", method: "POST" });
   assert.deepEqual(plain(authApi.getCurrentUser.providesTags), ["AuthMe"]);
 });
 
@@ -106,16 +107,27 @@ test("password hook sends the backend DTO, returns backend errors and never logs
   let hookError = null;
   const { useUpdateAccountPassword } = loadModule("account/hooks/useUpdateAccountPassword.ts", {
     react: { useState: (initial) => [initial, (value) => { hookError = value; }] },
+    "next/navigation": { useRouter: () => ({ replace: (path) => routes.push(path) }) },
+    "react-redux": { useDispatch: () => (action) => dispatched.push(action) },
     "@/common/api/getApiErrorMessage": { getApiErrorMessage: () => "현재 비밀번호가 올바르지 않습니다." },
+    "@/common/api/baseApi": { baseApi: { util: { resetApiState: () => ({ type: "RESET_API" }) } } },
+    "@/auth/session/clearLocalSession": { clearLocalSession: (dispatch, reset) => { cleanupEvents.push("clear"); dispatch({ type: "CLEAR_AUTH" }); reset(); } },
+    "@/store/store": {},
     "../accountValidation": { validatePasswordUpdate: () => null },
     "../controller/accountApi": { useUpdateAccountPasswordMutation: () => [(body) => ({
       unwrap: async () => { calls.push(body); if (body.currentPassword === "wrong") throw new Error("bad"); },
     }), { isLoading: false }] },
   });
+  const routes = [];
+  const dispatched = [];
+  const cleanupEvents = [];
   const hook = useUpdateAccountPassword();
   const request = { currentPassword: "old", newPassword: "new", newPasswordConfirm: "new" };
   assert.equal(await hook.updatePassword(request), true);
   assert.deepEqual(plain(calls), [request]);
+  assert.deepEqual(plain(dispatched), [{ type: "CLEAR_AUTH" }, { type: "RESET_API" }]);
+  assert.deepEqual(cleanupEvents, ["clear"]);
+  assert.deepEqual(routes, ["/login?reason=password-changed"]);
   assert.equal(await hook.updatePassword({ ...request, currentPassword: "wrong" }), false);
   assert.equal(hookError, "현재 비밀번호가 올바르지 않습니다.");
   const source = fs.readFileSync(path.join(testDirectory, "../src/account/hooks/useUpdateAccountPassword.ts"), "utf8");
@@ -130,6 +142,7 @@ function renderAccountView(accountResponse) {
     "../hooks/useUpdateAccountProfile": { useUpdateAccountProfile: () => ({ isLoading: false }) },
     "../hooks/useUpdateAccountPassword": { useUpdateAccountPassword: () => ({ isLoading: false }) },
     "../hooks/useWithdrawAccount": { useWithdrawAccount: () => ({ isLoading: false, errorMessage: null, withdraw: async () => true }) },
+    "./SessionSection": { default: () => null },
   });
   return renderToStaticMarkup(React.createElement(View));
 }
@@ -170,8 +183,7 @@ test("withdrawal keeps auth on failure and clears tokens, auth and API cache onl
     "react-redux": { useDispatch: () => (action) => dispatched.push(action) },
     "@/common/api/getApiErrorMessage": { getApiErrorMessage: () => "fallback" },
     "@/common/api/baseApi": { baseApi: { util: { resetApiState: () => ({ type: "RESET_API" }) } } },
-    "@/auth/storage/tokenStorage": { tokenStorage: { clearTokens: () => tokenEvents.push(["clear"]) } },
-    "@/auth/store/authSlice": { clearAuth: () => ({ type: "CLEAR_AUTH" }) },
+    "@/auth/session/clearLocalSession": { clearLocalSession: (dispatch, reset) => { tokenEvents.push(["clear"]); dispatch({ type: "CLEAR_AUTH" }); reset(); } },
     "@/store/store": {},
     "../controller/accountApi": { useWithdrawAccountMutation: () => [(body) => ({ unwrap: async () => { sent = body; if (responseError) throw responseError; } }), { isLoading: false }] },
   }, { TextEncoder });
@@ -205,6 +217,7 @@ test("account screen shows read-only role/status/provider labels and account loa
     "../hooks/useUpdateAccountProfile": { useUpdateAccountProfile: () => ({ isLoading: false }) },
     "../hooks/useUpdateAccountPassword": { useUpdateAccountPassword: () => ({ isLoading: false }) },
     "../hooks/useWithdrawAccount": { useWithdrawAccount: () => ({ isLoading: false, errorMessage: null, withdraw: async () => true }) },
+    "./SessionSection": { default: () => null },
   });
   const markup = renderToStaticMarkup(React.createElement(View));
   assert.match(markup, /잠시 후 다시 시도해 주세요/);
@@ -261,6 +274,7 @@ test("profile form starts with current nickname, skips unchanged values, and cle
       updatePassword: async (request) => { calls.password.push(request); return true; },
     }) },
     "../hooks/useWithdrawAccount": { useWithdrawAccount: () => ({ isLoading: false, errorMessage: null, withdraw: async () => true }) },
+    "./SessionSection": { default: () => null },
   });
   function visit(value, elements) {
     if (!value || typeof value !== "object") return;

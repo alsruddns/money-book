@@ -9,6 +9,9 @@ import type { CurrentUserResponse } from "../dto/res/CurrentUserResponse";
 
 export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    logout: builder.mutation<void, void>({
+      query: () => ({ url: "auth/logout", method: "POST" }),
+    }),
     signup: builder.mutation<SignUpResDto, SignUpReqDto>({
       query: (body) => ({ url: "auth/signup", method: "POST", body }),
     }),
@@ -28,6 +31,7 @@ export const authApi = baseApi.injectEndpoints({
 export const {
   useSignupMutation,
   useLoginMutation,
+  useLogoutMutation,
   useRefreshTokenMutation,
   useGetCurrentUserQuery,
 } = authApi;

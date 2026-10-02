@@ -1,7 +1,8 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import { tokenStorage } from "@/auth/storage/tokenStorage";
-import { clearAuth, setTokens } from "@/auth/store/authSlice";
+import { setTokens } from "@/auth/store/authSlice";
+import { clearLocalSession } from "@/auth/session/clearLocalSession";
 
 function isPublicAuthRequest(url: string): boolean {
   const path = url.replace(/^\//, "");
@@ -23,8 +24,7 @@ const rawBaseQuery = fetchBaseQuery({
 let refreshPromise: Promise<boolean> | null = null;
 
 function clearStoredAuth(dispatch: Parameters<BaseQueryFn>[1]["dispatch"]) {
-  tokenStorage.clearTokens();
-  dispatch(clearAuth());
+  clearLocalSession(dispatch, () => dispatch(baseApi.util.resetApiState()));
 }
 
 export const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> =
@@ -57,12 +57,14 @@ export const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, Fetch
         const data = refreshResult.data;
         if (
           !refreshResult.error && typeof data === "object" && data !== null &&
-          "accessToken" in data && typeof data.accessToken === "string" && data.accessToken
+          "accessToken" in data && typeof data.accessToken === "string" && data.accessToken &&
+          "refreshToken" in data && typeof data.refreshToken === "string" && data.refreshToken
         ) {
           const current = tokenStorage.getTokens();
           if (current?.refreshToken !== refreshToken) return false;
-          const updated = tokenStorage.updateAccessToken(data.accessToken);
-          if (updated) {
+          const updated = { accessToken: data.accessToken, refreshToken: data.refreshToken };
+          tokenStorage.setTokens(updated);
+          if (tokenStorage.getTokens()?.refreshToken === updated.refreshToken) {
             api.dispatch(setTokens(updated));
             return true;
           }
@@ -87,6 +89,6 @@ export const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, Fetch
 export const baseApi = createApi({
   reducerPath: "baseApi",
   baseQuery: baseQueryWithReauth,
-  tagTypes: ["MoneyBook", "MoneyBookInvitation", "MoneyBookMember", "MoneyBookSetting", "MoneyBookActivity", "Category", "Account", "AccountMe", "AuthMe", "Transaction", "Calendar", "Budget", "Transfer", "Recurring", "Report", "Closing", "AdminMe", "AdminOverview", "AdminUser", "AdminUserList", "AdminMoneyBook", "AdminMoneyBookList", "AdminActivity", "AdminAuditLog"],
+  tagTypes: ["MoneyBook", "MoneyBookInvitation", "MoneyBookMember", "MoneyBookSetting", "MoneyBookActivity", "Category", "Account", "AccountMe", "AccountSessions", "AuthMe", "Transaction", "Calendar", "Budget", "Transfer", "Recurring", "Report", "Closing", "AdminMe", "AdminOverview", "AdminUser", "AdminUserList", "AdminMoneyBook", "AdminMoneyBookList", "AdminActivity", "AdminAuditLog"],
   endpoints: () => ({}),
 });

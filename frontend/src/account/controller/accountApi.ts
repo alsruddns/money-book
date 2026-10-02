@@ -6,6 +6,7 @@ import type { AccountProfileUpdateReqDto } from "../dto/req/AccountProfileUpdate
 import type { AccountPasswordUpdateReqDto } from "../dto/req/AccountPasswordUpdateReqDto";
 import type { AccountMeResDto } from "../dto/res/AccountMeResDto";
 import type { AccountWithdrawalRequest } from "../dto/req/AccountWithdrawalRequest";
+import type { RefreshSessionResponse } from "../dto/res/RefreshSessionResponse";
 
 interface AccountKey { moneyBookUid: number; accountUid: number }
 interface CreateArg { moneyBookUid: number; request: CreateAccountRequest }
@@ -27,6 +28,17 @@ export const accountApi = baseApi.injectEndpoints({
     }),
     withdrawAccount: builder.mutation<void, AccountWithdrawalRequest>({
       query: (body) => ({ url: "account", method: "DELETE", body }),
+    }),
+    getAccountSessions: builder.query<RefreshSessionResponse[], void>({
+      query: () => "account/sessions",
+      providesTags: ["AccountSessions"],
+    }),
+    revokeAccountSession: builder.mutation<void, number>({
+      query: (sessionUid) => ({ url: `account/sessions/${sessionUid}`, method: "DELETE" }),
+      invalidatesTags: (_result, error) => error ? [] : ["AccountSessions"],
+    }),
+    logoutAllAccountSessions: builder.mutation<void, void>({
+      query: () => ({ url: "account/sessions/logout-all", method: "POST" }),
     }),
     getAccounts: builder.query<AccountResponse[], number>({
       query: (moneyBookUid) => `money-books/${moneyBookUid}/accounts`,
@@ -59,6 +71,9 @@ export const {
   useUpdateAccountProfileMutation,
   useUpdateAccountPasswordMutation,
   useWithdrawAccountMutation,
+  useGetAccountSessionsQuery,
+  useRevokeAccountSessionMutation,
+  useLogoutAllAccountSessionsMutation,
   useGetAccountsQuery,
   useCreateAccountMutation,
   useUpdateAccountMutation,

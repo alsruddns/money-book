@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useLogin } from "../hooks/useLogin";
 
-export default function LoginForm() {
+export default function LoginForm({ notice }: { notice?: string } = {}) {
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const { login, isLoading, errorMessage } = useLogin();
@@ -16,6 +16,7 @@ export default function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      {notice && <p role="status" className="rounded-lg bg-blue-50 p-3 text-sm text-blue-900">{notice}</p>}
       <div>
         <label htmlFor="loginId" className="mb-1 block text-sm font-medium">로그인 ID</label>
         <input id="loginId" name="loginId" autoComplete="username" required value={loginId}

@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { getApiErrorMessage } from "@/common/api/getApiErrorMessage";
 import { baseApi } from "@/common/api/baseApi";
-import { tokenStorage } from "@/auth/storage/tokenStorage";
-import { clearAuth } from "@/auth/store/authSlice";
+import { clearLocalSession } from "@/auth/session/clearLocalSession";
 import type { AppDispatch } from "@/store/store";
 import { useWithdrawAccountMutation } from "../controller/accountApi";
 
@@ -34,9 +33,7 @@ export function useWithdrawAccount() {
     setErrorMessage(null);
     try {
       await withdrawMutation({ currentPassword }).unwrap();
-      tokenStorage.clearTokens();
-      dispatch(clearAuth());
-      dispatch(baseApi.util.resetApiState());
+      clearLocalSession(dispatch, () => dispatch(baseApi.util.resetApiState()));
       router.replace("/login");
       return true;
     } catch (error) {
