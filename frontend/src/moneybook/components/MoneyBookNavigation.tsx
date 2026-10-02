@@ -16,12 +16,14 @@ export function getMoneyBookMenu(moneyBookUid: number, canRead: boolean): MenuGr
     { label: "캘린더", href: `${root}/calendar` },
     { label: "거래내역", href: `${root}/transactions` },
     { label: "이체", href: `${root}/transfers` },
+    { label: "리포트", href: `${root}/reports` },
   ] : [];
   const management = canRead ? [
     { label: "카테고리", href: `${root}/categories` },
     { label: "계좌/결제수단", href: `${root}/accounts` },
     { label: "예산", href: `${root}/budgets` },
     { label: "정기 수입/지출", href: `${root}/recurring-transactions` },
+    { label: "월 결산", href: `${root}/closings` },
   ] : [];
   return [
     { label: "주요 메뉴", items: [{ label: "대시보드", href: root }, ...readable] },
