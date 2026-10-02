@@ -117,7 +117,7 @@ public class AuthServiceImpl implements AuthService {
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw new BusinessException(ErrorCode.USER_INACTIVE);
         }
-        return new CurrentUserResponse(user.getUserUid(), user.getNickname(), user.getStatus());
+        return new CurrentUserResponse(user.getUserUid(), user.getNickname(), user.getStatus(), user.getSystemRole());
     }
 
     private boolean isDuplicateLocalLoginId(Throwable exception) {

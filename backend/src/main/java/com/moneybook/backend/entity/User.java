@@ -1,6 +1,7 @@
 package com.moneybook.backend.entity;
 
 import com.moneybook.backend.enums.UserStatus;
+import com.moneybook.backend.enums.SystemRole;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -36,10 +37,15 @@ public class User extends BaseEntity {
     @Column(name = "profile_image_url", length = 500)
     private String profileImageUrl;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "system_role", nullable = false, length = 30)
+    private SystemRole systemRole;
+
     private User(String nickname, String profileImageUrl) {
         this.nickname = requireText(nickname, "nickname");
         this.profileImageUrl = profileImageUrl;
         this.status = UserStatus.ACTIVE;
+        this.systemRole = SystemRole.USER;
     }
 
     public static User create(String nickname, String profileImageUrl) {
@@ -56,6 +62,10 @@ public class User extends BaseEntity {
 
     public void changeStatus(UserStatus status) {
         this.status = Objects.requireNonNull(status, "status");
+    }
+
+    public void changeSystemRole(SystemRole systemRole) {
+        this.systemRole = Objects.requireNonNull(systemRole, "systemRole");
     }
 
     private static String requireText(String value, String fieldName) {

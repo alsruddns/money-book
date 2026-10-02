@@ -163,7 +163,8 @@ class AuthControllerTests {
 
     @Test
     void meReturnsCurrentUserWithAccessToken() throws Exception {
-        when(authService.currentUser(any())).thenReturn(new CurrentUserResponse(42L, "닉네임", UserStatus.ACTIVE));
+        when(authService.currentUser(any())).thenReturn(new CurrentUserResponse(42L, "닉네임",
+                UserStatus.ACTIVE, com.moneybook.backend.enums.SystemRole.USER));
 
         mockMvc.perform(get("/api/auth/me").contextPath("/api")
                         .header("Authorization", "Bearer " + token(JwtTokenType.ACCESS)))
