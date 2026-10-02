@@ -1,0 +1,17 @@
+import { baseApi } from "@/common/api/baseApi";
+import type { AdminActivityQuery, AdminActivityResponse, AdminAuditLogResponse, AdminAuditQuery, AdminMeResponse, AdminMoneyBookDetailResponse, AdminMoneyBookResponse, AdminOverviewResponse, AdminPageResponse, AdminUserDetailResponse, AdminUserResponse, AdminListQuery } from "../dto/AdminDtos";
+
+const params = (values: Record<string, string | number | undefined>) => Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined && value !== ""));
+export const adminApi = baseApi.injectEndpoints({ endpoints: (builder) => ({
+  getAdminMe: builder.query<AdminMeResponse, void>({ query: () => "admin/me", providesTags: ["AdminMe"] }),
+  getAdminOverview: builder.query<AdminOverviewResponse, void>({ query: () => "admin/overview", providesTags: ["AdminOverview"] }),
+  getAdminUsers: builder.query<AdminPageResponse<AdminUserResponse>, AdminListQuery>({ query: ({ page, size, ...filters }) => ({ url: "admin/users", params: params({ ...filters, page, size }) }), providesTags: (result) => [{ type: "AdminUserList", id: "LIST" }, ...(result?.content ?? []).map(({ userUid }) => ({ type: "AdminUser" as const, id: userUid }))] }),
+  getAdminUser: builder.query<AdminUserDetailResponse, number>({ query: (uid) => `admin/users/${uid}`, providesTags: (_result, _error, uid) => [{ type: "AdminUser", id: uid }] }),
+  changeAdminUserStatus: builder.mutation<AdminUserDetailResponse, { userUid: number; status: "ACTIVE" | "BLOCKED" }>({ query: ({ userUid, status }) => ({ url: `admin/users/${userUid}/status`, method: "PATCH", body: { status } }), invalidatesTags: (_r, e, { userUid }) => e ? [] : [{ type: "AdminUser", id: userUid }, { type: "AdminUserList", id: "LIST" }, "AdminOverview"] }),
+  changeAdminSystemRole: builder.mutation<AdminUserDetailResponse, { userUid: number; systemRole: "USER" | "SYSTEM_ADMIN" }>({ query: ({ userUid, systemRole }) => ({ url: `admin/users/${userUid}/system-role`, method: "PATCH", body: { systemRole } }), invalidatesTags: (_r, e, { userUid }) => e ? [] : [{ type: "AdminUser", id: userUid }, { type: "AdminUserList", id: "LIST" }, "AdminOverview"] }),
+  getAdminMoneyBooks: builder.query<AdminPageResponse<AdminMoneyBookResponse>, AdminListQuery>({ query: ({ page, size, ...filters }) => ({ url: "admin/money-books", params: params({ ...filters, page, size }) }), providesTags: (result) => [{ type: "AdminMoneyBookList", id: "LIST" }, ...(result?.content ?? []).map(({ moneyBookUid }) => ({ type: "AdminMoneyBook" as const, id: moneyBookUid }))] }),
+  getAdminMoneyBook: builder.query<AdminMoneyBookDetailResponse, number>({ query: (uid) => `admin/money-books/${uid}`, providesTags: (_r, _e, uid) => [{ type: "AdminMoneyBook", id: uid }] }),
+  getAdminActivities: builder.query<AdminPageResponse<AdminActivityResponse>, AdminActivityQuery>({ query: ({ page, size, ...filters }) => ({ url: "admin/activities", params: params({ ...filters, page, size }) }), providesTags: ["AdminActivity"] }),
+  getAdminAuditLogs: builder.query<AdminPageResponse<AdminAuditLogResponse>, AdminAuditQuery>({ query: ({ page, size, ...filters }) => ({ url: "admin/audit-logs", params: params({ ...filters, page, size }) }), providesTags: ["AdminAuditLog"] }),
+}) });
+export const { useGetAdminMeQuery, useGetAdminOverviewQuery, useGetAdminUsersQuery, useGetAdminUserQuery, useChangeAdminUserStatusMutation, useChangeAdminSystemRoleMutation, useGetAdminMoneyBooksQuery, useGetAdminMoneyBookQuery, useGetAdminActivitiesQuery, useGetAdminAuditLogsQuery } = adminApi;
