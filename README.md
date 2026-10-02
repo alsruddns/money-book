@@ -32,6 +32,7 @@ money-book/
 - **검색과 분석:** 거래 검색 및 페이지 조회, 월간·연간 리포트, 카테고리·계좌 통계, 전월 비교
 - **월 결산:** 결산 snapshot, 결산 취소, 결산된 기간의 거래 변경 제한
 - **데이터 관리:** CSV/XLSX 내보내기, JSON 백업 검증·미리보기·새 가계부로 복원, 가계부 주 시작 요일 설정
+- **계정 관리:** 내 계정 조회, 닉네임 변경, LOCAL 비밀번호 변경
 - **감사 및 운영:** 가계부 활동내역, 서비스 전역 System Admin API, 관리자 운영 조회 및 감사로그
 
 ### Frontend
@@ -40,6 +41,7 @@ money-book/
 - **원장:** 카테고리, 계좌/결제수단, 수입·지출 거래 및 거래 검색
 - **가계부 기능:** 이체, 정기 거래, 대시보드, 캘린더, 예산, 월간·연간 리포트, 월 결산
 - **설정과 데이터:** 주 시작 요일 설정, CSV/XLSX 내보내기, JSON 백업·검증·미리보기·복원
+- **계정 관리:** 계정 조회·프로필·비밀번호 변경 화면은 구현 예정
 - **레이아웃:** 데스크톱 사이드바, 모바일 내비게이션, 광고 슬롯 대응 구조
 - **System Admin:** 관리자 대시보드, 사용자 상태/역할 관리, 가계부 운영 조회, 전체 활동내역, SUPER_ADMIN 감사로그
 
@@ -67,19 +69,17 @@ money-book/
 
 ## Current Focus
 
-**현재 단계: Account Management Backend**
+**현재 단계: Account Management Frontend**
 
 다음 작업 순서:
 
-1. Account Management Backend
-2. Account Management Frontend
-3. Owner 이전 및 계정 탈퇴
-4. Session 및 Refresh Token 관리
-5. Rate limiting 및 보안 강화
-6. UX 일관성 개선
-7. 모니터링
-8. CI/CD
-9. 운영 배포
+1. Owner 이전 및 계정 탈퇴
+2. Session 및 Refresh Token 관리
+3. Rate limiting 및 보안 강화
+4. UX 일관성 개선
+5. 모니터링
+6. CI/CD
+7. 운영 배포
 
 ## Development Roadmap
 
@@ -133,8 +133,9 @@ money-book/
 
 ### Phase 8 — 계정 관리
 
-- [ ] 프로필 및 닉네임 변경
-- [ ] 비밀번호 변경
+- [x] 내 계정 조회 및 닉네임 변경 Backend
+- [x] LOCAL 비밀번호 변경 Backend
+- [ ] Account Management Frontend
 - [ ] OWNER 이전
 - [ ] 계정 탈퇴
 - [ ] 개인정보 삭제 정책
