@@ -3,6 +3,8 @@ package com.moneybook.backend.common.exception;
 import org.springframework.http.HttpStatus;
 
 public enum ErrorCode {
+    BUDGET_CATEGORY_SUM_EXCEEDED(HttpStatus.BAD_REQUEST, "카테고리 예산 합계가 총예산을 초과합니다."),
+    BUDGET_CATEGORY_NOT_EXPENSE(HttpStatus.BAD_REQUEST, "지출 카테고리에만 예산을 설정할 수 있습니다."),
     RECURRING_TRANSACTION_NOT_FOUND(HttpStatus.NOT_FOUND, "정기 거래 규칙을 찾을 수 없습니다."),
     INVALID_RECURRING_DAY(HttpStatus.BAD_REQUEST, "정기 거래 주기와 예정일 설정이 올바르지 않습니다."),
     INVALID_RECURRING_DATE_RANGE(HttpStatus.BAD_REQUEST, "정기 거래 시작일과 종료일이 올바르지 않습니다."),

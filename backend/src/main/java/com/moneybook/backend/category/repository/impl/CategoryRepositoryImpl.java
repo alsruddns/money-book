@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository
 @RequiredArgsConstructor
@@ -32,6 +33,11 @@ public class CategoryRepositoryImpl implements CategoryRepository {
     @Override
     public Optional<MoneyBookCategory> findByIdAndMoneyBookUid(Long categoryUid, Long moneyBookUid) {
         return jpa.findByCategoryUidAndMoneyBook_MoneyBookUid(categoryUid, moneyBookUid);
+    }
+
+    @Override
+    public List<MoneyBookCategory> findAllByMoneyBookUidAndIds(Long moneyBookUid, Set<Long> categoryUids) {
+        return categoryUids.isEmpty() ? List.of() : jpa.findByMoneyBook_MoneyBookUidAndCategoryUidIn(moneyBookUid, categoryUids);
     }
 
     @Override

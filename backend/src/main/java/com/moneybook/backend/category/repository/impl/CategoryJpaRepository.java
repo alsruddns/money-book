@@ -8,9 +8,11 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface CategoryJpaRepository extends JpaRepository<MoneyBookCategory, Long> {
     Optional<MoneyBookCategory> findByCategoryUidAndMoneyBook_MoneyBookUid(Long categoryUid, Long moneyBookUid);
+    List<MoneyBookCategory> findByMoneyBook_MoneyBookUidAndCategoryUidIn(Long moneyBookUid, Set<Long> categoryUids);
 
     List<MoneyBookCategory> findByMoneyBook_MoneyBookUidOrderByTransactionTypeAscSortOrderAscCategoryUidAsc(
             Long moneyBookUid);
