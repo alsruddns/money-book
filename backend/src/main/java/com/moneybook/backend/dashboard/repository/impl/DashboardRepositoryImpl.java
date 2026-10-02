@@ -87,4 +87,40 @@ public class DashboardRepositoryImpl implements DashboardRepository {
                 .setParameter("bookUid", bookUid).setParameter("start", start)
                 .setParameter("end", endExclusive).getResultList();
     }
+
+    /** Returns only the requested largest expense rows with display names joined in the same query. */
+    @Override
+    public List<TopExpense> topExpenses(Long bookUid, LocalDate start, LocalDate endExclusive, int limit) {
+        return em.createQuery("""
+                select new com.moneybook.backend.dashboard.repository.DashboardRepository$TopExpense(
+                    t.transactionUid, t.transactionDate, c.categoryUid, c.name,
+                    a.accountUid, a.name, t.memo, t.amount)
+                from MoneyBookTransaction t join t.category c join t.account a
+                where t.moneyBook.moneyBookUid = :bookUid and t.transactionType = :type
+                  and t.transactionDate >= :start and t.transactionDate < :end
+                order by t.amount desc, t.transactionDate desc, t.transactionUid desc
+                """, TopExpense.class)
+                .setParameter("bookUid", bookUid).setParameter("type", TransactionType.EXPENSE)
+                .setParameter("start", start).setParameter("end", endExclusive)
+                .setMaxResults(limit).getResultList();
+    }
+
+    /** Aggregates a bounded multi-month range in the database for dashboard trend charts. */
+    @Override
+    public List<MonthTotal> monthlyTotals(Long bookUid, LocalDate start, LocalDate endExclusive) {
+        return em.createQuery("""
+                select new com.moneybook.backend.dashboard.repository.DashboardRepository$MonthTotal(
+                    year(t.transactionDate), month(t.transactionDate),
+                    sum(case when t.transactionType = :income then t.amount else 0 end),
+                    sum(case when t.transactionType = :expense then t.amount else 0 end), count(t))
+                from MoneyBookTransaction t
+                where t.moneyBook.moneyBookUid = :bookUid
+                  and t.transactionDate >= :start and t.transactionDate < :end
+                group by year(t.transactionDate), month(t.transactionDate)
+                order by year(t.transactionDate), month(t.transactionDate)
+                """, MonthTotal.class)
+                .setParameter("bookUid", bookUid).setParameter("income", TransactionType.INCOME)
+                .setParameter("expense", TransactionType.EXPENSE).setParameter("start", start)
+                .setParameter("end", endExclusive).getResultList();
+    }
 }

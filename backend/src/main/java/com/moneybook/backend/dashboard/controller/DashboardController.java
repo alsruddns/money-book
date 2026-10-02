@@ -3,6 +3,7 @@ package com.moneybook.backend.dashboard.controller;
 import com.moneybook.backend.dashboard.dto.AccountSummaryResponse;
 import com.moneybook.backend.dashboard.dto.CategorySummaryResponse;
 import com.moneybook.backend.dashboard.dto.MonthlyDashboardResponse;
+import com.moneybook.backend.dashboard.dto.DashboardResponse;
 import com.moneybook.backend.dashboard.service.DashboardService;
 import com.moneybook.backend.enums.TransactionType;
 import jakarta.validation.constraints.Max;
@@ -24,6 +25,15 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DashboardController {
     private final DashboardService service;
+
+    /** Returns the selected month summary and supporting dashboard aggregates for a reader. */
+    @GetMapping
+    public ResponseEntity<DashboardResponse> dashboard(@PathVariable Long moneyBookUid,
+                                                        @RequestParam @Min(1) @Max(9999) int year,
+                                                        @RequestParam @Min(1) @Max(12) int month,
+                                                        Authentication authentication) {
+        return ResponseEntity.ok(service.dashboard(moneyBookUid, year, month, authentication));
+    }
 
     /** 거래 원장만 집계해 수입, 지출, 순수익과 거래 건수를 반환한다. */
     @GetMapping("/monthly")

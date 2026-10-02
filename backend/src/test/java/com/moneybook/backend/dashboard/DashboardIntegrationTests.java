@@ -34,6 +34,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -77,6 +78,55 @@ class DashboardIntegrationTests {
         var empty = dashboard.monthly(f.bookUid(), 2026, 9, f.auth());
         assertEquals(BigDecimal.ZERO, empty.totalIncome());
         assertEquals(0, empty.transactionCount());
+    }
+
+    @Test
+    void unifiedDashboardReturnsAggregatesSixBucketsBudgetAndTopFiveWithFixedQueries() {
+        Fixture f = fixture();
+        transaction(f, TransactionType.INCOME, "300", "2026-09-01", f.income());
+        transaction(f, TransactionType.INCOME, "200", "2026-10-01", f.income());
+        for (int amount = 1; amount <= 7; amount++) {
+            transaction(f, TransactionType.EXPENSE, Integer.toString(amount * 10), "2026-10-02", f.expense());
+        }
+        transfer(f, "10000", "2026-10-03");
+        var savedBudget = com.moneybook.backend.entity.MoneyBookBudget.create(f.book(), 2026, 10,
+                new BigDecimal("100"));
+        em.persist(savedBudget);
+        em.flush();
+        em.clear();
+
+        var stats = emf.unwrap(SessionFactory.class).getStatistics();
+        stats.clear();
+        var response = dashboard.dashboard(f.bookUid(), 2026, 10, f.auth());
+
+        assertEquals(0, response.summary().totalIncome().compareTo(new BigDecimal("200")));
+        assertEquals(0, response.summary().totalExpense().compareTo(new BigDecimal("280")));
+        assertEquals(0, response.summary().balance().compareTo(new BigDecimal("-80")));
+        assertEquals(8, response.summary().transactionCount());
+        assertEquals(7, response.summary().expenseCount());
+        assertEquals(0, response.comparison().previousMonthIncome().compareTo(new BigDecimal("300")));
+        assertEquals(new BigDecimal("-33.33"), response.comparison().incomeChangeRate());
+        assertEquals(6, response.monthlyTrend().size());
+        assertEquals(0, response.monthlyTrend().getFirst().income().compareTo(BigDecimal.ZERO));
+        assertEquals(0, response.monthlyTrend().get(4).income().compareTo(new BigDecimal("300")));
+        assertEquals(5, response.topExpenses().size());
+        assertEquals(new BigDecimal("70.00"), response.topExpenses().getFirst().amount());
+        assertEquals(1, response.topExpenses().getFirst().rank());
+        assertEquals(0, response.budget().remaining().compareTo(new BigDecimal("-180")));
+        assertTrue(response.budget().overBudget());
+        assertTrue(stats.getPrepareStatementCount() <= 8, "dashboard must use a fixed number of aggregate queries");
+    }
+
+    @Test
+    void unifiedDashboardUsesZeroBucketsAndNullComparisonRateWhenPreviousIsZero() {
+        Fixture f = fixture();
+        var response = dashboard.dashboard(f.bookUid(), 2026, 10, f.auth());
+        assertEquals(6, response.monthlyTrend().size());
+        assertTrue(response.monthlyTrend().stream().allMatch(row -> row.income().signum() == 0
+                && row.expense().signum() == 0));
+        assertEquals(BigDecimal.ZERO, response.comparison().incomeChangeRate());
+        assertNull(response.budget());
+        assertTrue(response.topExpenses().isEmpty());
     }
 
     @Test

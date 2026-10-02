@@ -6,11 +6,13 @@ import com.moneybook.backend.common.exception.ErrorCode;
 import com.moneybook.backend.dashboard.dto.AccountSummaryResponse;
 import com.moneybook.backend.dashboard.dto.CategorySummaryResponse;
 import com.moneybook.backend.dashboard.dto.MonthlyDashboardResponse;
+import com.moneybook.backend.dashboard.dto.DashboardResponse;
 import com.moneybook.backend.dashboard.repository.DashboardRepository;
 import com.moneybook.backend.dashboard.service.DashboardService;
 import com.moneybook.backend.entity.MoneyBookAccount;
 import com.moneybook.backend.enums.MoneyBookPermission;
 import com.moneybook.backend.enums.TransactionType;
+import com.moneybook.backend.budget.repository.BudgetRepository;
 import com.moneybook.backend.moneybook.provider.MoneyBookPermissionProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -20,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +33,98 @@ public class DashboardServiceImpl implements DashboardService {
     private final DashboardRepository dashboard;
     private final AccountRepository accountRepository;
     private final MoneyBookPermissionProvider permissions;
+    private final BudgetRepository budgets;
+
+    @Override
+    @Transactional(readOnly = true)
+    public DashboardResponse dashboard(Long bookUid, int year, int month, Authentication authentication) {
+        permissions.require(bookUid, authentication, MoneyBookPermission.READ);
+        YearMonth period = period(year, month);
+        LocalDate start = period.atDay(1);
+        LocalDate end = period.plusMonths(1).atDay(1);
+
+        BigDecimal income = BigDecimal.ZERO;
+        BigDecimal expense = BigDecimal.ZERO;
+        long incomeCount = 0;
+        long expenseCount = 0;
+        for (var row : dashboard.transactionTotals(bookUid, start, end)) {
+            if (row.type() == TransactionType.INCOME) {
+                income = row.amount();
+                incomeCount = row.count();
+            } else {
+                expense = row.amount();
+                expenseCount = row.count();
+            }
+        }
+
+        var categoryRows = dashboard.categoryTotals(bookUid, start, end, TransactionType.EXPENSE);
+        BigDecimal categoryTotal = categoryRows.stream().map(DashboardRepository.CategoryTotal::amount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        var categories = categoryRows.stream().map(row -> new DashboardResponse.CategoryExpense(
+                row.uid(), row.name(), row.amount(), row.count(), categoryTotal.signum() == 0
+                ? BigDecimal.ZERO : row.amount().divide(categoryTotal, 4, RoundingMode.HALF_UP))).toList();
+
+        // A single bounded aggregate query supplies six consecutive buckets, including empty months.
+        YearMonth firstTrendMonth = period.minusMonths(5);
+        Map<YearMonth, DashboardRepository.MonthTotal> trendRows = new HashMap<>();
+        for (var row : dashboard.monthlyTotals(bookUid, firstTrendMonth.atDay(1), end)) {
+            trendRows.put(YearMonth.of(row.year(), row.month()), row);
+        }
+        List<DashboardResponse.MonthTrend> trend = java.util.stream.LongStream.rangeClosed(0, 5)
+                .mapToObj(offset -> firstTrendMonth.plusMonths(offset))
+                .map(monthPeriod -> {
+                    var row = trendRows.get(monthPeriod);
+                    BigDecimal monthIncome = row == null ? BigDecimal.ZERO : row.income();
+                    BigDecimal monthExpense = row == null ? BigDecimal.ZERO : row.expense();
+                    return new DashboardResponse.MonthTrend(monthPeriod.getYear(), monthPeriod.getMonthValue(),
+                            monthIncome, monthExpense, monthIncome.subtract(monthExpense));
+                }).toList();
+
+        var previous = trendRows.get(period.minusMonths(1));
+        BigDecimal previousIncome = previous == null ? BigDecimal.ZERO : previous.income();
+        BigDecimal previousExpense = previous == null ? BigDecimal.ZERO : previous.expense();
+        var savedBudget = budgets.find(bookUid, year, month).orElse(null);
+        DashboardResponse.BudgetSummary budget = null;
+        if (savedBudget != null) {
+            BigDecimal limit = savedBudget.getTotalBudget();
+            BigDecimal remaining = limit == null ? null : limit.subtract(expense);
+            BigDecimal usage = limit == null ? null : limit.signum() == 0 ? BigDecimal.ZERO
+                    : expense.multiply(BigDecimal.valueOf(100)).divide(limit, 2, RoundingMode.HALF_UP);
+            budget = new DashboardResponse.BudgetSummary(limit, expense, remaining, usage,
+                    limit != null && expense.compareTo(limit) > 0);
+        }
+
+        var topRows = dashboard.topExpenses(bookUid, start, end, 5);
+        List<DashboardResponse.TopExpense> top = java.util.stream.IntStream.range(0, topRows.size())
+                .mapToObj(index -> {
+                    var row = topRows.get(index);
+                    return new DashboardResponse.TopExpense(index + 1, row.transactionUid(), row.date(),
+                            row.categoryUid(), row.categoryName(), row.accountUid(), row.accountName(),
+                            row.memo(), row.amount());
+                }).toList();
+
+        return new DashboardResponse(year, month,
+                new DashboardResponse.Summary(income, expense, income.subtract(expense),
+                        incomeCount + expenseCount, incomeCount, expenseCount),
+                new DashboardResponse.Comparison(previousIncome, previousExpense,
+                        changeRate(income, previousIncome), changeRate(expense, previousExpense)),
+                categories, trend, budget, top);
+    }
+
+    private BigDecimal changeRate(BigDecimal current, BigDecimal previous) {
+        BigDecimal change = current.subtract(previous);
+        if (previous.signum() == 0) return change.signum() == 0 ? BigDecimal.ZERO : null;
+        return change.multiply(BigDecimal.valueOf(100)).divide(previous, 2, RoundingMode.HALF_UP);
+    }
+
+    private YearMonth period(int year, int month) {
+        try {
+            if (year < 2 || year >= 9999) throw new java.time.DateTimeException("Year outside dashboard range");
+            return YearMonth.of(year, month);
+        } catch (java.time.DateTimeException exception) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED);
+        }
+    }
 
     @Override
     @Transactional(readOnly = true)
