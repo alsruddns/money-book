@@ -32,7 +32,8 @@ money-book/
 - **검색과 분석:** 거래 검색 및 페이지 조회, 월간·연간 리포트, 카테고리·계좌 통계, 전월 비교
 - **월 결산:** 결산 snapshot, 결산 취소, 결산된 기간의 거래 변경 제한
 - **데이터 관리:** CSV/XLSX 내보내기, JSON 백업 검증·미리보기·새 가계부로 복원, 가계부 주 시작 요일 설정
-- **계정 관리:** 내 계정 조회, 닉네임 변경, LOCAL 비밀번호 변경
+- **계정 관리:** 내 계정 조회, 닉네임 변경, LOCAL 비밀번호 변경, OWNER 이전(활성 ACCEPTED 멤버만 대상, 새 OWNER 전체 권한 보장 및 Activity 기록), 회원 탈퇴(LOCAL 비밀번호 재확인, 소유 가계부가 있으면 차단, WITHDRAWN 전환, 닉네임 익명화, 인증정보와 가계부 membership 정리)
+- **탈퇴 토큰 차단:** 인증 요청마다 사용자 활성 상태를 확인해 탈퇴한 사용자의 Access Token을 거부하고, Refresh 요청도 WITHDRAWN 상태에서 실패
 - **감사 및 운영:** 가계부 활동내역, 서비스 전역 System Admin API, 관리자 운영 조회 및 감사로그
 
 ### Frontend
@@ -69,17 +70,16 @@ money-book/
 
 ## Current Focus
 
-**현재 단계: OWNER 이전 Backend**
+**현재 단계: OWNER 이전 / 회원 탈퇴 Frontend**
 
 다음 작업 순서:
 
-1. 계정 탈퇴 Backend
-2. Session 및 Refresh Token 관리
-3. Rate limiting 및 보안 강화
-4. UX 일관성 개선
-5. 모니터링
-6. CI/CD
-7. 운영 배포
+1. Session 및 Refresh Token 관리
+2. Rate limiting 및 보안 강화
+3. UX 일관성 개선
+4. 모니터링
+5. CI/CD
+6. 운영 배포
 
 ## Development Roadmap
 
@@ -136,8 +136,10 @@ money-book/
 - [x] 내 계정 조회 및 닉네임 변경 Backend
 - [x] LOCAL 비밀번호 변경 Backend
 - [x] Account Management Frontend
-- [ ] OWNER 이전
-- [ ] 계정 탈퇴
+- [x] OWNER 이전 Backend
+- [ ] OWNER 이전 Frontend
+- [x] 계정 탈퇴 Backend
+- [ ] 계정 탈퇴 Frontend
 - [ ] 개인정보 삭제 정책
 
 ### Phase 9 — 보안
