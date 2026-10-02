@@ -1,16 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useMoneyBookList } from "../hooks/useMoneyBookList";
-import { usePendingInvitations } from "../hooks/usePendingInvitations";
 import MoneyBookCard from "./MoneyBookCard";
 import CreateMoneyBookDialog from "./CreateMoneyBookDialog";
 
 export default function MoneyBookList() {
   const [isCreateOpen, setCreateOpen] = useState(false);
   const { moneyBooks, isLoading, isError, errorMessage } = useMoneyBookList();
-  const { invitations } = usePendingInvitations();
 
   return (
     <div className="space-y-6">
@@ -20,9 +17,6 @@ export default function MoneyBookList() {
           <p className="mt-1 text-sm text-zinc-600">참여 중인 가계부를 선택하세요.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href="/books/invitations" className="inline-flex min-h-11 items-center rounded-lg border border-zinc-300 bg-white px-4 text-sm font-medium">
-            받은 초대{invitations.length > 0 ? ` ${invitations.length}건` : ""}
-          </Link>
           <button type="button" onClick={() => setCreateOpen(true)}
             className="min-h-11 rounded-lg bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700">
             새 가계부 만들기

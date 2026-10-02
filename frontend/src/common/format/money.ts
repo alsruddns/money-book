@@ -1,6 +1,16 @@
-const formatter = new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 });
+const numberFormatter = new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 });
+
+export function formatNumber(value: number | string | null | undefined): string {
+  const number = Number(value ?? 0);
+  return numberFormatter.format(Number.isFinite(number) ? number : 0);
+}
 
 export function formatMoney(amount: number | string | null | undefined): string {
-  const value = Number(amount ?? 0);
-  return `${formatter.format(Number.isFinite(value) ? value : 0)}원`;
+  return `${formatNumber(amount)}원`;
+}
+
+export const formatCurrency = formatMoney;
+
+export function formatCount(value: number | string | null | undefined, unit = "건"): string {
+  return `${formatNumber(value)}${unit}`;
 }

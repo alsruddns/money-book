@@ -24,7 +24,7 @@ function loadModule(relativePath, mocks = {}, globals = {}) {
   const compiledModule = { exports: {} };
   vm.runInNewContext(compiled, {
     module: compiledModule, exports: compiledModule.exports,
-    require: (name) => name in mocks ? mocks[name] : localRequire(name),
+    require: (name) => name in mocks ? mocks[name] : name === "@/common/format/money" ? { formatNumber: (value) => Number(value).toLocaleString("ko-KR"), formatMoney: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCurrency: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCount: (value, unit = String.fromCharCode(0xAC74)) => `${Number(value).toLocaleString("ko-KR")}${unit}` } : localRequire(name),
     ...globals,
   });
   return compiledModule.exports;
@@ -229,11 +229,13 @@ test("account route uses the existing role-neutral AuthGuard and links from book
     "@/auth/components/AuthGuard": { default: ({ children }) => React.createElement("div", { "data-guard": "auth" }, children) },
   });
   assert.match(renderToStaticMarkup(React.createElement(Layout, null, React.createElement("p", null, "계정"))), /data-guard="auth"/);
-  const booksLayout = fs.readFileSync(path.join(testDirectory, "../src/app/books/layout.tsx"), "utf8");
   const adminShell = fs.readFileSync(path.join(testDirectory, "../src/admin/components/AdminShell.tsx"), "utf8");
-  assert.match(booksLayout, /href="\/account"[^>]*>계정 관리/);
-  assert.match(adminShell, /href="\/account"[^>]*>계정 관리/);
   const accountLayout = fs.readFileSync(path.join(testDirectory, "../src/app/account/layout.tsx"), "utf8");
+  const globalHeader = fs.readFileSync(path.join(testDirectory, "../src/common/components/GlobalHeader.tsx"), "utf8");
+  assert.match(accountLayout, /href="\/books"/);
+  assert.match(globalHeader, /useLogout/);
+  assert.match(globalHeader, /getGlobalNavItems/);
+  assert.doesNotMatch(adminShell, /href="\/account"/);
   assert.match(accountLayout, /AuthGuard/);
   assert.doesNotMatch(accountLayout, /systemRole|isAdmin|isSuperAdmin/);
 });

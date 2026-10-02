@@ -1,5 +1,6 @@
 import type { TransactionType } from "./dto/TransactionType";
 import type { CreateTransactionRequest } from "./dto/req/CreateTransactionRequest";
+import { formatMoney } from "@/common/format/money";
 
 export interface TransactionFormValues {
   transactionType: TransactionType;
@@ -60,5 +61,5 @@ export function parseTransactionRequest(values: TransactionFormValues):
 }
 
 export function formatWon(amount: number): string {
-  return `${new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 }).format(amount)}원`;
+  return formatMoney(amount);
 }

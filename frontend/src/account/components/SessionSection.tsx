@@ -5,8 +5,11 @@ import { useAccountSessions } from "../hooks/useAccountSessions";
 import { useRevokeAccountSession } from "../hooks/useRevokeAccountSession";
 import { useLogoutAllSessions } from "../hooks/useLogoutAllSessions";
 import { useLogout } from "@/auth/hooks/useLogout";
+import { useState } from "react";
+import { formatCount } from "@/common/format/money";
 
 export default function SessionSection() {
+  const [isExpanded, setExpanded] = useState(false);
   const sessions = useAccountSessions();
   const revoke = useRevokeAccountSession();
   const logoutAll = useLogoutAllSessions();
@@ -16,14 +19,19 @@ export default function SessionSection() {
     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <h2 id="sessions-title" className="text-lg font-semibold">로그인된 기기</h2>
-        <p className="mt-1 text-sm text-zinc-600">현재 로그인된 세션을 확인하고 원하지 않는 기기에서 로그아웃할 수 있습니다.</p>
+        <p className="mt-1 text-sm text-zinc-600">{sessions.isLoading ? "세션 확인 중" : sessions.isError ? "세션 정보를 불러오지 못했습니다." : formatCount(sessions.sessions.length, "개")}
+          {sessions.sessions.find((session) => session.current) && <> · 현재 세션: {describeSessionDevice(sessions.sessions.find((session) => session.current)!.userAgent)}</>}
+        </p>
       </div>
-      <button type="button" onClick={() => void logoutAll.logoutAll()} disabled={logoutAll.isLoading}
-        className="min-h-11 shrink-0 rounded-lg border border-red-300 px-4 text-sm font-medium text-red-800 disabled:opacity-50">
-        {logoutAll.isLoading ? "모든 세션 종료 중..." : "모든 기기에서 로그아웃"}
-      </button>
+      <button type="button" aria-expanded={isExpanded} aria-controls="account-session-list" onClick={() => setExpanded((value) => !value)}
+        className="min-h-11 shrink-0 rounded-lg border border-zinc-300 px-4 text-sm font-medium">{isExpanded ? "세션 관리 접기" : "세션 관리 펼치기"}</button>
     </div>
 
+    {isExpanded && <div id="account-session-list">
+    <button type="button" onClick={() => void logoutAll.logoutAll()} disabled={logoutAll.isLoading}
+      className="mt-4 min-h-11 rounded-lg border border-red-300 px-4 text-sm font-medium text-red-800 disabled:opacity-50">
+      {logoutAll.isLoading ? "모든 세션 종료 중..." : "모든 기기에서 로그아웃"}
+    </button>
     {sessions.isLoading ? <p role="status" className="mt-5">세션 목록을 불러오는 중...</p> : sessions.isError ? <div role="alert" className="mt-5 rounded-lg bg-red-50 p-4 text-sm text-red-800">
       <p>{sessions.errorMessage}</p>
       <button type="button" onClick={() => void sessions.retry()} className="mt-3 min-h-10 rounded-lg border border-red-300 bg-white px-3">다시 시도</button>
@@ -55,6 +63,7 @@ export default function SessionSection() {
       </li>)}
     </ul>}
     {sessions.isFetching && !sessions.isLoading && <p role="status" className="mt-3 text-xs text-zinc-500">세션 정보를 업데이트하고 있습니다.</p>}
+    </div>}
     {revoke.errorMessage && <p role="alert" className="mt-3 text-sm text-red-700">{revoke.errorMessage}</p>}
     {logoutAll.errorMessage && <p role="alert" className="mt-3 text-sm text-red-700">{logoutAll.errorMessage}</p>}
   </section>;

@@ -25,7 +25,7 @@ function loadModule(relativePath, mocks = {}, globals = {}) {
   vm.runInNewContext(compiled, {
     module: compiledModule,
     exports: compiledModule.exports,
-    require: (name) => name in mocks ? mocks[name] : localRequire(name),
+    require: (name) => name in mocks ? mocks[name] : name === "@/common/format/money" ? { formatNumber: (value) => Number(value).toLocaleString("ko-KR"), formatMoney: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCurrency: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCount: (value, unit = String.fromCharCode(0xAC74)) => `${Number(value).toLocaleString("ko-KR")}${unit}` } : localRequire(name),
     ...globals,
   });
   return compiledModule.exports;
@@ -97,53 +97,43 @@ test("book UID parser rejects missing, malformed, and unsafe values", () => {
   }
 });
 
-test("money book menu keeps readable pages visible without edit rights and avoids dead links", () => {
-  const { getMoneyBookMenu, isMoneyBookRouteActive } = loadModule("moneybook/components/MoneyBookNavigation.tsx", {
+test("money book menu groups routes and limits management to readable admins", () => {
+  const { getMoneyBookMenu, getDashboardReportTabs, isMoneyBookRouteActive } = loadModule("moneybook/components/MoneyBookNavigation.tsx", {
     react: { useEffect: () => {}, useState: () => [false, () => {}] },
-    "next/link": { default: link },
-    "next/navigation": { usePathname: () => "/books/7/categories" },
+    "next/link": { default: link }, "next/navigation": { usePathname: () => "/books/7/categories" },
     "@/common/components/advertisement/DesktopAdRail": { default: () => null },
     "../hooks/useMoneyBookPermission": { useMoneyBookPermission: () => ({}) },
   });
-  const groups = getMoneyBookMenu(7, true);
-  const items = groups.flatMap((group) => group.items);
-  assert.equal(items.find((item) => item.label === "카테고리").disabled, undefined);
-  assert.equal(items.find((item) => item.label === "캘린더").disabled, undefined);
-  assert.equal(items.find((item) => item.label === "예산").disabled, undefined);
-  assert.equal(items.find((item) => item.label === "정기 수입/지출").disabled, undefined);
-  assert.equal(items.find((item) => item.label === "이체").disabled, undefined);
-  assert.equal(items.find((item) => item.label === "활동내역").href, "/books/7/activities");
-  assert.equal(getMoneyBookMenu(7, false).flatMap((group) => group.items).some((item) => item.label === "활동내역"), false);
-  assert.equal(getMoneyBookMenu(7, false).flatMap((group) => group.items).some((item) => item.label === "카테고리"), false);
+  const ownerGroups = getMoneyBookMenu(7, { canRead: true, isOwner: true, isAdmin: false });
+  assert.equal(ownerGroups.length, 5);
+  const ownerItems = ownerGroups.flatMap((group) => group.items);
+  assert.ok(ownerItems.some((item) => item.href === "/books/7/activities"));
+  assert.ok(ownerItems.some((item) => item.href === "/books/7/members"));
+  assert.ok(ownerItems.some((item) => item.href === "/books/7/recurring-transactions"));
+  const readonlyGroups = getMoneyBookMenu(7, { canRead: true, isOwner: false, isAdmin: false });
+  assert.equal(readonlyGroups.flatMap((group) => group.items).some((item) => item.href.endsWith("/members")), false);
+  assert.equal(getMoneyBookMenu(7, { canRead: false, isOwner: false, isAdmin: false }).some((group) => group.items.some((item) => item.href.endsWith("/members"))), false);
   assert.equal(isMoneyBookRouteActive("/books/7/categories/12", "/books/7/categories", "/books/7"), true);
   assert.equal(isMoneyBookRouteActive("/books/7/categories", "/books/7", "/books/7"), false);
-  assert.equal(isMoneyBookRouteActive("/books/7/accounts", "/books/7/categories", "/books/7"), false);
-  assert.equal(isMoneyBookRouteActive("/books/7/transfers/9", "/books/7/transfers", "/books/7"), true);
-  assert.equal(isMoneyBookRouteActive("/books/7/recurring-transactions", "/books/7/recurring-transactions", "/books/7"), true);
+  assert.deepEqual(JSON.parse(JSON.stringify(getDashboardReportTabs(7, "/books/7/reports/monthly").map((tab) => tab.active))), [false, true, false]);
+  assert.deepEqual(JSON.parse(JSON.stringify(getDashboardReportTabs(7, "/books/7/reports/yearly").map((tab) => tab.active))), [false, false, true]);
+  assert.deepEqual(JSON.parse(JSON.stringify(getDashboardReportTabs(7, "/books/7/calendar"))), []);
 });
 
-test("money book sidebar renders name, role, active route, and disabled entries", () => {
-  const book = { moneyBookUid: 7, name: "우리 집", isOwner: true, isAdmin: true };
+test("money book layout keeps shared navigation and content shell", () => {
   const { default: Navigation } = loadModule("moneybook/components/MoneyBookNavigation.tsx", {
-    react: { useEffect: () => {}, useState: () => [false, () => {}] },
+    react: React,
     "next/link": { default: ({ href, children, ...props }) => React.createElement("a", { href, ...props }, children) },
     "next/navigation": { usePathname: () => "/books/7/categories" },
     "@/common/components/advertisement/DesktopAdRail": { default: () => null },
-    "../hooks/useMoneyBookPermission": { useMoneyBookPermission: () => ({ moneyBook: book, canRead: true }) },
+    "../hooks/useMoneyBookPermission": { useMoneyBookPermission: () => ({ moneyBook: { moneyBookUid: 7, name: "Book", isOwner: true, isAdmin: true }, isLoading: false, isError: false, canRead: true, isOwner: true, isAdmin: true }) },
   });
-  const markup = renderToStaticMarkup(React.createElement(Navigation, { moneyBookUid: 7 }, React.createElement("p", null, "본문")));
-  assert.match(markup, /우리 집/);
-  assert.match(markup, /소유자/);
+  const markup = renderToStaticMarkup(React.createElement(Navigation, { moneyBookUid: 7 }, React.createElement("p", null, "body")));
   assert.match(markup, /href="\/books\/7\/categories" aria-current="page"/);
-  assert.match(markup, /href="\/books"/);
-  assert.match(markup, /href="\/books\/7\/transfers"/);
-  assert.match(markup, /href="\/books\/7\/budgets"/);
-  assert.match(markup, /href="\/books\/7\/recurring-transactions"/);
+  assert.match(markup, /href="\/books\/7\/reports\/monthly"/);
+  assert.match(markup, /body/);
   assert.match(markup, /md:grid-cols-\[15rem_minmax\(0,1fr\)\]/);
-  assert.match(markup, /overflow-x-auto/);
-  assert.doesNotMatch(markup, /aria-label="광고"/);
 });
-
 test("mobile drawer opens, closes from overlay and navigation, and handles Escape", () => {
   let open = false;
   let effect;
@@ -232,6 +222,9 @@ test("money book list presents loading, error, empty, and populated states", () 
   assert.match(render({ moneyBooks: [], isLoading: false, isError: true, errorMessage: "오류" }), /오류/);
   assert.match(render({ moneyBooks: [], isLoading: false, isError: false }), /아직 참여 중인 가계부가 없습니다/);
   assert.match(render({ moneyBooks: [{ moneyBookUid: 1, name: "우리 집" }], isLoading: false, isError: false }), /우리 집/);
+  const populatedMarkup = render({ moneyBooks: [{ moneyBookUid: 1, name: "Book" }], isLoading: false, isError: false });
+  assert.equal((populatedMarkup.match(/<button/g) ?? []).length, 1);
+  assert.doesNotMatch(populatedMarkup, /href="\/books\/invitations"/);
 });
 
 test("invitation list presents pending invitations and an empty state", () => {

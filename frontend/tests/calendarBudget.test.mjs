@@ -19,7 +19,7 @@ function loadModule(relativePath, mocks = {}, globals = {}) {
   const compiledModule = { exports: {} };
   vm.runInNewContext(compiled, {
     module: compiledModule, exports: compiledModule.exports,
-    require: (name) => name in mocks ? mocks[name] : localRequire(name), ...globals,
+    require: (name) => name in mocks ? mocks[name] : name === "@/common/format/money" ? { formatNumber: (value) => Number(value).toLocaleString("ko-KR"), formatMoney: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCurrency: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCount: (value, unit = String.fromCharCode(0xAC74)) => `${Number(value).toLocaleString("ko-KR")}${unit}` } : localRequire(name), ...globals,
   });
   return compiledModule.exports;
 }
@@ -109,7 +109,7 @@ test("calendar renders weekend, holiday, amounts, transfers, and empty dates", (
     transferOutAmount: 5000, transferCount: 1 }), day("2026-10-04", "SUNDAY")];
   const grid = loadModule("calendar/calendarGrid.ts");
   const View = loadModule("calendar/components/CalendarView.tsx", {
-    "@/common/format/money": { formatMoney },
+    "@/common/format/money": { formatMoney, formatCount: (value, unit = String.fromCharCode(0xAC74)) => `${Number(value).toLocaleString("ko-KR")}${unit}` },
     "@/moneybook/hooks/useMoneyBookPermission": { useMoneyBookPermission: () => ({ canRead: true }) },
     "@/settings/hooks/useMoneyBookSetting": { useMoneyBookSetting: () => ({ setting: { weekStartDay: "SUNDAY" } }) },
     "@/transaction/hooks/useMonthNavigation": { useMonthNavigation: () => ({ year: 2026, month: 10, moveMonth: () => {}, goToToday: () => {} }) },

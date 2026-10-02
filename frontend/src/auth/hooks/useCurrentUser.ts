@@ -16,7 +16,7 @@ export function useCurrentUser() {
 
   return {
     currentUser: query.data ?? null,
-    isLoading: !isInitialized || (hasTokens && (query.isUninitialized || query.isFetching)),
-    isAuthenticated: hasTokens && query.isSuccess && Boolean(query.data),
+    isLoading: !isInitialized || (hasTokens && (query.isUninitialized || (!query.data && query.isFetching))),
+    isAuthenticated: hasTokens && Boolean(query.data),
   };
 }

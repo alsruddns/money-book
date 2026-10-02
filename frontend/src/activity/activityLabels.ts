@@ -1,3 +1,5 @@
+import { formatCount } from "@/common/format/money";
+
 export const activityTypes = ["MONEY_BOOK_CREATED","MEMBER_INVITED","MEMBER_INVITATION_ACCEPTED","MEMBER_INVITATION_REJECTED","MEMBER_PERMISSION_UPDATED","MEMBER_REMOVED","CATEGORY_CREATED","CATEGORY_UPDATED","CATEGORY_DELETED","ACCOUNT_CREATED","ACCOUNT_UPDATED","ACCOUNT_DELETED","TRANSACTION_CREATED","TRANSACTION_UPDATED","TRANSACTION_DELETED","TRANSFER_CREATED","TRANSFER_UPDATED","TRANSFER_DELETED","RECURRING_CREATED","RECURRING_UPDATED","RECURRING_ACTIVATED","RECURRING_DEACTIVATED","RECURRING_DELETED","RECURRING_GENERATED","BUDGET_UPDATED","MONTH_CLOSED","MONTH_CLOSING_CANCELLED","SETTING_UPDATED","BACKUP_EXPORTED","BACKUP_RESTORED"] as const;
 export type ActivityType = typeof activityTypes[number];
 export const targetTypes = ["MONEY_BOOK","MEMBER","INVITATION","CATEGORY","ACCOUNT","TRANSACTION","TRANSFER","RECURRING_TRANSACTION","BUDGET","MONTH_CLOSING","SETTING","BACKUP"] as const;
@@ -31,7 +33,7 @@ export function getActivityMetadataHint(type: string, metadataJson: string | nul
     const value: unknown = JSON.parse(metadataJson);
     if (!value || typeof value !== "object") return null;
     const data = value as Record<string, unknown>;
-    if (type === "RECURRING_GENERATED" && typeof data.generatedCount === "number") return `생성 ${data.generatedCount}건`;
+    if (type === "RECURRING_GENERATED" && typeof data.generatedCount === "number") return `생성 ${formatCount(data.generatedCount)}`;
     if ((type === "MONTH_CLOSED" || type === "MONTH_CLOSING_CANCELLED" || type === "BUDGET_UPDATED") && Number.isInteger(data.year) && Number.isInteger(data.month)) return `${data.year}년 ${data.month}월`;
     if (type === "SETTING_UPDATED" && (data.weekStartDay === "SUNDAY" || data.weekStartDay === "MONDAY")) return `주 시작: ${data.weekStartDay === "SUNDAY" ? "일요일" : "월요일"}`;
     return null;

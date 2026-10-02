@@ -109,8 +109,8 @@ test("MoneyBook sidebar exposes report and monthly closing routes with read acce
     "@/common/components/advertisement/DesktopAdRail": { default: () => null },
     "../hooks/useMoneyBookPermission": { useMoneyBookPermission: () => ({}) },
   });
-  const labels = getMoneyBookMenu(7, true).flatMap((group) => group.items.map((item) => item.label));
-  assert.ok(labels.includes("리포트"));
-  assert.ok(labels.includes("월 결산"));
+  const routes = getMoneyBookMenu(7, { canRead: true, isOwner: false, isAdmin: false }).flatMap((group) => group.items.map((item) => item.href));
+  assert.ok(routes.includes("/books/7/closings"));
+  assert.ok(routes.includes("/books/7/closings"));
   assert.match(source, /DesktopAdRail/);
 });

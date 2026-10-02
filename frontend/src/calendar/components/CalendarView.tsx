@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { formatMoney } from "@/common/format/money";
+import { formatCount, formatMoney } from "@/common/format/money";
 import { useMoneyBookPermission } from "@/moneybook/hooks/useMoneyBookPermission";
 import { useMonthNavigation } from "@/transaction/hooks/useMonthNavigation";
 import MonthSelector from "@/transaction/components/MonthSelector";
@@ -48,7 +48,7 @@ export default function CalendarView({ moneyBookUid }: { moneyBookUid: number })
               <span className="mt-1 block space-y-0.5 text-[10px] leading-tight sm:text-xs">
                 {Number(day.incomeAmount) > 0 && <span className="block truncate text-blue-700" title={`수입 ${formatMoney(day.incomeAmount)}`}>수입 +{formatMoney(day.incomeAmount)}</span>}
                 {Number(day.expenseAmount) > 0 && <span className="block truncate text-red-700" title={`지출 ${formatMoney(day.expenseAmount)}`}>지출 −{formatMoney(day.expenseAmount)}</span>}
-                {day.transferCount > 0 && <span className="block truncate text-zinc-600" title={`이체 ${formatMoney(day.transferOutAmount)}`}>이체 {day.transferCount}건</span>}
+                {day.transferCount > 0 && <span className="block truncate text-zinc-600" title={`이체 ${formatMoney(day.transferOutAmount)}`}>이체 {formatCount(day.transferCount)}</span>}
               </span>
             </button> : <div key={`empty-${index}`} aria-hidden="true" className="border-b border-r border-zinc-100 bg-zinc-50" />)}
         </div>

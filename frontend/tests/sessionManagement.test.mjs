@@ -15,7 +15,7 @@ function load(file, mocks = {}, globals = {}) {
   const source = fs.readFileSync(path.join(root, file), "utf8");
   const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   const mod = { exports: {} };
-  vm.runInNewContext(js, { module: mod, exports: mod.exports, require: (name) => name in mocks ? mocks[name] : localRequire(name), ...globals });
+  vm.runInNewContext(js, { module: mod, exports: mod.exports, require: (name) => name in mocks ? mocks[name] : name === "@/common/format/money" ? { formatNumber: (value) => Number(value).toLocaleString("ko-KR"), formatMoney: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCurrency: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCount: (value, unit = String.fromCharCode(0xAC74)) => `${Number(value).toLocaleString("ko-KR")}${unit}` } : localRequire(name), ...globals });
   return mod.exports;
 }
 const plain = (value) => JSON.parse(JSON.stringify(value));
@@ -70,7 +70,8 @@ test("session section shows current badge, IP fallback, dates, and separate logo
   const session = { sessionUid: 3, current: true, userAgent: null, ipAddress: null, createdAt: "2026-10-02T15:15:00", lastUsedAt: null, expiresAt: "2026-11-02T15:15:00" };
   const otherSession = { ...session, sessionUid: 4, current: false, userAgent: "Firefox/130.0 Windows NT 10.0" };
   const { default: Section } = load("account/components/SessionSection.tsx", {
-    react: React,
+    react: { ...React, useState: () => [true, () => {}] },
+    "@/common/format/money": { formatCount: (value, unit = "?") => `${value}${unit}` },
     "../sessionLabels": load("account/sessionLabels.ts"),
     "../hooks/useAccountSessions": { useAccountSessions: () => ({ sessions: [session, otherSession], isLoading: false, isFetching: false, isError: false }) },
     "../hooks/useRevokeAccountSession": { useRevokeAccountSession: () => ({ isLoading: false }) },

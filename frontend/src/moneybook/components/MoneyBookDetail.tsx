@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { formatMoney } from "@/common/format/money";
+import { formatCount, formatMoney } from "@/common/format/money";
 import BudgetProgress from "@/budget/components/BudgetProgress";
 import { useMonthlyDashboard } from "@/dashboard/hooks/useMonthlyDashboard";
 
@@ -32,7 +32,7 @@ export default function MoneyBookDetail({ moneyBookUid }: { moneyBookUid: number
             <div className="mb-3 flex items-center justify-between gap-3"><h2 className="text-lg font-semibold">최근 활동 날짜</h2><Link href={`${root}/calendar?year=${year}&month=${month}`} className="text-sm text-blue-700 hover:underline">캘린더 보기</Link></div>
             {activeDays.length === 0 ? <p className="text-sm text-zinc-600">이번 달 등록된 거래나 이체가 없습니다.</p> :
               <ul className="space-y-2 text-sm">{activeDays.map((day) => <li key={day.date} className="flex flex-wrap justify-between gap-2 border-t border-zinc-100 pt-2">
-                <span>{day.date}</span><span>수입 {formatMoney(day.incomeAmount)} · 지출 {formatMoney(day.expenseAmount)}{day.transferCount > 0 && ` · 이체 ${day.transferCount}건`}</span>
+                <span>{day.date}</span><span>수입 {formatMoney(day.incomeAmount)} · 지출 {formatMoney(day.expenseAmount)}{day.transferCount > 0 && ` · 이체 ${formatCount(day.transferCount)}`}</span>
               </li>)}</ul>}
           </section>
         </>}
