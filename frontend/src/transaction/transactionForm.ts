@@ -17,7 +17,7 @@ export function todayLocalDate(now = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
-function isLocalDate(value: string): boolean {
+export function isLocalDate(value: string): boolean {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) return false;
   const year = Number(match[1]);

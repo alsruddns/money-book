@@ -15,6 +15,7 @@ export function getMoneyBookMenu(moneyBookUid: number, canRead: boolean): MenuGr
   const readable = canRead ? [
     { label: "캘린더", href: `${root}/calendar` },
     { label: "거래내역", href: `${root}/transactions` },
+    { label: "이체", href: `${root}/transfers` },
   ] : [];
   const management = canRead ? [
     { label: "카테고리", href: `${root}/categories` },
