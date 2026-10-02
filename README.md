@@ -41,8 +41,9 @@ money-book/
 - **가계부 기능:** 이체, 정기 거래, 대시보드, 캘린더, 예산, 월간·연간 리포트, 월 결산
 - **설정과 데이터:** 주 시작 요일 설정, CSV/XLSX 내보내기, JSON 백업·검증·미리보기·복원
 - **레이아웃:** 데스크톱 사이드바, 모바일 내비게이션, 광고 슬롯 대응 구조
+- **System Admin:** 관리자 대시보드, 사용자 상태/역할 관리, 가계부 운영 조회, 전체 활동내역, SUPER_ADMIN 감사로그
 
-> Backend에 구현된 기능이라도 Frontend 화면이 없으면 Frontend 완료 항목으로 간주하지 않습니다. System Admin 화면은 아직 구현 전입니다.
+> Backend에 구현된 기능이라도 Frontend 화면이 없으면 Frontend 완료 항목으로 간주하지 않습니다. Admin 운영 화면은 서비스 전역 역할 기반으로 `/admin/**`에서 제공하며, 일반 MoneyBook 권한과 분리됩니다.
 
 ## 권한 구조
 
@@ -66,14 +67,14 @@ money-book/
 
 ## Current Focus
 
-**현재 단계: System Admin Frontend**
+**현재 단계: Account Management Backend**
 
 다음 작업 순서:
 
-1. 계정 관리 Backend
-2. 계정 관리 Frontend
-3. 가계부 OWNER 이전 및 계정 탈퇴
-4. 세션 및 Refresh Token 관리
+1. Account Management Backend
+2. Account Management Frontend
+3. Owner 이전 및 계정 탈퇴
+4. Session 및 Refresh Token 관리
 5. Rate limiting 및 보안 강화
 6. UX 일관성 개선
 7. 모니터링
@@ -128,7 +129,7 @@ money-book/
 - [x] MoneyBook Activity Backend
 - [x] MoneyBook Activity Frontend
 - [x] System Admin Backend
-- [ ] System Admin Frontend
+- [x] System Admin Frontend
 
 ### Phase 8 — 계정 관리
 
