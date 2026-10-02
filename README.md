@@ -151,7 +151,7 @@ money-book/
 
 ### Phase 10 — UX와 제품 기능
 
-- [ ] Frontend UX 일관성 개선
+- [x] Frontend UX 일관성 개선
 - [ ] Dashboard 개선
 - [ ] 앱 내 알림
 
