@@ -13,9 +13,11 @@ public interface AuthService {
 
     SignUpResDto signUp(SignUpReqDto request);
 
-    LoginResponse login(LoginRequest request);
+    LoginResponse login(LoginRequest request, String userAgent, String ipAddress);
 
     RefreshResponse refresh(RefreshRequest request);
+
+    void logout(Authentication authentication);
 
     CurrentUserResponse currentUser(Authentication authentication);
 }

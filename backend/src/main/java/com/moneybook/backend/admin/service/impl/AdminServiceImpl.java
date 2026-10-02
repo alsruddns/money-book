@@ -13,6 +13,7 @@ import com.moneybook.backend.common.exception.ErrorCode;
 import com.moneybook.backend.entity.User;
 import com.moneybook.backend.enums.*;
 import com.moneybook.backend.user.repository.UserRepository;
+import com.moneybook.backend.session.repository.RefreshSessionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.PageImpl;
@@ -21,6 +22,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
 
 /** DB 상태를 재검증하고 제한된 운영 조회·변경 기능을 제공한다. */
@@ -33,6 +36,7 @@ public class AdminServiceImpl implements AdminService {
     private final ActivityRepository activities;
     private final UserRepository users;
     private final AdminAuditRecorder auditRecorder;
+    private final RefreshSessionRepository refreshSessions;
 
     @Override @Transactional(readOnly = true)
     public AdminMeResponse me(Authentication authentication) {
@@ -71,6 +75,11 @@ public class AdminServiceImpl implements AdminService {
         }
         if (target.getStatus() == requested) return reads.user(uid).orElseThrow();
         target.changeStatus(requested);
+        if (requested == UserStatus.BLOCKED) {
+            LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+            refreshSessions.findUnrevokedByUserUid(uid)
+                    .forEach(session -> session.revoke(now, "USER_BLOCKED"));
+        }
         auditRecorder.record(actor, AdminAuditActionType.USER_STATUS_CHANGED, AdminAuditTargetType.USER,
                 uid, requested == UserStatus.BLOCKED ? "사용자를 정지했습니다." : "사용자 정지를 해제했습니다.");
         return reads.user(uid).orElseThrow();

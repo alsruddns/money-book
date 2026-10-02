@@ -18,9 +18,15 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.UUID;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 
 @Component
 public class JwtTokenProvider {
+    public static final String SESSION_ID_CLAIM = "sid";
 
     private final JwtEncoder jwtEncoder;
     private final JwtDecoder refreshDecoder;
@@ -44,31 +50,83 @@ public class JwtTokenProvider {
         return createToken(userUid, JwtTokenType.ACCESS, accessTokenExpiration);
     }
 
+    /** Signs an Access Token associated with the current refresh session. */
+    public String createAccessToken(Long userUid, String sessionKey) {
+        return createToken(userUid, JwtTokenType.ACCESS, sessionKey, Instant.now().plus(accessTokenExpiration));
+    }
+
     /** Signs a Refresh Token that cannot be used as a Bearer token for general APIs. */
     public String createRefreshToken(Long userUid) {
         return createToken(userUid, JwtTokenType.REFRESH, refreshTokenExpiration);
     }
 
+    /** Signs a session-bound Refresh Token with its fixed absolute expiration. */
+    public String createRefreshToken(Long userUid, String sessionKey, Instant expiresAt) {
+        return createToken(userUid, JwtTokenType.REFRESH, sessionKey, expiresAt);
+    }
+
     /** Verifies the signature, expiry and REFRESH type before returning the user UID. */
     public Long getRefreshTokenUserUid(String refreshToken) {
+        return getRefreshTokenClaims(refreshToken).userUid();
+    }
+
+    /** Verifies a refresh JWT and extracts only the claims needed to find its server-side session. */
+    public RefreshClaims getRefreshTokenClaims(String refreshToken) {
         try {
             Jwt jwt = refreshDecoder.decode(refreshToken);
-            if (!JwtTokenType.REFRESH.name().equals(jwt.getClaimAsString(JwtTokenType.CLAIM_NAME))) {
+            String sessionKey = jwt.getClaimAsString(SESSION_ID_CLAIM);
+            if (!JwtTokenType.REFRESH.name().equals(jwt.getClaimAsString(JwtTokenType.CLAIM_NAME))
+                    || sessionKey == null || sessionKey.isBlank()) {
                 throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
             }
-            return Long.valueOf(jwt.getSubject());
+            return new RefreshClaims(Long.valueOf(jwt.getSubject()), sessionKey,
+                    jwt.getExpiresAt(), jwt.getIssuedAt());
         } catch (JwtException | NumberFormatException exception) {
             throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
     }
 
+    /** Extracts the authenticated access token's session key for account session operations. */
+    public String getAccessSessionKey(org.springframework.security.core.Authentication authentication) {
+        if (!(authentication instanceof org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken token)
+                || !JwtTokenType.ACCESS.name().equals(token.getToken().getClaimAsString(JwtTokenType.CLAIM_NAME))) {
+            throw new BusinessException(ErrorCode.INVALID_ACCESS_TOKEN);
+        }
+        String sessionKey = token.getToken().getClaimAsString(SESSION_ID_CLAIM);
+        if (sessionKey == null || sessionKey.isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_ACCESS_TOKEN);
+        }
+        return sessionKey;
+    }
+
+    /** Produces a fixed-size one-way digest; refresh token material is never persisted. */
+    public String hashRefreshToken(String refreshToken) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(refreshToken.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable", exception);
+        }
+    }
+
+    public Instant newSessionExpiration() {
+        return Instant.now().plus(refreshTokenExpiration).truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
+    }
+
+    public record RefreshClaims(Long userUid, String sessionKey, Instant expiresAt, Instant issuedAt) { }
+
     private String createToken(Long userUid, JwtTokenType type, Duration expiration) {
+        return createToken(userUid, type, UUID.randomUUID().toString(), Instant.now().plus(expiration));
+    }
+
+    private String createToken(Long userUid, JwtTokenType type, String sessionKey, Instant expiresAt) {
         Instant now = Instant.now();
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .subject(userUid.toString())
                 .issuedAt(now)
-                .expiresAt(now.plus(expiration))
+                .expiresAt(expiresAt)
                 .claim(JwtTokenType.CLAIM_NAME, type.name())
+                .claim(SESSION_ID_CLAIM, sessionKey)
                 .build();
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
         return jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();

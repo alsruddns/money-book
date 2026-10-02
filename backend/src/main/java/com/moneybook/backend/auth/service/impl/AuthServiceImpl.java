@@ -14,6 +14,8 @@ import com.moneybook.backend.common.exception.BusinessException;
 import com.moneybook.backend.common.exception.ErrorCode;
 import com.moneybook.backend.entity.User;
 import com.moneybook.backend.entity.UserAuth;
+import com.moneybook.backend.entity.RefreshTokenSession;
+import com.moneybook.backend.session.repository.RefreshSessionRepository;
 import com.moneybook.backend.enums.UserStatus;
 import com.moneybook.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.UUID;
+import java.security.MessageDigest;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +43,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserAuthRepository userAuthRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final RefreshSessionRepository refreshSessions;
 
     /** Creates the user and LOCAL credentials atomically; a duplicate login ID rolls both inserts back. */
     @Override
@@ -67,8 +74,8 @@ public class AuthServiceImpl implements AuthService {
 
     /** Validates LOCAL credentials and active user state before issuing an Access Token. */
     @Override
-    @Transactional(readOnly = true)
-    public LoginResponse login(LoginRequest request) {
+    @Transactional
+    public LoginResponse login(LoginRequest request, String userAgent, String ipAddress) {
         UserAuth userAuth = userAuthRepository.findByLocalLoginId(request.loginId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOGIN_FAILED));
         if (!passwordEncoder.matches(request.password(), userAuth.getPasswordHash())) {
@@ -79,22 +86,64 @@ public class AuthServiceImpl implements AuthService {
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw new BusinessException(ErrorCode.USER_INACTIVE);
         }
-        return new LoginResponse(user.getUserUid(), user.getNickname(),
-                jwtTokenProvider.createAccessToken(user.getUserUid()),
-                jwtTokenProvider.createRefreshToken(user.getUserUid()));
+        String sessionKey = UUID.randomUUID().toString();
+        var expiresAt = jwtTokenProvider.newSessionExpiration();
+        String refreshToken = jwtTokenProvider.createRefreshToken(user.getUserUid(), sessionKey, expiresAt);
+        String accessToken = jwtTokenProvider.createAccessToken(user.getUserUid(), sessionKey);
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        refreshSessions.save(RefreshTokenSession.create(user.getUserUid(), sessionKey,
+                jwtTokenProvider.hashRefreshToken(refreshToken), userAgent, ipAddress,
+                now, LocalDateTime.ofInstant(expiresAt, ZoneOffset.UTC)));
+        return new LoginResponse(user.getUserUid(), user.getNickname(), accessToken, refreshToken);
     }
 
-    /** Reissues only an Access Token after validating a Refresh Token and its active user. */
+    /** Validates and rotates the persisted Refresh Session before returning a new token pair. */
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(noRollbackFor = BusinessException.class)
     public RefreshResponse refresh(RefreshRequest request) {
-        Long userUid = jwtTokenProvider.getRefreshTokenUserUid(request.refreshToken());
+        JwtTokenProvider.RefreshClaims claims = jwtTokenProvider.getRefreshTokenClaims(request.refreshToken());
+        RefreshTokenSession session = refreshSessions.findBySessionKeyForUpdate(claims.sessionKey())
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN));
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        if (!session.getUserUid().equals(claims.userUid()) || !session.isActiveAt(now)) {
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+        String presentedHash = jwtTokenProvider.hashRefreshToken(request.refreshToken());
+        if (!MessageDigest.isEqual(session.getRefreshTokenHash().getBytes(StandardCharsets.US_ASCII),
+                presentedHash.getBytes(StandardCharsets.US_ASCII))) {
+            session.revoke(now, "TOKEN_REUSE");
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+        Long userUid = claims.userUid();
         User user = userRepository.findById(userUid)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN));
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw new BusinessException(ErrorCode.USER_INACTIVE);
         }
-        return new RefreshResponse(jwtTokenProvider.createAccessToken(userUid));
+        String refreshToken = jwtTokenProvider.createRefreshToken(userUid, claims.sessionKey(),
+                session.getExpiresAt().toInstant(ZoneOffset.UTC));
+        String accessToken = jwtTokenProvider.createAccessToken(userUid, claims.sessionKey());
+        session.rotate(jwtTokenProvider.hashRefreshToken(refreshToken), now);
+        return new RefreshResponse(accessToken, refreshToken);
+    }
+
+    /** Revokes only the session identified by the authenticated Access Token. */
+    @Override
+    @Transactional
+    public void logout(Authentication authentication) {
+        String sessionKey = jwtTokenProvider.getAccessSessionKey(authentication);
+        Long userUid;
+        try {
+            userUid = Long.valueOf(authentication.getName());
+        } catch (RuntimeException exception) {
+            throw new BusinessException(ErrorCode.INVALID_ACCESS_TOKEN);
+        }
+        RefreshTokenSession session = refreshSessions.findBySessionKeyForUpdate(sessionKey)
+                .orElseThrow(() -> new BusinessException(ErrorCode.REFRESH_SESSION_NOT_FOUND));
+        if (!session.getUserUid().equals(userUid)) {
+            throw new BusinessException(ErrorCode.SESSION_ACCESS_DENIED);
+        }
+        session.revoke(LocalDateTime.now(ZoneOffset.UTC), "USER_LOGOUT");
     }
 
     /** Reads the verified JWT principal and returns the active user's current persisted profile. */

@@ -102,7 +102,7 @@ class AuthControllerTests {
 
     @Test
     void loginIsAvailableWithoutAuthenticationOrCsrfToken() throws Exception {
-        when(authService.login(any())).thenReturn(new LoginResponse(
+        when(authService.login(any(), any(), any())).thenReturn(new LoginResponse(
                 42L, "닉네임", "signed-access-token", "signed-refresh-token"));
 
         mockMvc.perform(post("/api/auth/login").contextPath("/api")
@@ -146,6 +146,21 @@ class AuthControllerTests {
                         .content("{}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    void refreshReturnsRotatedRefreshTokenAndLogoutRequiresAccessToken() throws Exception {
+        when(authService.refresh(any())).thenReturn(new RefreshResponse("new-access-token", "rotated-refresh-token"));
+        mockMvc.perform(post("/api/auth/refresh").contextPath("/api").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"old-refresh-token\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.refreshToken").value("rotated-refresh-token"));
+        mockMvc.perform(post("/api/auth/logout").contextPath("/api")
+                        .header("Authorization", "Bearer " + token(JwtTokenType.ACCESS)))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/api/auth/logout").contextPath("/api")
+                        .header("Authorization", "Bearer " + token(JwtTokenType.REFRESH)))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -194,6 +209,7 @@ class AuthControllerTests {
                 .issuedAt(now)
                 .expiresAt(now.plusSeconds(3600))
                 .claim(JwtTokenType.CLAIM_NAME, type.name())
+                .claim("sid", "session-key")
                 .build();
         return jwtEncoder.encode(JwtEncoderParameters.from(
                 JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();

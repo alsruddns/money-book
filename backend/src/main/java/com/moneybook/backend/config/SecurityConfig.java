@@ -46,7 +46,8 @@ public class SecurityConfig {
         };
         return http
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/auth/signup", "/auth/login", "/auth/refresh",
-                        "/money-books", "/money-books/**", "/admin/**", "/account"))
+                        "/auth/logout", "/money-books", "/money-books/**", "/admin/**", "/account",
+                        "/account/sessions/**"))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/health").permitAll()

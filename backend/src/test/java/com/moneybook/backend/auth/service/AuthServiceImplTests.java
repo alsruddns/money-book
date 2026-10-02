@@ -10,10 +10,12 @@ import com.moneybook.backend.auth.dto.SignUpResDto;
 import com.moneybook.backend.auth.repository.UserAuthRepository;
 import com.moneybook.backend.auth.service.impl.AuthServiceImpl;
 import com.moneybook.backend.auth.token.JwtTokenProvider;
+import com.moneybook.backend.session.repository.RefreshSessionRepository;
 import com.moneybook.backend.common.exception.BusinessException;
 import com.moneybook.backend.common.exception.ErrorCode;
 import com.moneybook.backend.entity.User;
 import com.moneybook.backend.entity.UserAuth;
+import com.moneybook.backend.entity.RefreshTokenSession;
 import com.moneybook.backend.enums.AuthProvider;
 import com.moneybook.backend.enums.UserStatus;
 import com.moneybook.backend.user.repository.UserRepository;
@@ -42,8 +44,9 @@ class AuthServiceImplTests {
     private final UserAuthRepository userAuthRepository = mock(UserAuthRepository.class);
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final JwtTokenProvider jwtTokenProvider = mock(JwtTokenProvider.class);
+    private final RefreshSessionRepository refreshSessions = mock(RefreshSessionRepository.class);
     private final AuthServiceImpl service = new AuthServiceImpl(
-            userRepository, userAuthRepository, passwordEncoder, jwtTokenProvider);
+            userRepository, userAuthRepository, passwordEncoder, jwtTokenProvider, refreshSessions);
 
     @Test
     void signUpStoresOnlyBcryptHashAndLocalIdentity() {
@@ -102,17 +105,21 @@ class AuthServiceImplTests {
         when(user.getStatus()).thenReturn(UserStatus.ACTIVE);
         when(user.getUserUid()).thenReturn(42L);
         when(user.getNickname()).thenReturn("닉네임");
-        when(jwtTokenProvider.createAccessToken(42L)).thenReturn("signed-access-token");
-        when(jwtTokenProvider.createRefreshToken(42L)).thenReturn("signed-refresh-token");
+        when(jwtTokenProvider.newSessionExpiration()).thenReturn(java.time.Instant.now().plusSeconds(86400));
+        when(jwtTokenProvider.createAccessToken(org.mockito.ArgumentMatchers.eq(42L),
+                org.mockito.ArgumentMatchers.anyString())).thenReturn("signed-access-token");
+        when(jwtTokenProvider.createRefreshToken(org.mockito.ArgumentMatchers.eq(42L),
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn("signed-refresh-token");
+        when(jwtTokenProvider.hashRefreshToken("signed-refresh-token")).thenReturn("token-hash");
 
-        LoginResponse response = service.login(new LoginRequest("member", "correct-password"));
+        LoginResponse response = service.login(new LoginRequest("member", "correct-password"), null, null);
 
         assertEquals(42L, response.userUid());
         assertEquals("닉네임", response.nickname());
         assertEquals("signed-access-token", response.accessToken());
         assertEquals("signed-refresh-token", response.refreshToken());
-        verify(jwtTokenProvider).createAccessToken(42L);
-        verify(jwtTokenProvider).createRefreshToken(42L);
+        verify(refreshSessions).save(any());
     }
 
     @Test
@@ -123,9 +130,9 @@ class AuthServiceImplTests {
         when(auth.getPasswordHash()).thenReturn(passwordEncoder.encode("correct-password"));
 
         BusinessException unknownId = assertThrows(BusinessException.class,
-                () -> service.login(new LoginRequest("missing", "password")));
+                () -> service.login(new LoginRequest("missing", "password"), null, null));
         BusinessException wrongPassword = assertThrows(BusinessException.class,
-                () -> service.login(new LoginRequest("member", "wrong-password")));
+                () -> service.login(new LoginRequest("member", "wrong-password"), null, null));
 
         assertEquals(ErrorCode.LOGIN_FAILED, unknownId.getErrorCode());
         assertEquals(unknownId.getErrorCode(), wrongPassword.getErrorCode());
@@ -142,7 +149,7 @@ class AuthServiceImplTests {
         when(user.getStatus()).thenReturn(UserStatus.INACTIVE);
 
         BusinessException exception = assertThrows(BusinessException.class,
-                () -> service.login(new LoginRequest("member", "correct-password")));
+                () -> service.login(new LoginRequest("member", "correct-password"), null, null));
 
         assertEquals(ErrorCode.USER_INACTIVE, exception.getErrorCode());
         verifyNoInteractions(jwtTokenProvider);
@@ -151,33 +158,53 @@ class AuthServiceImplTests {
     @Test
     void refreshReturnsNewAccessTokenForActiveUser() {
         User user = mock(User.class);
-        when(jwtTokenProvider.getRefreshTokenUserUid("refresh-token")).thenReturn(42L);
+        java.time.LocalDateTime now = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC);
+        RefreshTokenSession session = RefreshTokenSession.create(42L, "session-key", "old-hash", null, null,
+                now, now.plusDays(12));
+        when(jwtTokenProvider.getRefreshTokenClaims("refresh-token")).thenReturn(
+                new JwtTokenProvider.RefreshClaims(42L, "session-key", now.toInstant(java.time.ZoneOffset.UTC).plusSeconds(1000),
+                        now.toInstant(java.time.ZoneOffset.UTC)));
+        when(refreshSessions.findBySessionKeyForUpdate("session-key")).thenReturn(Optional.of(session));
+        when(jwtTokenProvider.hashRefreshToken("refresh-token")).thenReturn("old-hash");
+        when(jwtTokenProvider.createRefreshToken(42L, "session-key", session.getExpiresAt().toInstant(java.time.ZoneOffset.UTC)))
+                .thenReturn("new-refresh-token");
+        when(jwtTokenProvider.hashRefreshToken("new-refresh-token")).thenReturn("new-hash");
         when(userRepository.findById(42L)).thenReturn(Optional.of(user));
         when(user.getStatus()).thenReturn(UserStatus.ACTIVE);
-        when(jwtTokenProvider.createAccessToken(42L)).thenReturn("new-access-token");
+        when(jwtTokenProvider.createAccessToken(42L, "session-key")).thenReturn("new-access-token");
 
         RefreshResponse response = service.refresh(new RefreshRequest("refresh-token"));
 
         assertEquals("new-access-token", response.accessToken());
-        verify(jwtTokenProvider).createAccessToken(42L);
+        assertEquals("new-refresh-token", response.refreshToken());
+        assertEquals("new-hash", session.getRefreshTokenHash());
     }
 
     @Test
-    void refreshRejectsUnknownUser() {
-        when(jwtTokenProvider.getRefreshTokenUserUid("refresh-token")).thenReturn(42L);
-        when(userRepository.findById(42L)).thenReturn(Optional.empty());
+    void refreshRejectsUnknownSession() {
+        when(jwtTokenProvider.getRefreshTokenClaims("refresh-token")).thenReturn(
+                new JwtTokenProvider.RefreshClaims(42L, "session-key", java.time.Instant.now().plusSeconds(1000),
+                        java.time.Instant.now()));
+        when(refreshSessions.findBySessionKeyForUpdate("session-key")).thenReturn(Optional.empty());
 
         BusinessException exception = assertThrows(BusinessException.class,
                 () -> service.refresh(new RefreshRequest("refresh-token")));
 
         assertEquals(ErrorCode.INVALID_REFRESH_TOKEN, exception.getErrorCode());
-        verify(jwtTokenProvider).getRefreshTokenUserUid("refresh-token");
+        verify(jwtTokenProvider).getRefreshTokenClaims("refresh-token");
     }
 
     @Test
     void refreshRejectsInactiveUser() {
         User user = mock(User.class);
-        when(jwtTokenProvider.getRefreshTokenUserUid("refresh-token")).thenReturn(42L);
+        java.time.LocalDateTime now = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC);
+        RefreshTokenSession session = RefreshTokenSession.create(42L, "session-key", "stored-hash", null, null,
+                now, now.plusDays(1));
+        when(jwtTokenProvider.getRefreshTokenClaims("refresh-token")).thenReturn(
+                new JwtTokenProvider.RefreshClaims(42L, "session-key", now.toInstant(java.time.ZoneOffset.UTC).plusSeconds(1000),
+                        now.toInstant(java.time.ZoneOffset.UTC)));
+        when(refreshSessions.findBySessionKeyForUpdate("session-key")).thenReturn(Optional.of(session));
+        when(jwtTokenProvider.hashRefreshToken("refresh-token")).thenReturn("stored-hash");
         when(userRepository.findById(42L)).thenReturn(Optional.of(user));
         when(user.getStatus()).thenReturn(UserStatus.INACTIVE);
 
@@ -185,6 +212,24 @@ class AuthServiceImplTests {
                 () -> service.refresh(new RefreshRequest("refresh-token")));
 
         assertEquals(ErrorCode.USER_INACTIVE, exception.getErrorCode());
+    }
+
+    @Test
+    void refreshTokenReuseRevokesSessionAndFails() {
+        java.time.LocalDateTime now = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC);
+        RefreshTokenSession session = RefreshTokenSession.create(42L, "session-key", "current-hash", null, null,
+                now, now.plusDays(1));
+        when(jwtTokenProvider.getRefreshTokenClaims("old-token")).thenReturn(
+                new JwtTokenProvider.RefreshClaims(42L, "session-key", now.toInstant(java.time.ZoneOffset.UTC).plusSeconds(1000),
+                        now.toInstant(java.time.ZoneOffset.UTC)));
+        when(refreshSessions.findBySessionKeyForUpdate("session-key")).thenReturn(Optional.of(session));
+        when(jwtTokenProvider.hashRefreshToken("old-token")).thenReturn("previous-hash");
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> service.refresh(new RefreshRequest("old-token")));
+
+        assertEquals(ErrorCode.INVALID_REFRESH_TOKEN, exception.getErrorCode());
+        assertEquals("TOKEN_REUSE", session.getRevokeReason());
     }
 
     @Test

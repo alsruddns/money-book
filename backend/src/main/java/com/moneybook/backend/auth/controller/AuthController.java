@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * LOCAL 회원가입, 로그인, Access Token 재발급 및 현재 사용자 조회 API를 제공한다.
@@ -47,20 +49,28 @@ public class AuthController {
      * @return 사용자 UID, 닉네임, JWT Access Token 및 Refresh Token
      */
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(authService.login(request));
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest servletRequest) {
+        return ResponseEntity.ok(authService.login(request, servletRequest.getHeader("User-Agent"),
+                servletRequest.getRemoteAddr()));
     }
 
     /**
      * 인증 없이 받은 Refresh Token을 검증하고 활성 사용자의 새 Access Token을 발급한다.
-     * Refresh Token의 서명, 만료 및 타입은 서비스에서 검증한다.
+     * 서명·만료·세션 상태를 검증하고 refresh token을 회전한다.
      *
      * @param request 기존 Refresh Token
-     * @return 새 JWT Access Token
+     * @return 새 JWT Access Token과 Refresh Token
      */
     @PostMapping("/refresh")
     public ResponseEntity<RefreshResponse> refresh(@Valid @RequestBody RefreshRequest request) {
         return ResponseEntity.ok(authService.refresh(request));
+    }
+
+    /** Access Token에 연결된 현재 Refresh Session을 폐기한다. */
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(Authentication authentication) {
+        authService.logout(authentication);
+        return ResponseEntity.noContent().build();
     }
 
     /**

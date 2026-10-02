@@ -4,6 +4,7 @@ import com.moneybook.backend.accountmanagement.dto.AccountWithdrawalRequest;
 import com.moneybook.backend.accountmanagement.service.AccountManagementService;
 import com.moneybook.backend.activity.repository.ActivityRepository;
 import com.moneybook.backend.auth.dto.LoginRequest;
+import com.moneybook.backend.auth.dto.LoginResponse;
 import com.moneybook.backend.auth.dto.RefreshRequest;
 import com.moneybook.backend.auth.repository.UserAuthRepository;
 import com.moneybook.backend.auth.service.AuthService;
@@ -159,6 +160,8 @@ class AccountLifecycleIntegrationTests {
         fail(ErrorCode.INVALID_CURRENT_PASSWORD, () -> accounts.withdraw(auth(user.getUserUid()),
                 new AccountWithdrawalRequest("wrong-password")));
         assertEquals(UserStatus.ACTIVE, users.findById(user.getUserUid()).orElseThrow().getStatus());
+        LoginResponse login = authService.login(new LoginRequest("reusable-login", "current-password"),
+                "integration-test", "127.0.0.1");
         accounts.withdraw(auth(user.getUserUid()), new AccountWithdrawalRequest("current-password"));
 
         User withdrawn = users.findById(user.getUserUid()).orElseThrow();
@@ -171,9 +174,9 @@ class AccountLifecycleIntegrationTests {
                 + "where a.moneyBookUid = :bookUid", String.class).setParameter("bookUid", joined.getMoneyBookUid())
                 .getSingleResult());
         assertEquals(ErrorCode.LOGIN_FAILED, assertThrows(BusinessException.class,
-                () -> authService.login(new LoginRequest("reusable-login", "current-password"))).getErrorCode());
-        fail(ErrorCode.USER_INACTIVE, () -> authService.refresh(new RefreshRequest(
-                tokenProvider.createRefreshToken(user.getUserUid()))));
+                () -> authService.login(new LoginRequest("reusable-login", "current-password"),
+                        "integration-test", "127.0.0.1")).getErrorCode());
+        fail(ErrorCode.INVALID_REFRESH_TOKEN, () -> authService.refresh(new RefreshRequest(login.refreshToken())));
         assertTrue(auths.findByLocalLoginId("reusable-login").isEmpty());
         User replacement = user("replacement");
         auths.save(UserAuth.local(replacement, "reusable-login", passwordEncoder.encode("new-password")));

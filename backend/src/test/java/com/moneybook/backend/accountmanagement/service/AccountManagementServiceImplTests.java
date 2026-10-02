@@ -6,6 +6,7 @@ import com.moneybook.backend.accountmanagement.service.impl.AccountManagementSer
 import com.moneybook.backend.auth.repository.UserAuthRepository;
 import com.moneybook.backend.moneybook.repository.MoneyBookRepository;
 import com.moneybook.backend.moneybook.repository.MoneyBookUserRepository;
+import com.moneybook.backend.session.repository.RefreshSessionRepository;
 import com.moneybook.backend.common.exception.BusinessException;
 import com.moneybook.backend.common.exception.ErrorCode;
 import com.moneybook.backend.entity.User;
@@ -38,9 +39,11 @@ class AccountManagementServiceImplTests {
     private final UserAuthRepository userAuthRepository = mock(UserAuthRepository.class);
     private final MoneyBookRepository moneyBookRepository = mock(MoneyBookRepository.class);
     private final MoneyBookUserRepository moneyBookUserRepository = mock(MoneyBookUserRepository.class);
+    private final RefreshSessionRepository refreshSessionRepository = mock(RefreshSessionRepository.class);
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final AccountManagementServiceImpl service = new AccountManagementServiceImpl(
-            userRepository, userAuthRepository, passwordEncoder, moneyBookRepository, moneyBookUserRepository);
+            userRepository, userAuthRepository, passwordEncoder, moneyBookRepository, moneyBookUserRepository,
+            refreshSessionRepository);
     private User user;
 
     @BeforeEach
@@ -88,6 +91,7 @@ class AccountManagementServiceImplTests {
         assertTrue(passwordEncoder.matches("new-password", localAuth.getPasswordHash()));
         assertFalse("new-password".equals(localAuth.getPasswordHash()));
         verify(userAuthRepository).save(localAuth);
+        verify(refreshSessionRepository).findUnrevokedByUserUid(42L);
     }
 
     @Test

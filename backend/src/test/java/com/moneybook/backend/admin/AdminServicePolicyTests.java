@@ -5,6 +5,7 @@ import com.moneybook.backend.admin.dto.AdminUserDetailResponse;
 import com.moneybook.backend.admin.enums.AdminAuditActionType;
 import com.moneybook.backend.admin.enums.AdminAuditTargetType;
 import com.moneybook.backend.admin.provider.AdminAuditRecorder;
+import com.moneybook.backend.session.repository.RefreshSessionRepository;
 import com.moneybook.backend.admin.provider.SystemAdminAuthorizationProvider;
 import com.moneybook.backend.admin.repository.AdminAuditRepository;
 import com.moneybook.backend.admin.repository.AdminReadRepository;
@@ -28,7 +29,9 @@ class AdminServicePolicyTests {
     private final ActivityRepository activities=mock(ActivityRepository.class);
     private final UserRepository users=mock(UserRepository.class);
     private final AdminAuditRecorder recorder=mock(AdminAuditRecorder.class);
-    private final AdminServiceImpl service=new AdminServiceImpl(authorization,reads,audits,activities,users,recorder);
+    private final RefreshSessionRepository refreshSessions=mock(RefreshSessionRepository.class);
+    private final AdminServiceImpl service=new AdminServiceImpl(authorization,reads,audits,activities,users,recorder,
+            refreshSessions);
     private final Authentication auth=mock(Authentication.class);
 
     @Test void superAdminCanGrantAndRevokeSystemAdminButCannotGrantSuperOrChangeSelf() {
@@ -63,6 +66,16 @@ class AdminServicePolicyTests {
                 ()->service.changeStatus(2L,UserStatus.BLOCKED,auth));
         assertEquals(ErrorCode.SYSTEM_ADMIN_TARGET_FORBIDDEN,status.getErrorCode());
         verifyNoInteractions(recorder);
+    }
+
+    @Test void blockingUserRevokesTheirRefreshSessions() {
+        User actor=user(1,SystemRole.SUPER_ADMIN);
+        User target=user(2,SystemRole.USER);
+        when(authorization.requireAdmin(auth)).thenReturn(actor);
+        when(users.findById(2L)).thenReturn(Optional.of(target));
+        when(reads.user(2L)).thenReturn(Optional.of(detail(2,SystemRole.USER)));
+        service.changeStatus(2L,UserStatus.BLOCKED,auth);
+        verify(refreshSessions).findUnrevokedByUserUid(2L);
     }
 
     private User user(long uid,SystemRole role) {

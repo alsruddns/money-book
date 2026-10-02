@@ -16,6 +16,7 @@ import com.moneybook.backend.enums.UserStatus;
 import com.moneybook.backend.user.repository.UserRepository;
 import com.moneybook.backend.moneybook.repository.MoneyBookRepository;
 import com.moneybook.backend.moneybook.repository.MoneyBookUserRepository;
+import com.moneybook.backend.session.repository.RefreshSessionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -25,6 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +38,7 @@ public class AccountManagementServiceImpl implements AccountManagementService {
     private final PasswordEncoder passwordEncoder;
     private final MoneyBookRepository moneyBookRepository;
     private final MoneyBookUserRepository moneyBookUserRepository;
+    private final RefreshSessionRepository refreshSessionRepository;
 
     /** Returns the authenticated user's current profile and non-secret provider information. */
     @Override
@@ -80,6 +84,7 @@ public class AccountManagementServiceImpl implements AccountManagementService {
 
         localAuth.changePasswordHash(passwordEncoder.encode(request.newPassword()));
         userAuthRepository.save(localAuth);
+        revokeAllSessions(user.getUserUid(), "PASSWORD_CHANGED");
         return toResponse(user);
     }
 
@@ -115,6 +120,7 @@ public class AccountManagementServiceImpl implements AccountManagementService {
         moneyBookUserRepository.deleteAllByUserUid(userUid);
         userAuthRepository.deleteAllByUserUid(userUid);
         user.withdraw();
+        revokeAllSessions(userUid, "ACCOUNT_WITHDRAWN");
     }
 
     private User requireActiveUser(Authentication authentication) {
@@ -137,6 +143,12 @@ public class AccountManagementServiceImpl implements AccountManagementService {
         } catch (NumberFormatException exception) {
             throw new BusinessException(ErrorCode.INVALID_ACCESS_TOKEN);
         }
+    }
+
+    private void revokeAllSessions(Long userUid, String reason) {
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        refreshSessionRepository.findUnrevokedByUserUid(userUid)
+                .forEach(session -> session.revoke(now, reason));
     }
 
     private AccountMeResDto toResponse(User user) {

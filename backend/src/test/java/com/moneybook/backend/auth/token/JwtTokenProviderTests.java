@@ -56,10 +56,25 @@ class JwtTokenProviderTests {
         assertEquals("HS256", access.getHeaders().get("alg"));
         assertEquals(JwtTokenType.ACCESS.name(), access.getClaimAsString(JwtTokenType.CLAIM_NAME));
         assertEquals(JwtTokenType.REFRESH.name(), refresh.getClaimAsString(JwtTokenType.CLAIM_NAME));
+        assertEquals(refresh.getClaimAsString("sid"), provider.getRefreshTokenClaims(refreshToken).sessionKey());
+        assertEquals(64, provider.hashRefreshToken(refreshToken).length());
+        org.junit.jupiter.api.Assertions.assertNotEquals(refreshToken, provider.hashRefreshToken(refreshToken));
         assertEquals(Duration.ofHours(1), Duration.between(access.getIssuedAt(), access.getExpiresAt()));
         assertEquals(Duration.ofDays(14), Duration.between(refresh.getIssuedAt(), refresh.getExpiresAt()));
         assertEquals(42L, provider.getRefreshTokenUserUid(refreshToken));
         assertEquals(42L, provider.getRefreshTokenUserUid(refreshToken));
+    }
+
+    @Test
+    void sessionBoundAccessAndRefreshShareSessionKeyAndAbsoluteExpiry() {
+        String sessionKey = java.util.UUID.randomUUID().toString();
+        Instant expiry = provider.newSessionExpiration();
+        Jwt access = accessDecoder.decode(provider.createAccessToken(42L, sessionKey));
+        Jwt refresh = rawDecoder.decode(provider.createRefreshToken(42L, sessionKey, expiry));
+
+        assertEquals(sessionKey, access.getClaimAsString("sid"));
+        assertEquals(sessionKey, refresh.getClaimAsString("sid"));
+        assertEquals(expiry, refresh.getExpiresAt());
     }
 
     @Test

@@ -50,6 +50,8 @@ public enum ErrorCode {
     LOGIN_FAILED(HttpStatus.UNAUTHORIZED, "로그인 ID 또는 비밀번호가 올바르지 않습니다."),
     USER_INACTIVE(HttpStatus.FORBIDDEN, "활성 상태의 사용자만 로그인할 수 있습니다."),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "Refresh Token이 유효하지 않습니다."),
+    REFRESH_SESSION_NOT_FOUND(HttpStatus.NOT_FOUND, "Refresh Session을 찾을 수 없습니다."),
+    SESSION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "해당 Refresh Session에 접근할 수 없습니다."),
     INVALID_ACCESS_TOKEN(HttpStatus.UNAUTHORIZED, "Access Token이 유효하지 않습니다."),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."),
     LOCAL_AUTH_NOT_FOUND(HttpStatus.BAD_REQUEST, "LOCAL 계정만 비밀번호를 변경할 수 있습니다."),
