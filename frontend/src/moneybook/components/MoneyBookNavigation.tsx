@@ -21,7 +21,7 @@ export function getMoneyBookMenu(moneyBookUid: number, canRead: boolean): MenuGr
     { label: "카테고리", href: `${root}/categories` },
     { label: "계좌/결제수단", href: `${root}/accounts` },
     { label: "예산", href: `${root}/budgets` },
-    { label: "정기 수입/지출", href: `${root}/recurring-transactions`, disabled: true },
+    { label: "정기 수입/지출", href: `${root}/recurring-transactions` },
   ] : [];
   return [
     { label: "주요 메뉴", items: [{ label: "대시보드", href: root }, ...readable] },

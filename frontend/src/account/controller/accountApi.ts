@@ -23,6 +23,7 @@ export const accountApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : [
         { type: "Account", id: moneyBookUid }, { type: "Transaction", id: moneyBookUid }, { type: "Calendar", id: moneyBookUid },
+        { type: "Transfer", id: moneyBookUid }, { type: "Recurring", id: moneyBookUid },
       ],
     }),
     deleteAccount: builder.mutation<void, AccountKey>({

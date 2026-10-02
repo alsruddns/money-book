@@ -40,7 +40,7 @@ test("category API uses exact paths, optional type filter, and book scoped tags"
   assert.deepEqual(plain(api.createCategory.invalidatesTags({}, undefined, { moneyBookUid: 4 })), [{ type: "Category", id: 4 }]);
   assert.deepEqual(plain(api.updateCategory.invalidatesTags({}, undefined, { moneyBookUid: 4 })), [
     { type: "Category", id: 4 }, { type: "Transaction", id: 4 },
-    { type: "Calendar", id: 4 }, { type: "Budget", id: 4 },
+    { type: "Calendar", id: 4 }, { type: "Budget", id: 4 }, { type: "Recurring", id: 4 },
   ]);
   assert.deepEqual(plain(api.deleteCategory.invalidatesTags(undefined, { status: 409 }, { moneyBookUid: 4 })), []);
 });
@@ -54,6 +54,7 @@ test("account API uses exact paths and updates transaction names only after succ
   assert.deepEqual(plain(api.getAccounts.providesTags([], undefined, 5)), [{ type: "Account", id: 5 }]);
   assert.deepEqual(plain(api.updateAccount.invalidatesTags({}, undefined, { moneyBookUid: 5 })), [
     { type: "Account", id: 5 }, { type: "Transaction", id: 5 }, { type: "Calendar", id: 5 },
+    { type: "Transfer", id: 5 }, { type: "Recurring", id: 5 },
   ]);
   assert.deepEqual(plain(api.deleteAccount.invalidatesTags(undefined, { status: 409 }, { moneyBookUid: 5 })), []);
 });
