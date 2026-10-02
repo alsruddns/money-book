@@ -13,6 +13,7 @@ import com.moneybook.backend.enums.JwtTokenType;
 import com.moneybook.backend.enums.TransactionType;
 import com.moneybook.backend.transaction.dto.TransactionResponse;
 import com.moneybook.backend.transaction.service.TransactionService;
+import com.moneybook.backend.transaction.service.TransactionSearchService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -51,6 +52,7 @@ class LedgerControllerTests {
     @MockitoBean private CategoryService categories;
     @MockitoBean private AccountService accounts;
     @MockitoBean private TransactionService transactions;
+    @MockitoBean private TransactionSearchService search;
 
     @Test
     void categoryEndpointsReturnDtosAndNoContentOnDelete() throws Exception {
