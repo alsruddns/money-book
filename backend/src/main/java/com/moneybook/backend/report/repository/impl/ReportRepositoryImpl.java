@@ -31,4 +31,21 @@ public class ReportRepositoryImpl implements ReportRepository {
                 .setParameter("expense", TransactionType.EXPENSE)
                 .setParameter("start", start).setParameter("end", endExclusive).getResultList();
     }
+
+    /** Reads at most the requested expense rows and resolves category/account labels in one query. */
+    @Override
+    public List<ExpenseRow> expenseRanking(Long bookUid, LocalDate start, LocalDate endExclusive, int limit) {
+        return em.createQuery("""
+                select new com.moneybook.backend.report.repository.ReportRepository$ExpenseRow(
+                    t.transactionUid, t.transactionDate, c.categoryUid, c.name,
+                    a.accountUid, a.name, t.memo, t.amount)
+                from MoneyBookTransaction t join t.category c join t.account a
+                where t.moneyBook.moneyBookUid = :bookUid and t.transactionType = :type
+                  and t.transactionDate >= :start and t.transactionDate < :end
+                order by t.amount desc, t.transactionDate desc, t.transactionUid desc
+                """, ExpenseRow.class)
+                .setParameter("bookUid", bookUid).setParameter("type", TransactionType.EXPENSE)
+                .setParameter("start", start).setParameter("end", endExclusive)
+                .setMaxResults(limit).getResultList();
+    }
 }

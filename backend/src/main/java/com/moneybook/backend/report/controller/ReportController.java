@@ -5,6 +5,8 @@ import com.moneybook.backend.report.dto.AccountStatisticsResponse;
 import com.moneybook.backend.report.dto.CategoryStatisticsResponse;
 import com.moneybook.backend.report.dto.MonthlyReportResponse;
 import com.moneybook.backend.report.dto.YearlyReportResponse;
+import com.moneybook.backend.report.dto.ExpenseRankingPeriod;
+import com.moneybook.backend.report.dto.ExpenseRankingResponse;
 import com.moneybook.backend.report.service.ReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -24,6 +26,14 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ReportController {
     private final ReportService service;
+
+    /** Returns up to twenty expense transactions ranked by amount for one month or year. */
+    @GetMapping("/expense-ranking")
+    public List<ExpenseRankingResponse> expenseRanking(@PathVariable Long moneyBookUid,
+            @RequestParam ExpenseRankingPeriod periodType, @RequestParam int year,
+            @RequestParam(required = false) Integer month, Authentication authentication) {
+        return service.expenseRanking(moneyBookUid, periodType, year, month, authentication);
+    }
 
     /** 거래가 없는 월도 0으로 채운 12개월 수입·지출 추이를 조회한다. */
     @GetMapping("/yearly")

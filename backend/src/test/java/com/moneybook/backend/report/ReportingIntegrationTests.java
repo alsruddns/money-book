@@ -21,6 +21,7 @@ import com.moneybook.backend.enums.RecurringFrequency;
 import com.moneybook.backend.moneybook.repository.MoneyBookRepository;
 import com.moneybook.backend.moneybook.repository.MoneyBookUserRepository;
 import com.moneybook.backend.report.service.ReportService;
+import com.moneybook.backend.report.dto.ExpenseRankingPeriod;
 import com.moneybook.backend.recurring.dto.GenerateRecurringTransactionRequest;
 import com.moneybook.backend.recurring.repository.RecurringTransactionRepository;
 import com.moneybook.backend.recurring.service.RecurringTransactionService;
@@ -165,6 +166,33 @@ class ReportingIntegrationTests {
         assertEquals(0, bank.netChange().compareTo(new BigDecimal("230")));
         assertError(ErrorCode.VALIDATION_FAILED, () -> reports.categories(f.uid(),
                 LocalDate.parse("2026-12-01"), LocalDate.parse("2026-10-01"), TransactionType.EXPENSE, f.auth()));
+    }
+
+    @Test
+    void expenseRankingIsLimitedToTwentyAndUsesDeterministicExpenseOnlyOrdering() {
+        Fixture f = fixture();
+        for (int amount = 1; amount <= 25; amount++) {
+            transaction(f, TransactionType.EXPENSE, f.food, f.cash, Integer.toString(amount),
+                    amount < 4 ? "2026-10-02" : "2026-10-03", "expense");
+        }
+        transaction(f, TransactionType.INCOME, f.salary, f.bank, "9999", "2026-10-03", "income");
+        transaction(f, TransactionType.EXPENSE, f.food, f.cash, "5000", "2026-11-01", "other month");
+
+        var rows = reports.expenseRanking(f.uid(), ExpenseRankingPeriod.MONTH, 2026, 10, f.auth());
+        assertEquals(20, rows.size());
+        assertEquals(1, rows.getFirst().rank());
+        assertEquals(0, rows.getFirst().amount().compareTo(new BigDecimal("25")));
+        assertEquals(6, rows.getLast().amount().intValue());
+        assertTrue(rows.stream().allMatch(row -> row.transactionDate().getMonthValue() == 10));
+
+        var yearly = reports.expenseRanking(f.uid(), ExpenseRankingPeriod.YEAR, 2026, null, f.auth());
+        assertEquals(20, yearly.size());
+        assertEquals(0, yearly.getFirst().amount().compareTo(new BigDecimal("5000")));
+        assertTrue(reports.expenseRanking(f.uid(), ExpenseRankingPeriod.YEAR, 2025, null, f.auth()).isEmpty());
+        assertError(ErrorCode.VALIDATION_FAILED, () -> reports.expenseRanking(
+                f.uid(), ExpenseRankingPeriod.MONTH, 2026, null, f.auth()));
+        assertError(ErrorCode.VALIDATION_FAILED, () -> reports.expenseRanking(
+                f.uid(), ExpenseRankingPeriod.YEAR, 2026, 10, f.auth()));
     }
 
     @Test

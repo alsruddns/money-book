@@ -5,6 +5,8 @@ import com.moneybook.backend.report.dto.AccountStatisticsResponse;
 import com.moneybook.backend.report.dto.CategoryStatisticsResponse;
 import com.moneybook.backend.report.dto.MonthlyReportResponse;
 import com.moneybook.backend.report.dto.YearlyReportResponse;
+import com.moneybook.backend.report.dto.ExpenseRankingPeriod;
+import com.moneybook.backend.report.dto.ExpenseRankingResponse;
 import org.springframework.security.core.Authentication;
 
 import java.time.LocalDate;
@@ -17,4 +19,6 @@ public interface ReportService {
     List<AccountStatisticsResponse> accounts(Long bookUid, LocalDate start, LocalDate end,
                                              Authentication authentication);
     MonthlyReportResponse monthly(Long bookUid, int year, int month, Authentication authentication);
+    List<ExpenseRankingResponse> expenseRanking(Long bookUid, ExpenseRankingPeriod periodType, int year,
+                                                Integer month, Authentication authentication);
 }

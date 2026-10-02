@@ -15,6 +15,8 @@ import com.moneybook.backend.report.dto.CategoryStatisticsResponse;
 import com.moneybook.backend.report.dto.MonthlyReportResponse;
 import com.moneybook.backend.report.dto.YearlyMonthResponse;
 import com.moneybook.backend.report.dto.YearlyReportResponse;
+import com.moneybook.backend.report.dto.ExpenseRankingPeriod;
+import com.moneybook.backend.report.dto.ExpenseRankingResponse;
 import com.moneybook.backend.report.repository.ReportRepository;
 import com.moneybook.backend.report.service.ReportService;
 import lombok.RequiredArgsConstructor;
@@ -137,6 +139,40 @@ public class ReportServiceImpl implements ReportService {
                 limit == null ? null : limit.signum() == 0 ? BigDecimal.ZERO
                         : current.expense().multiply(BigDecimal.valueOf(100)).divide(limit, 2, RoundingMode.HALF_UP),
                 limit != null && current.expense().compareTo(limit) > 0);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ExpenseRankingResponse> expenseRanking(Long bookUid, ExpenseRankingPeriod periodType, int year,
+                                                       Integer month, Authentication authentication) {
+        permissions.require(bookUid, authentication, MoneyBookPermission.READ);
+        if (periodType == null || year < 1 || year >= 9999) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED);
+        }
+        LocalDate start;
+        LocalDate end;
+        try {
+            if (periodType == ExpenseRankingPeriod.MONTH) {
+                if (month == null) throw new DateTimeException("Month is required");
+                YearMonth selected = YearMonth.of(year, month);
+                start = selected.atDay(1);
+                end = selected.plusMonths(1).atDay(1);
+            } else {
+                if (month != null) throw new DateTimeException("Month is not valid for yearly ranking");
+                start = LocalDate.of(year, 1, 1);
+                end = LocalDate.of(year + 1, 1, 1);
+            }
+        } catch (DateTimeException exception) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED);
+        }
+        var rows = reports.expenseRanking(bookUid, start, end, 20);
+        List<ExpenseRankingResponse> result = new ArrayList<>(rows.size());
+        for (int index = 0; index < rows.size(); index++) {
+            var row = rows.get(index);
+            result.add(new ExpenseRankingResponse(index + 1, row.transactionUid(), row.transactionDate(),
+                    row.categoryUid(), row.categoryName(), row.accountUid(), row.accountName(), row.memo(), row.amount()));
+        }
+        return List.copyOf(result);
     }
 
     private Totals totals(Long bookUid, YearMonth period) {
