@@ -38,12 +38,12 @@ money-book/
 
 ### Frontend
 
-- **인증과 공유:** 로그인·회원가입, 인증 상태 복원 및 토큰 재발급, 가계부 목록·생성, 초대·멤버·권한 관리
+- **인증과 공유:** 로그인·회원가입, 인증 상태 복원 및 Refresh Token rotation, 로그인 세션 조회·개별/전체 로그아웃, 가계부 목록·생성, 초대·멤버·권한 관리
 - **원장:** 카테고리, 계좌/결제수단, 수입·지출 거래 및 거래 검색
 - **가계부 기능:** 이체, 정기 거래, 대시보드, 캘린더, 예산, 월간·연간 리포트, 월 결산
 - **설정과 데이터:** 주 시작 요일 설정, CSV/XLSX 내보내기, JSON 백업·검증·미리보기·복원
 - **계정 관리:** 내 계정 정보 조회, 닉네임 변경, LOCAL 비밀번호 변경, 가계부 OWNER 이전, 회원 탈퇴
-  - OWNER 이전 UI, 탈퇴 전 소유권 이전 안내, LOCAL 비밀번호 재인증, 탈퇴 성공 후 토큰·인증 상태·API 캐시 정리
+  - OWNER 이전 UI, 탈퇴 전 소유권 이전 안내, LOCAL 비밀번호 재인증, 비밀번호 변경 후 세션 폐기에 따른 재로그인, 탈퇴 성공 후 토큰·인증 상태·API 캐시 정리
 - **레이아웃:** 데스크톱 사이드바, 모바일 내비게이션, 광고 슬롯 대응 구조
 - **System Admin:** 관리자 대시보드, 사용자 상태/역할 관리, 가계부 운영 조회, 전체 활동내역, SUPER_ADMIN 감사로그
 
@@ -71,7 +71,7 @@ money-book/
 
 ## Current Focus
 
-**현재 단계: Session / Refresh Token Management Backend**
+**현재 단계: Rate Limiting / Security Hardening Backend**
 
 다음 작업 순서:
 
@@ -145,8 +145,9 @@ money-book/
 
 ### Phase 9 — 보안
 
-- [ ] 세션 및 Refresh Token 관리
-- [ ] 전체 기기 로그아웃
+- [x] Session / Refresh Token Management Backend
+- [x] Session / Refresh Token Management Frontend
+- [x] 전체 기기 로그아웃
 - [ ] Rate limiting
 - [ ] 보안 강화
 
