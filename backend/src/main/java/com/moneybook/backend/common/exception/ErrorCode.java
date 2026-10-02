@@ -3,6 +3,14 @@ package com.moneybook.backend.common.exception;
 import org.springframework.http.HttpStatus;
 
 public enum ErrorCode {
+    MONEY_BOOK_BACKUP_FORBIDDEN(HttpStatus.FORBIDDEN, "가계부 소유자 또는 관리자만 백업할 수 있습니다."),
+    BACKUP_FILE_INVALID(HttpStatus.BAD_REQUEST, "백업 파일 형식이나 내용이 올바르지 않습니다."),
+    BACKUP_FILE_TOO_LARGE(HttpStatus.PAYLOAD_TOO_LARGE, "백업 파일 크기는 20MB 이하여야 합니다."),
+    BACKUP_VERSION_UNSUPPORTED(HttpStatus.BAD_REQUEST, "지원하지 않는 백업 버전입니다."),
+    BACKUP_REFERENCE_INVALID(HttpStatus.BAD_REQUEST, "백업 내부 참조가 올바르지 않습니다."),
+    BACKUP_DUPLICATE_IDENTIFIER(HttpStatus.BAD_REQUEST, "백업 내부 식별자가 중복되었습니다."),
+    BACKUP_EXPORT_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "백업 파일을 생성할 수 없습니다."),
+    BACKUP_RESTORE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "백업을 복원할 수 없습니다."),
     MONTH_ALREADY_CLOSED(HttpStatus.CONFLICT, "이미 마감된 월입니다."),
     MONTH_NOT_CLOSED(HttpStatus.NOT_FOUND, "마감되지 않은 월입니다."),
     MONTH_CLOSED(HttpStatus.CONFLICT, "마감된 월의 거래, 이체 또는 예산을 변경할 수 없습니다."),

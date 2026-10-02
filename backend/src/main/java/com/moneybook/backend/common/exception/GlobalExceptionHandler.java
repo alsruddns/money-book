@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -38,6 +39,13 @@ public class GlobalExceptionHandler {
             MissingServletRequestParameterException.class})
     public ResponseEntity<ErrorResponse> handleMalformedRequest(Exception exception) {
         ErrorCode errorCode = ErrorCode.VALIDATION_FAILED;
+        return ResponseEntity.status(errorCode.getStatus())
+                .body(new ErrorResponse(errorCode.name(), errorCode.getMessage()));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleUploadTooLarge(MaxUploadSizeExceededException exception) {
+        ErrorCode errorCode = ErrorCode.BACKUP_FILE_TOO_LARGE;
         return ResponseEntity.status(errorCode.getStatus())
                 .body(new ErrorResponse(errorCode.name(), errorCode.getMessage()));
     }

@@ -26,7 +26,7 @@ public class MoneyBookPermissionProvider {
     private final MoneyBookUserRepository moneyBookUserRepository;
 
     public MoneyBook require(Long moneyBookUid, Authentication authentication, MoneyBookPermission permission) {
-        Long userUid = activeUserUid(authentication);
+        Long userUid = currentActiveUserUid(authentication);
         MoneyBook book = moneyBookRepository.findById(moneyBookUid)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MONEY_BOOK_NOT_FOUND));
         if (book.getOwnerUserUid().equals(userUid)) {
@@ -40,7 +40,22 @@ public class MoneyBookPermissionProvider {
         return book;
     }
 
-    private Long activeUserUid(Authentication authentication) {
+    /** Financial backup access is limited to the owner or an accepted administrator. */
+    public MoneyBook requireBackupAccess(Long moneyBookUid, Authentication authentication) {
+        Long userUid = currentActiveUserUid(authentication);
+        MoneyBook book = moneyBookRepository.findById(moneyBookUid)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MONEY_BOOK_NOT_FOUND));
+        if (book.getOwnerUserUid().equals(userUid)) return book;
+        MoneyBookUser membership = moneyBookUserRepository.findByMoneyBookUidAndUserUid(moneyBookUid, userUid)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MONEY_BOOK_BACKUP_FORBIDDEN));
+        if (membership.getInvitationStatus() != InvitationStatus.ACCEPTED || !membership.isAdmin()) {
+            throw new BusinessException(ErrorCode.MONEY_BOOK_BACKUP_FORBIDDEN);
+        }
+        return book;
+    }
+
+    /** Returns the active UID from a verified access-token authentication for restore ownership/auditing. */
+    public Long currentActiveUserUid(Authentication authentication) {
         if (!(authentication instanceof JwtAuthenticationToken)) {
             throw new BusinessException(ErrorCode.INVALID_ACCESS_TOKEN);
         }
