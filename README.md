@@ -73,7 +73,7 @@ money-book/
 
 ## Current Focus
 
-**현재 단계: 전체 UI/UX 최종 마감**
+**현재 단계: 통합 테스트 및 배포 전 검증**
 
 후속 운영 단계:
 
@@ -156,6 +156,7 @@ money-book/
 ### Phase 10 — UX와 제품 기능
 
 - [x] Frontend UX 일관성 개선
+- [x] Pre-Release UI/UX Finalization
 - [x] Dashboard V2 Frontend 분석 화면
 - [x] 월간·연간 지출 TOP20 Frontend
 - [ ] 앱 내 알림
