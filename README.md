@@ -167,7 +167,7 @@ money-book/
 
 - [x] Monitoring / Health / Metrics Backend
 - [x] Backend test stabilization: `./gradlew clean test` passes all 229 tests without skips
-- [x] Production profile configuration review: required DB/JWT environment variables, actuator exposure, and stateless security
+- [x] Production profile configuration review: required DB/JWT environment variables, actuator exposure, stateless security, and graceful shutdown
 - [x] Local/production backup upload limits aligned to 20 MB file and 21 MB multipart request
 - [ ] Run the complete Flyway chain against an isolated clean PostgreSQL database
 - [ ] Prometheus 서버 및 운영 모니터링 연동
