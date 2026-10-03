@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   async rewrites() {
     const configuredUrl = process.env.BACKEND_API_URL;
     const backendApiUrl = configuredUrl ?? (process.env.NODE_ENV === "production" ? undefined : "http://localhost:8080");

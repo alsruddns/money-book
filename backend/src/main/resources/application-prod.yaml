@@ -40,3 +40,6 @@ info:
     version: ${APP_VERSION:0.0.1-SNAPSHOT}
 server:
   shutdown: graceful
+  # The Backend is reachable only from Caddy on the private proxy network.
+  # Caddy overwrites forwarded headers from the client connection before proxying.
+  forward-headers-strategy: framework

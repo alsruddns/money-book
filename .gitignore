@@ -14,6 +14,7 @@ frontend/.next/
 .env
 .env.*
 !.env.example
+!.env.production.example
 
 # OS
 .DS_Store
