@@ -25,6 +25,7 @@ export function getMoneyBookMenu(moneyBookUid: number, permission: Permission): 
     { label: "분석", items: readable ? [
       { label: "월간 분석", href: `${root}/reports/monthly` },
       { label: "연간 분석", href: `${root}/reports/yearly` },
+      { label: "지출 순위", href: `${root}/reports/expense-ranking` },
     ] : [] },
     { label: "예산", items: readable ? [{ label: "예산", href: `${root}/budgets` }] : [] },
   ];
@@ -79,6 +80,7 @@ export function getDashboardReportTabs(moneyBookUid: number, pathname: string) {
     { label: "요약", href: root, active: pathname === root },
     { label: "월간 분석", href: `${root}/reports/monthly`, active: pathname === `${root}/reports` || pathname.endsWith("/monthly") },
     { label: "연간 분석", href: `${root}/reports/yearly`, active: pathname.endsWith("/yearly") },
+    { label: "지출 순위", href: `${root}/reports/expense-ranking`, active: pathname.endsWith("/expense-ranking") },
   ];
 }
 

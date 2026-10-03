@@ -115,8 +115,9 @@ test("money book menu groups routes and limits management to readable admins", (
   assert.equal(getMoneyBookMenu(7, { canRead: false, isOwner: false, isAdmin: false }).some((group) => group.items.some((item) => item.href.endsWith("/members"))), false);
   assert.equal(isMoneyBookRouteActive("/books/7/categories/12", "/books/7/categories", "/books/7"), true);
   assert.equal(isMoneyBookRouteActive("/books/7/categories", "/books/7", "/books/7"), false);
-  assert.deepEqual(JSON.parse(JSON.stringify(getDashboardReportTabs(7, "/books/7/reports/monthly").map((tab) => tab.active))), [false, true, false]);
-  assert.deepEqual(JSON.parse(JSON.stringify(getDashboardReportTabs(7, "/books/7/reports/yearly").map((tab) => tab.active))), [false, false, true]);
+  assert.deepEqual(JSON.parse(JSON.stringify(getDashboardReportTabs(7, "/books/7/reports/monthly").map((tab) => tab.active))), [false, true, false, false]);
+  assert.deepEqual(JSON.parse(JSON.stringify(getDashboardReportTabs(7, "/books/7/reports/yearly").map((tab) => tab.active))), [false, false, true, false]);
+  assert.deepEqual(JSON.parse(JSON.stringify(getDashboardReportTabs(7, "/books/7/reports/expense-ranking").map((tab) => tab.active))), [false, false, false, true]);
   assert.deepEqual(JSON.parse(JSON.stringify(getDashboardReportTabs(7, "/books/7/calendar"))), []);
 });
 

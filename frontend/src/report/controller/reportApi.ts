@@ -8,6 +8,11 @@ export interface ReportMonthQuery { moneyBookUid: number; year: number; month: n
 export interface ReportYearQuery { moneyBookUid: number; year: number }
 export interface ReportPeriodQuery { moneyBookUid: number; startDate: string; endDate: string }
 interface CategoryQuery extends ReportPeriodQuery { transactionType: "INCOME" | "EXPENSE" }
+export interface ExpenseRankingQuery { moneyBookUid: number; periodType: "MONTH" | "YEAR"; year: number; month?: number }
+export interface ExpenseRankingResponse {
+  rank: number; transactionUid: number; transactionDate: string; categoryUid: number;
+  categoryName: string; accountUid: number; accountName: string; memo: string | null; amount: number;
+}
 export const reportApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getMonthlyReport: builder.query<MonthlyReportResponse, ReportMonthQuery>({
@@ -26,6 +31,10 @@ export const reportApi = baseApi.injectEndpoints({
       query: ({ moneyBookUid, ...params }) => ({ url: `money-books/${moneyBookUid}/reports/accounts`, params }),
       providesTags: (_result, _error, { moneyBookUid }) => [{ type: "Report", id: moneyBookUid }],
     }),
+    getExpenseRanking: builder.query<ExpenseRankingResponse[], ExpenseRankingQuery>({
+      query: ({ moneyBookUid, ...params }) => ({ url: `money-books/${moneyBookUid}/reports/expense-ranking`, params }),
+      providesTags: (_result, _error, { moneyBookUid }) => [{ type: "Report", id: moneyBookUid }],
+    }),
   }),
 });
-export const { useGetMonthlyReportQuery, useGetYearlyReportQuery, useGetCategoryStatisticsQuery, useGetAccountStatisticsQuery } = reportApi;
+export const { useGetMonthlyReportQuery, useGetYearlyReportQuery, useGetCategoryStatisticsQuery, useGetAccountStatisticsQuery, useGetExpenseRankingQuery } = reportApi;
