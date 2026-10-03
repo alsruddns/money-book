@@ -1,11 +1,11 @@
 export interface SelectedMonth { year: number; month: number }
 
-export function parseSelectedMonth(yearText: string | null, monthText: string | null, today = new Date()): SelectedMonth {
-  const fallback = { year: today.getFullYear(), month: today.getMonth() + 1 };
+export function parseSelectedMonth(yearText: string | null, monthText: string | null, today = new Date(), minYear = 1, maxYear = 9999): SelectedMonth {
+  const fallback = { year: Math.min(maxYear, Math.max(minYear, today.getFullYear())), month: today.getMonth() + 1 };
   if (!yearText || !monthText || !/^\d{1,4}$/.test(yearText) || !/^\d{1,2}$/.test(monthText)) return fallback;
   const year = Number(yearText);
   const month = Number(monthText);
-  if (year < 1 || year > 9999 || month < 1 || month > 12) return fallback;
+  if (year < minYear || year > maxYear || month < 1 || month > 12) return fallback;
   return { year, month };
 }
 

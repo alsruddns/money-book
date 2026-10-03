@@ -58,7 +58,7 @@ test("calendar and budget API match backend paths, methods, and scoped cache tag
   assert.deepEqual(plain(budgetApi.saveMonthlyBudget.query(save)), {
     url: "money-books/7/budgets/2026/10", method: "PUT", body: save.request,
   });
-  assert.deepEqual(plain(budgetApi.saveMonthlyBudget.invalidatesTags({}, undefined, save)), [{ type: "Budget", id: "7-2026-10" }, { type: "Report", id: 7 }, { type: "MoneyBookActivity", id: 7 }]);
+  assert.deepEqual(plain(budgetApi.saveMonthlyBudget.invalidatesTags({}, undefined, save)), [{ type: "Budget", id: "7-2026-10" }, { type: "Report", id: 7 }, { type: "Dashboard", id: 7 }, { type: "MoneyBookActivity", id: 7 }]);
   assert.deepEqual(plain(budgetApi.saveMonthlyBudget.invalidatesTags(undefined, { status: 403 }, save)), []);
 });
 
@@ -131,17 +131,19 @@ test("calendar renders weekend, holiday, amounts, transfers, and empty dates", (
 test("calendar day detail shows transactions, transfers, and an empty state", () => {
   const selected = day("2026-10-03", "SATURDAY", { holiday: true, holidayName: "개천절" });
   const baseMocks = {
-    react: { useEffect: () => {} },
+    react: { useEffect: () => {}, useState: (initial) => [initial, () => {}] },
     "@/common/components/DialogShell": { default: ({ title, children }) => React.createElement("section", { "aria-label": title }, children) },
     "@/common/format/money": { formatMoney },
+    "@/transaction/components/TransactionFormDialog": { default: () => null },
+    "@/transaction/components/TransactionDetailDialog": { default: () => null },
   };
-  function render(detail) {
+  function render(detail, permissions = {}) {
     const Detail = loadModule("calendar/components/CalendarDayDetailDialog.tsx", {
       ...baseMocks, "../hooks/useCalendarDayDetail": { useCalendarDayDetail: () => ({ detail }) },
     }).default;
-    return renderToStaticMarkup(React.createElement(Detail, { moneyBookUid: 7, day: selected, onClose: () => {} }));
+    return renderToStaticMarkup(React.createElement(Detail, { moneyBookUid: 7, day: selected, canCreate: false, canUpdate: false, canDelete: false, ...permissions, onClose: () => {} }));
   }
-  assert.match(render({ transactions: [], transfers: [] }), /등록된 거래가 없습니다/);
+  assert.match(render({ transactions: [], transfers: [] }), /이 날짜에는 거래가 없습니다/);
   const markup = render({ holiday: true, holidayName: "개천절", transactions: [{ transactionUid: 1, transactionType: "EXPENSE", amount: 1000,
     categoryName: "식비", accountName: "현금", memo: "점심" }], transfers: [{ transferUid: 2,
     fromAccountName: "현금", toAccountName: "은행", amount: 5000, memo: "저축" }] });
@@ -151,6 +153,26 @@ test("calendar day detail shows transactions, transfers, and an empty state", ()
   assert.match(markup, /점심/);
   assert.match(markup, /현금 → 은행/);
   assert.match(markup, /5,000원/);
+  assert.match(render({ holiday: true, holidayName: "개천절", transactions: [{ transactionUid: 1, transactionType: "EXPENSE", amount: 1000,
+    categoryName: "식비", accountName: "현금", memo: "점심" }], transfers: [] }, { canUpdate: true }), /거래 상세 및 관리/);
+  assert.doesNotMatch(render({ transactions: [], transfers: [] }), /수입 추가/);
+  assert.match(render({ transactions: [], transfers: [] }, { canCreate: true }), /수입 추가/);
+});
+
+test("calendar can create an income or expense on the selected date through the shared transaction form", () => {
+  const Form = loadModule("transaction/components/TransactionFormDialog.tsx", {
+    "next/link": { default: link },
+    "@/common/components/DialogShell": { default: ({ title, children }) => React.createElement("section", { "aria-label": title }, children) },
+    "../hooks/useTransactionFormOptions": { useTransactionFormOptions: () => ({ categories: [{ categoryUid: 3, name: "식비" }], accounts: [{ accountUid: 4, name: "현금" }], isLoading: false, isError: false }) },
+    "../hooks/useCreateTransaction": { useCreateTransaction: () => ({ isLoading: false }) },
+    "../hooks/useUpdateTransaction": { useUpdateTransaction: () => ({ isLoading: false }) },
+    "../transactionForm": loadModule("transaction/transactionForm.ts"),
+  }).default;
+  const markup = renderToStaticMarkup(React.createElement(Form, {
+    moneyBookUid: 7, initialDate: "2026-10-03", initialType: "INCOME", onClose: () => {}, onSaved: () => {},
+  }));
+  assert.match(markup, /value="INCOME"/);
+  assert.match(markup, /value="2026-10-03"/);
 });
 
 test("budget form validates amounts, null totals, and category sum", () => {
@@ -255,16 +277,25 @@ test("budget view keeps setup control behind U permission", () => {
 
 test("dashboard shows monthly totals, budget summary, and quick links", () => {
   const Dashboard = loadModule("moneybook/components/MoneyBookDetail.tsx", {
-    "next/link": { default: link }, "@/common/format/money": { formatMoney },
-    "@/budget/components/BudgetProgress": { default: () => React.createElement("span", null, "125% 예산 초과") },
+    "next/link": { default: link }, "@/common/format/money": { formatMoney, formatCount: (value) => `${value}건` },
+    "@/common/format/percent": { formatPercentPoints: (value) => `${value}%`, formatFractionPercent: (value) => `${value * 100}%` },
+    "@/transaction/components/MonthSelector": { default: () => React.createElement("span", null, "2026년 10월") },
     "@/dashboard/hooks/useMonthlyDashboard": { useMonthlyDashboard: () => ({
-      year: 2026, month: 10, isMonthReady: true, permission: { moneyBook: { name: "우리 집" }, canRead: true },
-      calendar: { calendar: { days: [] }, totals: { income: 300000, expense: 125000, transferOut: 5000 } },
-      budget: { budget }, activeDays: [],
+      year: 2026, month: 10, moveMonth: () => {}, goToToday: () => {}, isLoading: false, isFetching: false, isError: false,
+      permission: { moneyBook: { name: "우리 집" }, canRead: true },
+      dashboard: { summary: { totalIncome: 300000, totalExpense: 125000, balance: 175000, transactionCount: 2, incomeCount: 1, expenseCount: 1 },
+        comparison: { incomeChangeRate: 12.4, expenseChangeRate: null },
+        categoryExpenses: [{ categoryUid: 3, categoryName: "식비", amount: 125000, transactionCount: 1, ratio: 0.34 }],
+        monthlyTrend: [{ year: 2026, month: 10, income: 300000, expense: 125000, balance: 175000 }],
+        budget: { totalBudget: 100000, actualExpense: 125000, remaining: -25000, usageRate: 125, overBudget: true },
+        topExpenses: [{ rank: 1, transactionUid: 1, transactionDate: "2026-10-03", categoryUid: 3, categoryName: "식비", accountUid: 4, accountName: "카드", memo: "점심", amount: 125000 }] },
     }) },
   }).default;
   const markup = renderToStaticMarkup(React.createElement(Dashboard, { moneyBookUid: 7 }));
   for (const expected of ["300,000원", "125,000원", "175,000원", "100,000원", "25,000원 초과"]) assert.match(markup, new RegExp(expected));
+  assert.match(markup, /34%/);
+  assert.match(markup, /전체 지출 순위 보기/);
+  assert.match(markup, /href="\/books\/7\/reports\/expense-ranking\?periodType=MONTH&amp;year=2026&amp;month=10"/);
   assert.match(markup, /href="\/books\/7\/calendar\?year=2026&amp;month=10"/);
   assert.match(markup, /href="\/books\/7\/transactions\?year=2026&amp;month=10"/);
   assert.match(markup, /href="\/books\/7\/budgets\?year=2026&amp;month=10"/);

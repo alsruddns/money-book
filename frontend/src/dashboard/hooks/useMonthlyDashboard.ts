@@ -1,27 +1,18 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useMonthNavigation } from "@/transaction/hooks/useMonthNavigation";
 import { useMoneyBookPermission } from "@/moneybook/hooks/useMoneyBookPermission";
-import { useMonthlyCalendar } from "@/calendar/hooks/useMonthlyCalendar";
-import { useMonthlyBudget } from "@/budget/hooks/useMonthlyBudget";
-
-function currentBrowserMonth(): string {
-  const today = new Date();
-  return `${today.getFullYear()}-${today.getMonth() + 1}`;
-}
-
-function serverMonth(): string { return ""; }
-function subscribe(): () => void { return () => {}; }
+import { getApiErrorMessage } from "@/common/api/getApiErrorMessage";
+import { useGetDashboardQuery } from "../controller/dashboardApi";
 
 export function useMonthlyDashboard(moneyBookUid: number) {
-  const currentMonth = useSyncExternalStore(subscribe, currentBrowserMonth, serverMonth);
-  const [yearText, monthText] = currentMonth.split("-");
-  const year = Number(yearText) || 1;
-  const month = Number(monthText) || 1;
+  const { year, month, moveMonth, goToToday } = useMonthNavigation(2, 9998);
   const permission = useMoneyBookPermission(moneyBookUid);
-  const enabled = currentMonth !== "" && permission.canRead;
-  const calendar = useMonthlyCalendar(moneyBookUid, year, month, enabled);
-  const budget = useMonthlyBudget(moneyBookUid, year, month, enabled);
-  const activeDays = (calendar.calendar?.days ?? []).filter((day) => day.transactionCount > 0 || day.transferCount > 0).slice(-5).reverse();
-  return { year, month, isMonthReady: currentMonth !== "", permission, calendar, budget, activeDays };
+  const query = useGetDashboardQuery({ moneyBookUid, year, month }, { skip: !permission.canRead });
+  return {
+    year, month, moveMonth, goToToday, permission, dashboard: query.currentData,
+    isLoading: query.isLoading, isFetching: query.isFetching, isError: query.isError,
+    errorMessage: query.isError ? getApiErrorMessage(query.error, "대시보드 데이터를 불러오지 못했습니다. 다시 시도해주세요.") : null,
+    refetch: query.refetch,
+  };
 }

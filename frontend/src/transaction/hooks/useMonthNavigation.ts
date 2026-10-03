@@ -3,15 +3,15 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { parseSelectedMonth, shiftMonth } from "../month";
 
-export function useMonthNavigation() {
+export function useMonthNavigation(minYear = 1, maxYear = 9999) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const selectedMonth = parseSelectedMonth(searchParams.get("year"), searchParams.get("month"));
+  const selectedMonth = parseSelectedMonth(searchParams.get("year"), searchParams.get("month"), new Date(), minYear, maxYear);
 
   function moveMonth(offset: -1 | 1) {
     const next = shiftMonth(selectedMonth, offset);
-    if (next.year !== selectedMonth.year || next.month !== selectedMonth.month) {
+    if (next.year >= minYear && next.year <= maxYear && (next.year !== selectedMonth.year || next.month !== selectedMonth.month)) {
       router.push(`${pathname}?year=${next.year}&month=${next.month}`);
     }
   }

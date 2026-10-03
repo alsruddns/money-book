@@ -46,7 +46,7 @@ export const accountApi = baseApi.injectEndpoints({
     }),
     createAccount: builder.mutation<AccountResponse, CreateArg>({
       query: ({ moneyBookUid, request }) => ({ url: `money-books/${moneyBookUid}/accounts`, method: "POST", body: request }),
-      invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : [{ type: "Account", id: moneyBookUid }, { type: "Report", id: moneyBookUid }, { type: "MoneyBookActivity", id: moneyBookUid }],
+      invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : [{ type: "Account", id: moneyBookUid }, { type: "Report", id: moneyBookUid }, { type: "Dashboard", id: moneyBookUid }, { type: "MoneyBookActivity", id: moneyBookUid }],
     }),
     updateAccount: builder.mutation<AccountResponse, UpdateArg>({
       query: ({ moneyBookUid, accountUid, request }) => ({
@@ -54,14 +54,14 @@ export const accountApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : [
         { type: "Account", id: moneyBookUid }, { type: "Transaction", id: moneyBookUid }, { type: "Calendar", id: moneyBookUid },
-        { type: "Transfer", id: moneyBookUid }, { type: "Recurring", id: moneyBookUid }, { type: "Report", id: moneyBookUid }, { type: "MoneyBookActivity", id: moneyBookUid },
+        { type: "Transfer", id: moneyBookUid }, { type: "Recurring", id: moneyBookUid }, { type: "Report", id: moneyBookUid }, { type: "Dashboard", id: moneyBookUid }, { type: "MoneyBookActivity", id: moneyBookUid },
       ],
     }),
     deleteAccount: builder.mutation<void, AccountKey>({
       query: ({ moneyBookUid, accountUid }) => ({
         url: `money-books/${moneyBookUid}/accounts/${accountUid}`, method: "DELETE",
       }),
-      invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : [{ type: "Account", id: moneyBookUid }, { type: "Report", id: moneyBookUid }, { type: "MoneyBookActivity", id: moneyBookUid }],
+      invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : [{ type: "Account", id: moneyBookUid }, { type: "Report", id: moneyBookUid }, { type: "Dashboard", id: moneyBookUid }, { type: "MoneyBookActivity", id: moneyBookUid }],
     }),
   }),
 });

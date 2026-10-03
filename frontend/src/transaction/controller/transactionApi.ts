@@ -30,7 +30,7 @@ export const transactionApi = baseApi.injectEndpoints({
     createTransaction: builder.mutation<TransactionResponse, CreateArg>({
       query: ({ moneyBookUid, request }) => ({ url: `money-books/${moneyBookUid}/transactions`, method: "POST", body: request }),
       invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : [
-        { type: "Transaction", id: moneyBookUid }, { type: "Calendar", id: moneyBookUid }, { type: "Budget", id: moneyBookUid }, { type: "Report", id: moneyBookUid }, { type: "MoneyBookActivity", id: moneyBookUid },
+        { type: "Transaction", id: moneyBookUid }, { type: "Calendar", id: moneyBookUid }, { type: "Budget", id: moneyBookUid }, { type: "Report", id: moneyBookUid }, { type: "Dashboard", id: moneyBookUid }, { type: "MoneyBookActivity", id: moneyBookUid },
       ],
     }),
     updateTransaction: builder.mutation<TransactionResponse, UpdateArg>({
@@ -38,13 +38,13 @@ export const transactionApi = baseApi.injectEndpoints({
         url: `money-books/${moneyBookUid}/transactions/${transactionUid}`, method: "PATCH", body: request,
       }),
       invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : [
-        { type: "Transaction", id: moneyBookUid }, { type: "Calendar", id: moneyBookUid }, { type: "Budget", id: moneyBookUid }, { type: "Report", id: moneyBookUid }, { type: "MoneyBookActivity", id: moneyBookUid },
+        { type: "Transaction", id: moneyBookUid }, { type: "Calendar", id: moneyBookUid }, { type: "Budget", id: moneyBookUid }, { type: "Report", id: moneyBookUid }, { type: "Dashboard", id: moneyBookUid }, { type: "MoneyBookActivity", id: moneyBookUid },
       ],
     }),
     deleteTransaction: builder.mutation<void, TransactionKey>({
       query: ({ moneyBookUid, transactionUid }) => ({ url: `money-books/${moneyBookUid}/transactions/${transactionUid}`, method: "DELETE" }),
       invalidatesTags: (_result, error, { moneyBookUid }) => error ? [] : [
-        { type: "Transaction", id: moneyBookUid }, { type: "Calendar", id: moneyBookUid }, { type: "Budget", id: moneyBookUid }, { type: "Report", id: moneyBookUid }, { type: "MoneyBookActivity", id: moneyBookUid },
+        { type: "Transaction", id: moneyBookUid }, { type: "Calendar", id: moneyBookUid }, { type: "Budget", id: moneyBookUid }, { type: "Report", id: moneyBookUid }, { type: "Dashboard", id: moneyBookUid }, { type: "MoneyBookActivity", id: moneyBookUid },
       ],
     }),
   }),
