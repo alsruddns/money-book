@@ -1,4 +1,8 @@
 import AuthGuard from "@/auth/components/AuthGuard";
+import { privatePageMetadata } from "@/common/seo/siteMetadata";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = privatePageMetadata();
 
 export default function BooksLayout({ children }: { children: React.ReactNode }) {
   return (

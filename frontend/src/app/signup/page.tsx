@@ -1,4 +1,8 @@
 import SignupForm from "@/auth/components/SignupForm";
+import { privatePageMetadata } from "@/common/seo/siteMetadata";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = privatePageMetadata();
 
 export default function SignupPage() {
   return (

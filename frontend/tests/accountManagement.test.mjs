@@ -227,6 +227,7 @@ test("account screen shows read-only role/status/provider labels and account loa
 test("account route uses the existing role-neutral AuthGuard and links from books and admin navigation", () => {
   const { default: Layout } = loadModule("app/account/layout.tsx", {
     "@/auth/components/AuthGuard": { default: ({ children }) => React.createElement("div", { "data-guard": "auth" }, children) },
+    "@/common/seo/siteMetadata": { privatePageMetadata: () => ({ robots: { index: false, follow: false } }) },
   });
   assert.match(renderToStaticMarkup(React.createElement(Layout, null, React.createElement("p", null, "계정"))), /data-guard="auth"/);
   const adminShell = fs.readFileSync(path.join(testDirectory, "../src/admin/components/AdminShell.tsx"), "utf8");

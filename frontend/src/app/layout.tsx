@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import StoreProvider from "@/store/StoreProvider";
 import GlobalHeader from "@/common/components/GlobalHeader";
+import { createPublicMetadata, SITE_DESCRIPTION, SITE_TITLE } from "@/common/seo/siteMetadata";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,10 +15,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "가계부",
-  description: "가계부 서비스",
-};
+export const metadata: Metadata = createPublicMetadata("/", SITE_TITLE, SITE_DESCRIPTION);
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

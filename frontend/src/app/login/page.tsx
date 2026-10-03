@@ -1,5 +1,9 @@
 import LoginForm from "@/auth/components/LoginForm";
 import GuestGuard from "@/auth/components/GuestGuard";
+import { privatePageMetadata } from "@/common/seo/siteMetadata";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = privatePageMetadata();
 
 const loginNotices: Record<string, string> = {
   "password-changed": "비밀번호가 변경되었습니다. 다시 로그인해주세요.",
