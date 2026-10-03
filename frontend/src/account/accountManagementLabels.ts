@@ -1,4 +1,5 @@
 import type { AccountAuthProvider, AccountSystemRole, AccountUserStatus } from "./dto/res/AccountMeResDto";
+import { formatKoreaDateTime } from "@/common/format/dateTime";
 
 const providerLabels: Record<string, string> = {
   LOCAL: "로컬 계정",
@@ -33,7 +34,5 @@ export function accountRoleLabel(role: AccountSystemRole): string {
 }
 
 export function formatAccountDateTime(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" }).format(date);
+  return formatKoreaDateTime(value, value);
 }

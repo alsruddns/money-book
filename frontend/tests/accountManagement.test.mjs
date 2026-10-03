@@ -24,7 +24,7 @@ function loadModule(relativePath, mocks = {}, globals = {}) {
   const compiledModule = { exports: {} };
   vm.runInNewContext(compiled, {
     module: compiledModule, exports: compiledModule.exports,
-    require: (name) => name in mocks ? mocks[name] : name === "@/common/format/money" ? { formatNumber: (value) => Number(value).toLocaleString("ko-KR"), formatMoney: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCurrency: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCount: (value, unit = String.fromCharCode(0xAC74)) => `${Number(value).toLocaleString("ko-KR")}${unit}` } : localRequire(name),
+    require: (name) => name in mocks ? mocks[name] : name === "@/common/format/dateTime" ? loadModule("common/format/dateTime.ts") : name === "@/common/format/money" ? { formatNumber: (value) => Number(value).toLocaleString("ko-KR"), formatMoney: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCurrency: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCount: (value, unit = String.fromCharCode(0xAC74)) => `${Number(value).toLocaleString("ko-KR")}${unit}` } : localRequire(name),
     ...globals,
   });
   return compiledModule.exports;

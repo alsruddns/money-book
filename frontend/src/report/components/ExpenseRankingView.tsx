@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { formatMoney } from "@/common/format/money";
+import { formatLocalDate } from "@/common/format/dateTime";
 import { useExpenseRanking } from "../hooks/useExpenseRanking";
 
 function selectedPeriod(search: URLSearchParams) {
@@ -47,9 +48,9 @@ export default function ExpenseRankingView({ moneyBookUid }: { moneyBookUid: num
         {data.isFetching && <p role="status" className="border-b px-4 py-2 text-xs text-zinc-600">최신 순위를 확인하고 있습니다.</p>}
         {data.ranking.length === 0 ? <p className="p-5 text-sm text-zinc-600">선택한 기간에 지출 내역이 없습니다.</p> : <>
           <div className="hidden overflow-x-auto md:block"><table className="w-full min-w-[42rem] text-left text-sm"><thead className="bg-zinc-50 text-zinc-600"><tr>{["순위", "날짜", "카테고리", "내용", "계좌/결제수단", "금액"].map((label) => <th key={label} scope="col" className="px-4 py-3 font-medium">{label}</th>)}</tr></thead>
-            <tbody className="divide-y">{data.ranking.map((item) => <tr key={item.transactionUid}><td className="px-4 py-3 font-semibold">{item.rank}위</td><td className="px-4 py-3">{item.transactionDate}</td><td className="px-4 py-3">{item.categoryName}</td><td className="max-w-48 truncate px-4 py-3">{item.memo || "-"}</td><td className="px-4 py-3">{item.accountName}</td><td className="whitespace-nowrap px-4 py-3 text-right font-semibold">{formatMoney(item.amount)}</td></tr>)}</tbody>
+            <tbody className="divide-y">{data.ranking.map((item) => <tr key={item.transactionUid}><td className="px-4 py-3 font-semibold">{item.rank}위</td><td className="whitespace-nowrap px-4 py-3">{formatLocalDate(item.transactionDate)}</td><td className="max-w-40 break-words px-4 py-3">{item.categoryName}</td><td title={item.memo || undefined} className="max-w-48 truncate px-4 py-3">{item.memo || "-"}</td><td className="max-w-40 truncate px-4 py-3">{item.accountName}</td><td className="whitespace-nowrap px-4 py-3 text-right font-semibold">{formatMoney(item.amount)}</td></tr>)}</tbody>
           </table></div>
-          <ol className="divide-y md:hidden">{data.ranking.map((item) => <li key={item.transactionUid} className="flex items-start justify-between gap-3 p-4"><div className="min-w-0"><p className="font-semibold">{item.rank}위 · {item.memo || item.categoryName}</p><p className="mt-1 truncate text-sm text-zinc-600">{item.categoryName} · {item.transactionDate}</p><p className="truncate text-xs text-zinc-500">{item.accountName}</p></div><strong className="shrink-0">{formatMoney(item.amount)}</strong></li>)}</ol>
+          <ol className="divide-y md:hidden">{data.ranking.map((item) => <li key={item.transactionUid} className="flex items-start justify-between gap-3 p-4"><div className="min-w-0"><p title={item.memo || item.categoryName} className="break-words font-semibold">{item.rank}위 · {item.memo || item.categoryName}</p><p className="mt-1 truncate text-sm text-zinc-600">{item.categoryName} · {formatLocalDate(item.transactionDate)}</p><p className="truncate text-xs text-zinc-500">{item.accountName}</p></div><strong className="shrink-0">{formatMoney(item.amount)}</strong></li>)}</ol>
         </>}
       </section>}
     <Link href={`/books/${moneyBookUid}/reports/monthly?year=${year}&month=${month}`} className="inline-flex min-h-11 items-center rounded-lg border bg-white px-4 text-sm">월간 분석으로 돌아가기</Link>

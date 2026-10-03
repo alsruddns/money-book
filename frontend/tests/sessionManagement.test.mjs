@@ -15,7 +15,7 @@ function load(file, mocks = {}, globals = {}) {
   const source = fs.readFileSync(path.join(root, file), "utf8");
   const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   const mod = { exports: {} };
-  vm.runInNewContext(js, { module: mod, exports: mod.exports, require: (name) => name in mocks ? mocks[name] : name === "@/common/format/money" ? { formatNumber: (value) => Number(value).toLocaleString("ko-KR"), formatMoney: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCurrency: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCount: (value, unit = String.fromCharCode(0xAC74)) => `${Number(value).toLocaleString("ko-KR")}${unit}` } : localRequire(name), ...globals });
+  vm.runInNewContext(js, { module: mod, exports: mod.exports, require: (name) => name in mocks ? mocks[name] : name === "@/common/format/dateTime" ? load("common/format/dateTime.ts") : name === "@/common/format/money" ? { formatNumber: (value) => Number(value).toLocaleString("ko-KR"), formatMoney: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCurrency: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCount: (value, unit = String.fromCharCode(0xAC74)) => `${Number(value).toLocaleString("ko-KR")}${unit}` } : localRequire(name), ...globals });
   return mod.exports;
 }
 const plain = (value) => JSON.parse(JSON.stringify(value));
@@ -63,7 +63,7 @@ test("device/date labels identify common browsers and safely fall back", () => {
   assert.equal(labels.describeSessionDevice(null), "알 수 없는 기기");
   assert.equal(labels.formatSessionDateTime(null), "확인 불가");
   assert.equal(labels.formatSessionDateTime("invalid"), "확인 불가");
-  assert.match(labels.formatSessionDateTime("2026-10-02T15:15:00"), /2026\. 10\. 03\. 00:15/);
+  assert.equal(labels.formatSessionDateTime("2026-10-02T15:15:00"), "2026.10.03 00:15");
 });
 
 test("session section shows current badge, IP fallback, dates, and separate logout actions", () => {

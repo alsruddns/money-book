@@ -17,11 +17,7 @@ export function describeSessionDevice(userAgent: string | null): string {
 
 export function formatSessionDateTime(value: string | null): string {
   if (!value) return "확인 불가";
-  const normalized = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value) ? value : `${value}Z`;
-  const date = new Date(normalized);
-  if (Number.isNaN(date.getTime())) return "확인 불가";
-  return new Intl.DateTimeFormat("ko-KR", {
-    timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", hourCycle: "h23",
-  }).format(date);
+  // Session timestamps without an offset are Instants in the existing API contract.
+  return formatKoreaDateTime(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(value) ? value : `${value}Z`, "확인 불가");
 }
+import { formatKoreaDateTime } from "@/common/format/dateTime";

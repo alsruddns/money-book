@@ -4,6 +4,7 @@ import Link from "next/link";
 import MonthSelector from "@/transaction/components/MonthSelector";
 import { formatCount, formatMoney } from "@/common/format/money";
 import { formatPercentPoints, formatFractionPercent } from "@/common/format/percent";
+import { formatLocalDate } from "@/common/format/dateTime";
 import { useMonthlyDashboard } from "@/dashboard/hooks/useMonthlyDashboard";
 
 function Comparison({ value }: { value: number | null }) {
@@ -50,12 +51,12 @@ export default function MoneyBookDetail({ moneyBookUid }: { moneyBookUid: number
                 </div><span className="text-xs">{item.month}월</span>
               </div>)}
             </div><div className="mt-3 flex gap-4 text-xs"><span><i className="mr-1 inline-block size-2 rounded-full bg-blue-600" />수입</span><span><i className="mr-1 inline-block size-2 rounded-full bg-rose-500" />지출</span></div>
-            <ul className="mt-4 space-y-1 text-sm">{dashboard.monthlyTrend.map((item) => <li key={`${item.year}-${item.month}`} className="flex justify-between gap-3"><span>{item.year}년 {item.month}월</span><span>수입 {formatMoney(item.income)} · 지출 {formatMoney(item.expense)}</span></li>)}</ul>
+            <ul className="mt-4 space-y-1 text-sm">{dashboard.monthlyTrend.map((item) => <li key={`${item.year}-${item.month}`} className="flex flex-wrap justify-between gap-1"><span className="shrink-0">{item.year}년 {item.month}월</span><span className="min-w-0 break-words text-right">수입 {formatMoney(item.income)} · 지출 {formatMoney(item.expense)}</span></li>)}</ul>
           </article>
 
           <article className="rounded-xl border bg-white p-4 sm:p-5"><h2 className="font-semibold">카테고리별 지출</h2>
             {dashboard.categoryExpenses.length === 0 ? <p className="mt-3 text-sm text-zinc-600">선택한 달에 등록된 지출이 없습니다.</p> : <ul className="mt-3 space-y-3">{dashboard.categoryExpenses.map((item) => <li key={item.categoryUid}>
-              <div className="flex justify-between gap-3 text-sm"><span className="font-medium">{item.categoryName}</span><span>{formatMoney(item.amount)}</span></div>
+              <div className="flex flex-wrap justify-between gap-1 text-sm"><span className="min-w-0 break-words font-medium">{item.categoryName}</span><span className="shrink-0">{formatMoney(item.amount)}</span></div>
               <div className="mt-1 flex items-center gap-2"><div className="h-2 flex-1 overflow-hidden rounded-full bg-zinc-100"><div className="h-full rounded-full bg-indigo-500" style={{ width: `${Math.min(100, Math.max(0, item.ratio * 100))}%` }} /></div><span className="w-14 text-right text-xs text-zinc-600">{formatFractionPercent(item.ratio)}</span></div>
               <p className="mt-1 text-xs text-zinc-500">{formatCount(item.transactionCount)}</p>
             </li>)}</ul>}
@@ -71,7 +72,7 @@ export default function MoneyBookDetail({ moneyBookUid }: { moneyBookUid: number
         </section>
 
         <section className="rounded-xl border bg-white p-4 sm:p-5"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">이번 달 지출 TOP 5</h2><Link href={`${root}/reports/expense-ranking?periodType=MONTH&year=${year}&month=${month}`} className="text-sm font-medium text-blue-700 hover:underline">전체 지출 순위 보기</Link></div>
-          {dashboard.topExpenses.length === 0 ? <p className="mt-3 text-sm text-zinc-600">선택한 달에 등록된 지출이 없습니다.</p> : <ol className="mt-3 divide-y">{dashboard.topExpenses.map((item) => <li key={item.transactionUid} className="flex items-center justify-between gap-3 py-3 text-sm"><div className="min-w-0"><p className="truncate font-medium">{item.rank}. {item.memo || item.categoryName}</p><p className="truncate text-xs text-zinc-600">{item.categoryName} · {item.transactionDate}</p></div><strong className="shrink-0">{formatMoney(item.amount)}</strong></li>)}</ol>}
+          {dashboard.topExpenses.length === 0 ? <p className="mt-3 text-sm text-zinc-600">선택한 달에 등록된 지출이 없습니다.</p> : <ol className="mt-3 divide-y">{dashboard.topExpenses.map((item) => <li key={item.transactionUid} className="flex items-center justify-between gap-3 py-3 text-sm"><div className="min-w-0"><p title={item.memo || item.categoryName} className="truncate font-medium">{item.rank}. {item.memo || item.categoryName}</p><p className="truncate text-xs text-zinc-600">{item.categoryName} · {formatLocalDate(item.transactionDate)}</p></div><strong className="shrink-0">{formatMoney(item.amount)}</strong></li>)}</ol>}
         </section>
         <nav aria-label="가계부 바로가기" className="flex flex-wrap gap-2">{[["캘린더", `${root}/calendar?year=${year}&month=${month}`], ["거래내역", `${root}/transactions?year=${year}&month=${month}`], ["예산", `${root}/budgets?year=${year}&month=${month}`]].map(([label, href]) => <Link key={href} href={href} className="inline-flex min-h-11 items-center rounded-lg border bg-white px-4 text-sm">{label}</Link>)}</nav>
       </>}

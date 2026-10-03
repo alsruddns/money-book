@@ -16,7 +16,7 @@ function loadModule(relativePath, mocks = {}) {
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   const compiledModule = { exports: {} };
   vm.runInNewContext(compiled, { module: compiledModule, exports: compiledModule.exports,
-    URLSearchParams, require: (name) => name in mocks ? mocks[name] : localRequire(name) });
+    URLSearchParams, require: (name) => name in mocks ? mocks[name] : name === "@/common/format/dateTime" ? loadModule("common/format/dateTime.ts") : localRequire(name) });
   return compiledModule.exports;
 }
 const apiBuilder = { query: (definition) => definition, mutation: (definition) => definition };
@@ -63,7 +63,7 @@ test("ranking UI displays the desktop table and mobile list with formatted value
     ] }) },
   }).default;
   const markup = renderToStaticMarkup(React.createElement(view, { moneyBookUid: 7 }));
-  for (const value of ["1위", "자동차 보험", "보험", "2026-10-03", "신한카드", "520,000원", "md:block", "md:hidden"]) assert.match(markup, new RegExp(value));
+  for (const value of ["1위", "자동차 보험", "보험", "2026.10.03", "신한카드", "520,000원", "md:block", "md:hidden"]) assert.match(markup, new RegExp(value));
 });
 
 test("ranking UI shows a readable empty state", () => {

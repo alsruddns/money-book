@@ -2,6 +2,7 @@
 
 import type { TransactionResponse } from "../dto/res/TransactionResponse";
 import { formatWon } from "../transactionForm";
+import { formatLocalDate } from "@/common/format/dateTime";
 
 export default function TransactionRow({ transaction, onSelect }: {
   transaction: TransactionResponse; onSelect: () => void;
@@ -12,7 +13,7 @@ export default function TransactionRow({ transaction, onSelect }: {
       <button type="button" onClick={onSelect}
         className="flex w-full flex-col gap-2 rounded-xl border border-zinc-200 bg-white p-4 text-left hover:border-blue-300 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <p className="text-sm text-zinc-600">{transaction.transactionDate} · {isIncome ? "수입" : "지출"}</p>
+          <p className="text-sm text-zinc-600">{formatLocalDate(transaction.transactionDate)} · {isIncome ? "수입" : "지출"}</p>
           <p className="mt-1 font-medium break-words">{transaction.categoryName}</p>
           <p className="mt-1 text-sm text-zinc-600 break-words">{transaction.accountName}{transaction.memo ? ` · ${transaction.memo}` : ""}</p>
         </div>

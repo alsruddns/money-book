@@ -6,6 +6,7 @@ import { useTransactionDetail } from "../hooks/useTransactionDetail";
 import { useDeleteTransaction } from "../hooks/useDeleteTransaction";
 import { formatWon } from "../transactionForm";
 import TransactionFormDialog from "./TransactionFormDialog";
+import { formatLocalDate } from "@/common/format/dateTime";
 
 export default function TransactionDetailDialog({ moneyBookUid, transactionUid, canUpdate, canDelete, onClose }: {
   moneyBookUid: number; transactionUid: number; canUpdate: boolean; canDelete: boolean; onClose: () => void;
@@ -31,7 +32,7 @@ export default function TransactionDetailDialog({ moneyBookUid, transactionUid, 
             <strong className="text-xl">{formatWon(transaction.amount)}</strong>
           </div>
           <dl className="grid grid-cols-[5rem_1fr] gap-x-3 gap-y-3 text-sm">
-            <dt className="text-zinc-600">날짜</dt><dd>{transaction.transactionDate}</dd>
+            <dt className="text-zinc-600">날짜</dt><dd>{formatLocalDate(transaction.transactionDate)}</dd>
             <dt className="text-zinc-600">카테고리</dt><dd>{transaction.categoryName}</dd>
             <dt className="text-zinc-600">계좌</dt><dd>{transaction.accountName}</dd>
             <dt className="text-zinc-600">메모</dt><dd className="whitespace-pre-wrap break-words">{transaction.memo || "없음"}</dd>

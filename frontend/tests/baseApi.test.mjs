@@ -173,6 +173,15 @@ test("login and refresh 401 responses never trigger another refresh", async () =
   }
 });
 
+test("429 responses carry Retry-After seconds for shared error messaging", async () => {
+  const harness = createHarness(null, () => ({
+    error: { status: 429, data: { message: "too many requests" } },
+    meta: { response: new Response(null, { status: 429, headers: { "Retry-After": "25" } }) },
+  }));
+  const result = await harness.query("auth/me");
+  assert.equal(result.error.retryAfterSeconds, 25);
+});
+
 test("a second 401 after retry clears auth without another refresh", async () => {
   const harness = createHarness(
     { accessToken: "expired", refreshToken: "refresh-secret" },

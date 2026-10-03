@@ -32,7 +32,9 @@ export const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, Fetch
     const url = typeof args === "string" ? args : args.url;
     const sentAccessToken = tokenStorage.getTokens()?.accessToken;
     const result = await rawBaseQuery(args, api, extraOptions);
-    if (result.error?.status !== 401 || isPublicAuthRequest(url)) return result;
+    if (result.error?.status !== 401 || isPublicAuthRequest(url)) {
+      return addRetryAfter(result);
+    }
 
     const tokens = tokenStorage.getTokens();
     if (!tokens?.refreshToken) {
@@ -43,7 +45,7 @@ export const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, Fetch
     if (tokens.accessToken !== sentAccessToken) {
       const retryResult = await rawBaseQuery(args, api, extraOptions);
       if (retryResult.error?.status === 401) clearStoredAuth(api.dispatch);
-      return retryResult;
+      return addRetryAfter(retryResult);
     }
 
     if (!refreshPromise) {
@@ -83,8 +85,18 @@ export const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, Fetch
 
     const retryResult = await rawBaseQuery(args, api, extraOptions);
     if (retryResult.error?.status === 401) clearStoredAuth(api.dispatch);
-    return retryResult;
+    return addRetryAfter(retryResult);
   };
+
+function addRetryAfter<T extends { error?: FetchBaseQueryError; meta?: { response?: Response } }>(result: T): T {
+  if (result.error?.status !== 429) return result;
+  const header = result.meta?.response?.headers.get("Retry-After");
+  const retryAfterSeconds = header === null || header === undefined ? Number.NaN : Number(header);
+  if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds >= 0) {
+    Object.assign(result.error, { retryAfterSeconds });
+  }
+  return result;
+}
 
 export const baseApi = createApi({
   reducerPath: "baseApi",

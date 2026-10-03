@@ -7,11 +7,12 @@ import { useAdminSession } from "../hooks/useAdminSession";
 import { useAdminUrlQuery } from "../hooks/useAdminUrlQuery";
 import type { AdminPageResponse } from "../dto/AdminDtos";
 import { formatCount, formatNumber } from "@/common/format/money";
+import { formatKoreaDateTime } from "@/common/format/dateTime";
 
 const roleLabel = (role: string) => ({ USER: "일반 사용자", SYSTEM_ADMIN: "시스템 관리자", SUPER_ADMIN: "최고 관리자" }[role] ?? role);
 const statusLabel = (status: string) => ({ ACTIVE: "정상", BLOCKED: "차단", INACTIVE: "비활성", WITHDRAWN: "탈퇴" }[status] ?? status);
 const actionLabel = (action: string) => ({ USER_DETAIL_VIEWED: "사용자 상세 조회", USER_STATUS_CHANGED: "사용자 상태 변경", USER_SYSTEM_ROLE_CHANGED: "시스템 역할 변경", USER_SESSIONS_REVOKED: "사용자 세션 강제 종료", MONEY_BOOK_DETAIL_VIEWED: "가계부 상세 조회", ADMIN_ACTIVITY_SEARCHED: "전체 활동 검색" }[action] ?? action);
-const dateTime = (value: string | null | undefined) => value ? new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Seoul" }).format(new Date(/(?:Z|[+-]\d\d:?\d\d)$/i.test(value) ? value : `${value}+09:00`)) : "-";
+const dateTime = (value: string | null | undefined) => formatKoreaDateTime(value);
 const Card = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => <section className={`rounded-xl border border-zinc-200 bg-white p-5 shadow-sm ${className}`}>{children}</section>;
 const Heading = ({ title, description }: { title: string; description?: string }) => <div className="mb-6"><h1 className="text-2xl font-bold">{title}</h1>{description && <p className="mt-1 text-sm text-zinc-600">{description}</p>}</div>;
 const ErrorBox = ({ message, retry }: { message: string; retry: () => void }) => <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{message}<button onClick={retry} className="ml-3 font-semibold underline">다시 시도</button></div>;
