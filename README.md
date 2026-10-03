@@ -75,13 +75,19 @@ money-book/
 
 ## Current Focus
 
-**현재 단계: Production Infrastructure 및 CI/CD 준비**
+**현재 단계: CI/CD 준비**
+
+완료한 Production Infrastructure / Dockerization 구성:
+
+- Backend/Frontend production image와 Compose 구성
+- Caddy reverse proxy 및 HTTPS 자동화 준비
+- DB 영속 volume, health check, 백업/복원 운영 안내
 
 후속 운영 단계:
 
-1. Production 도메인 및 인프라 확정
-2. CI
-3. CD
+1. CI
+2. CD
+3. Production 도메인 및 DNS 확정
 4. 프로덕션 배포
 
 ## Development Roadmap
@@ -172,6 +178,7 @@ money-book/
 ### Phase 11 — 운영
 
 - [x] Monitoring / Health / Metrics Backend
+- [x] Production Infrastructure 및 Dockerization: Multi-stage image, Compose, Caddy, persistence/operations guide
 - [x] Backend test stabilization: `./gradlew clean test` passes all 229 tests without skips
 - [x] Production profile configuration review: required DB/JWT environment variables, actuator exposure, stateless security, and graceful shutdown
 - [x] Local/production backup upload limits aligned to 20 MB file and 21 MB multipart request
