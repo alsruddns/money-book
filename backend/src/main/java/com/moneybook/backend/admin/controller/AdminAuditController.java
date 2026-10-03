@@ -23,13 +23,14 @@ public class AdminAuditController {
     @GetMapping
     public ResponseEntity<AdminPageResponse<AdminAuditLogResponse>> search(
             @RequestParam(required=false) Long actorUserUid,
+            @RequestParam(required=false) Long targetUserUid,
             @RequestParam(required=false) AdminAuditActionType actionType,
             @RequestParam(required=false) AdminAuditTargetType targetType,
             @RequestParam(required=false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required=false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam(defaultValue="0") int page, @RequestParam(defaultValue="20") int size,
             Authentication authentication) {
-        return ResponseEntity.ok(service.auditLogs(actorUserUid,actionType,targetType,startDate,endDate,
+        return ResponseEntity.ok(service.auditLogs(actorUserUid,targetUserUid,actionType,targetType,startDate,endDate,
                 page,size,authentication));
     }
 }

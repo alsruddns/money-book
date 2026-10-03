@@ -27,6 +27,13 @@ public interface RefreshSessionJpaRepository extends JpaRepository<RefreshTokenS
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select session from RefreshTokenSession session where session.userUid = :userUid "
+            + "and session.revokedAt is null and session.expiresAt > :now "
+            + "order by session.refreshSessionUid asc")
+    List<RefreshTokenSession> findActiveByUserUidForUpdate(@Param("userUid") Long userUid,
+                                                            @Param("now") LocalDateTime now);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select session from RefreshTokenSession session where session.userUid = :userUid "
             + "and session.revokedAt is null order by session.refreshSessionUid asc")
     List<RefreshTokenSession> findUnrevokedByUserUidForUpdate(@Param("userUid") Long userUid);
 }

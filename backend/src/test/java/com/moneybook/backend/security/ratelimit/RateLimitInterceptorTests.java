@@ -49,6 +49,8 @@ class RateLimitInterceptorTests {
                 properties.getAdminMutationPerMinute(), Duration.ofMinutes(1));
         assertPolicy("PATCH", "/admin/users/7/system-role", "admin-mutation-user-minute", "user-42",
                 properties.getAdminMutationPerMinute(), Duration.ofMinutes(1));
+        assertPolicy("POST", "/admin/users/7/sessions/revoke-all", "admin-mutation-user-minute", "user-42",
+                properties.getAdminMutationPerMinute(), Duration.ofMinutes(1));
 
         clearInvocations(limiter);
         MockHttpServletRequest login = request("POST", "/auth/login");

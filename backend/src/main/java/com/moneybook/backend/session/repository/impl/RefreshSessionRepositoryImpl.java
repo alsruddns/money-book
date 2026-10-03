@@ -27,4 +27,7 @@ public class RefreshSessionRepositoryImpl implements RefreshSessionRepository {
     @Override public List<RefreshTokenSession> findUnrevokedByUserUid(Long userUid) {
         return jpaRepository.findUnrevokedByUserUidForUpdate(userUid);
     }
+    @Override public List<RefreshTokenSession> findActiveByUserUidForUpdate(Long userUid, LocalDateTime now) {
+        return jpaRepository.findActiveByUserUidForUpdate(userUid, now);
+    }
 }

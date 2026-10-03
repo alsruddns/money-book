@@ -8,6 +8,8 @@ import org.springframework.data.domain.Pageable;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import com.moneybook.backend.enums.AuthProvider;
 
 public interface AdminReadRepository {
     Page<AdminUserResponse> users(String keyword, UserStatus status, SystemRole role, Pageable pageable);
@@ -17,4 +19,12 @@ public interface AdminReadRepository {
     List<Object[]> moneyBookNames(List<Long> uids);
     long countActivitiesBetween(LocalDateTime start, LocalDateTime end);
     AdminOverviewResponse overview();
+    Set<AuthProvider> authProviders(Long userUid);
+    long activeSessionCount(Long userUid);
+    long activeSessionCount();
+    UserActivityStats userActivityStats(Long userUid, LocalDateTime recentSince);
+    org.springframework.data.domain.Page<AdminMoneyBookMemberResponse> moneyBookMembers(
+            Long moneyBookUid, Pageable pageable);
+
+    record UserActivityStats(LocalDateTime lastActivityAt, long recentActivityCount) { }
 }

@@ -58,10 +58,31 @@ public class AdminServiceImpl implements AdminService {
         User actor = authorization.requireAdmin(authentication);
         User target = target(uid);
         protectAdminDetails(actor, target);
-        AdminUserDetailResponse detail = reads.user(uid).orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        AdminUserDetailResponse detail = detail(uid);
         auditRecorder.record(actor, AdminAuditActionType.USER_DETAIL_VIEWED, AdminAuditTargetType.USER,
                 uid, "사용자 운영 정보를 조회했습니다.");
         return detail;
+    }
+
+    @Override @Transactional
+    public AdminPageResponse<AdminActivityResponse> userActivities(Long uid, int page, int size,
+                                                                   Authentication authentication) {
+        User actor = authorization.requireAdmin(authentication);
+        target(uid);
+        pageable(page, size);
+        var sorted = PageRequest.of(page, size,
+                Sort.by(Sort.Order.desc("occurredAt"), Sort.Order.desc("activityUid")));
+        var rows = activities.search(null, null, null, uid, null, null, sorted);
+        List<Long> bookUids = rows.getContent().stream().map(a -> a.getMoneyBookUid()).distinct().toList();
+        Map<Long, String> names = new HashMap<>();
+        for (Object[] row : reads.moneyBookNames(bookUids)) names.put((Long) row[0], (String) row[1]);
+        var content = rows.getContent().stream().map(a -> new AdminActivityResponse(
+                a.getActivityUid(), a.getMoneyBookUid(), names.get(a.getMoneyBookUid()), a.getActorUserUid(),
+                a.getActorNickname(), a.getActivityType().name(), a.getTargetType().name(), a.getTargetUid(),
+                a.getSummary(), a.getMetadataJson(), a.getOccurredAt())).toList();
+        auditRecorder.record(actor, AdminAuditActionType.ADMIN_ACTIVITY_SEARCHED, AdminAuditTargetType.USER,
+                uid, "사용자의 최근 활동 내역을 조회했습니다.");
+        return AdminPageResponse.from(new PageImpl<>(content, sorted, rows.getTotalElements()));
     }
 
     @Override @Transactional
@@ -73,7 +94,7 @@ public class AdminServiceImpl implements AdminService {
         if (requested != UserStatus.ACTIVE && requested != UserStatus.BLOCKED) {
             throw new BusinessException(ErrorCode.VALIDATION_FAILED);
         }
-        if (target.getStatus() == requested) return reads.user(uid).orElseThrow();
+        if (target.getStatus() == requested) return detail(uid);
         target.changeStatus(requested);
         if (requested == UserStatus.BLOCKED) {
             LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
@@ -82,7 +103,7 @@ public class AdminServiceImpl implements AdminService {
         }
         auditRecorder.record(actor, AdminAuditActionType.USER_STATUS_CHANGED, AdminAuditTargetType.USER,
                 uid, requested == UserStatus.BLOCKED ? "사용자를 정지했습니다." : "사용자 정지를 해제했습니다.");
-        return reads.user(uid).orElseThrow();
+        return detail(uid);
     }
 
     @Override @Transactional
@@ -96,11 +117,11 @@ public class AdminServiceImpl implements AdminService {
         if (requested == SystemRole.SUPER_ADMIN || requested == null) {
             throw new BusinessException(ErrorCode.SYSTEM_ROLE_CHANGE_FORBIDDEN);
         }
-        if (target.getSystemRole() == requested) return reads.user(uid).orElseThrow();
+        if (target.getSystemRole() == requested) return detail(uid);
         target.changeSystemRole(requested);
         auditRecorder.record(actor, AdminAuditActionType.USER_SYSTEM_ROLE_CHANGED, AdminAuditTargetType.USER,
                 uid, requested == SystemRole.SYSTEM_ADMIN ? "서비스 관리자를 지정했습니다." : "서비스 관리자 권한을 회수했습니다.");
-        return reads.user(uid).orElseThrow();
+        return detail(uid);
     }
 
     @Override @Transactional(readOnly = true)
@@ -119,6 +140,34 @@ public class AdminServiceImpl implements AdminService {
         auditRecorder.record(actor, AdminAuditActionType.MONEY_BOOK_DETAIL_VIEWED,
                 AdminAuditTargetType.MONEY_BOOK, uid, "가계부 운영 정보를 조회했습니다.");
         return detail;
+    }
+
+    @Override @Transactional
+    public AdminPageResponse<AdminMoneyBookMemberResponse> moneyBookMembers(Long uid, int page, int size,
+                                                                            Authentication authentication) {
+        User actor = authorization.requireAdmin(authentication);
+        if (reads.moneyBook(uid).isEmpty()) throw new BusinessException(ErrorCode.MONEY_BOOK_NOT_FOUND);
+        PageableData p = pageable(page, size);
+        var result = AdminPageResponse.from(reads.moneyBookMembers(uid, p.request()));
+        auditRecorder.record(actor, AdminAuditActionType.MONEY_BOOK_DETAIL_VIEWED,
+                AdminAuditTargetType.MONEY_BOOK, uid, "가계부 멤버 운영 정보를 조회했습니다.");
+        return result;
+    }
+
+    @Override @Transactional
+    public int revokeAllUserSessions(Long uid, Authentication authentication) {
+        User actor = authorization.requireAdmin(authentication);
+        User target = target(uid);
+        if (actor.getSystemRole() == SystemRole.SYSTEM_ADMIN
+                && target.getSystemRole() == SystemRole.SUPER_ADMIN) {
+            throw new BusinessException(ErrorCode.SYSTEM_ADMIN_TARGET_FORBIDDEN);
+        }
+        LocalDateTime now = LocalDateTime.now();
+        var sessions = refreshSessions.findActiveByUserUidForUpdate(uid, now);
+        sessions.forEach(session -> session.revoke(now, "ADMIN_REVOKED"));
+        auditRecorder.record(actor, AdminAuditActionType.USER_SESSIONS_REVOKED, AdminAuditTargetType.USER,
+                uid, "사용자의 활성 Refresh Session " + sessions.size() + "개를 종료했습니다.");
+        return sessions.size();
     }
 
     @Override @Transactional
@@ -151,7 +200,8 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override @Transactional
-    public AdminPageResponse<AdminAuditLogResponse> auditLogs(Long actorUid, AdminAuditActionType action,
+    public AdminPageResponse<AdminAuditLogResponse> auditLogs(Long actorUid, Long targetUserUid,
+            AdminAuditActionType action,
             AdminAuditTargetType target, LocalDate start, LocalDate end, int page, int size,
             Authentication authentication) {
         authorization.requireSuperAdmin(authentication);
@@ -159,13 +209,23 @@ public class AdminServiceImpl implements AdminService {
         validateDates(start, end);
         var sorted = PageRequest.of(page, size,
                 Sort.by(Sort.Order.desc("occurredAt"), Sort.Order.desc("adminAuditLogUid")));
-        var result = audits.search(actorUid, action, target, start, end, sorted)
+        var result = audits.search(actorUid, targetUserUid, action, target, start, end, sorted)
                 .map(AdminAuditLogResponse::from);
         return AdminPageResponse.from(result);
     }
 
     private User target(Long uid) {
         return users.findById(uid).orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+    }
+    private AdminUserDetailResponse detail(Long uid) {
+        AdminUserDetailResponse base = reads.user(uid)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        LocalDateTime recentSince = LocalDate.now(java.time.ZoneId.of("Asia/Seoul")).minusDays(29).atStartOfDay();
+        var activityStats = reads.userActivityStats(uid, recentSince);
+        return new AdminUserDetailResponse(base.userUid(), base.loginId(), base.nickname(), base.status(),
+                base.systemRole(), base.createdAt(), base.updatedAt(), base.ownedMoneyBookCount(),
+                base.joinedMoneyBookCount(), reads.authProviders(uid).stream().map(Enum::name).sorted().toList(),
+                reads.activeSessionCount(uid), activityStats.lastActivityAt(), activityStats.recentActivityCount());
     }
     private void protectAdminDetails(User actor, User target) {
         if (actor.getSystemRole() == SystemRole.SYSTEM_ADMIN && target.getSystemRole() != SystemRole.USER) {

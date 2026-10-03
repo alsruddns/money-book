@@ -16,7 +16,8 @@ import java.util.regex.Pattern;
 /** Applies endpoint-specific quotas after authentication and before controller execution. */
 @Component
 public class RateLimitInterceptor implements HandlerInterceptor {
-    private static final Pattern ADMIN_MUTATION = Pattern.compile("/admin/users/[0-9]+/(status|system-role)");
+    private static final Pattern ADMIN_MUTATION = Pattern.compile(
+            "/admin/users/[0-9]+/(status|system-role|sessions/revoke-all)");
     private final RateLimiter limiter;
     private final RateLimitProperties properties;
 
@@ -62,7 +63,8 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             return allow(response, "logout-all-user-minute", user,
                     properties.getLogoutAllPerMinute(), Duration.ofMinutes(1));
         }
-        if ((HttpMethod.PATCH.matches(method) && ADMIN_MUTATION.matcher(path).matches())) {
+        if (ADMIN_MUTATION.matcher(path).matches()
+                && (HttpMethod.PATCH.matches(method) || HttpMethod.POST.matches(method))) {
             return allow(response, "admin-mutation-user-minute", user,
                     properties.getAdminMutationPerMinute(), Duration.ofMinutes(1));
         }
@@ -95,8 +97,9 @@ public class RateLimitInterceptor implements HandlerInterceptor {
 
     private boolean isSensitiveEndpoint(String method, String path) {
         return (HttpMethod.POST.matches(method) && (path.startsWith("/auth/") || path.equals("/account/sessions/logout-all")))
-                || (HttpMethod.PATCH.matches(method) && (path.equals("/account/password")
-                || ADMIN_MUTATION.matcher(path).matches()))
+                || (HttpMethod.PATCH.matches(method) && path.equals("/account/password"))
+                || ((HttpMethod.PATCH.matches(method) || HttpMethod.POST.matches(method))
+                && ADMIN_MUTATION.matcher(path).matches())
                 || (HttpMethod.DELETE.matches(method) && path.equals("/account"));
     }
 }

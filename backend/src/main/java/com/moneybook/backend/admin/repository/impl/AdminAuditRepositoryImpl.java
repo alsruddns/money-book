@@ -15,9 +15,9 @@ import java.time.LocalDate;
 public class AdminAuditRepositoryImpl implements AdminAuditRepository {
     private final AdminAuditJpaRepository jpa;
     @Override public SystemAdminAuditLog save(SystemAdminAuditLog log) { return jpa.save(log); }
-    @Override public Page<SystemAdminAuditLog> search(Long actor, AdminAuditActionType action,
+    @Override public Page<SystemAdminAuditLog> search(Long actor, Long targetUserUid, AdminAuditActionType action,
             AdminAuditTargetType target, LocalDate start, LocalDate end, Pageable pageable) {
-        return jpa.search(actor, action, target, start == null ? null : start.atStartOfDay(),
+        return jpa.search(actor, targetUserUid, action, target, start == null ? null : start.atStartOfDay(),
                 end == null ? null : end.plusDays(1).atStartOfDay(), pageable);
     }
 }

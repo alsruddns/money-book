@@ -13,13 +13,19 @@ import com.moneybook.backend.admin.service.impl.AdminServiceImpl;
 import com.moneybook.backend.common.exception.BusinessException;
 import com.moneybook.backend.common.exception.ErrorCode;
 import com.moneybook.backend.entity.User;
+import com.moneybook.backend.entity.RefreshTokenSession;
 import com.moneybook.backend.enums.SystemRole;
 import com.moneybook.backend.enums.UserStatus;
 import com.moneybook.backend.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.security.core.Authentication;
 import java.util.Optional;
+import java.util.List;
+import java.time.LocalDateTime;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 class AdminServicePolicyTests {
@@ -33,6 +39,13 @@ class AdminServicePolicyTests {
     private final AdminServiceImpl service=new AdminServiceImpl(authorization,reads,audits,activities,users,recorder,
             refreshSessions);
     private final Authentication auth=mock(Authentication.class);
+
+    @BeforeEach void defaultUserDetailAggregates() {
+        when(reads.authProviders(anyLong())).thenReturn(java.util.Set.of());
+        when(reads.activeSessionCount(anyLong())).thenReturn(0L);
+        when(reads.userActivityStats(anyLong(), any())).thenReturn(
+                new AdminReadRepository.UserActivityStats(null, 0));
+    }
 
     @Test void superAdminCanGrantAndRevokeSystemAdminButCannotGrantSuperOrChangeSelf() {
         User actor=user(1,SystemRole.SUPER_ADMIN);
@@ -76,6 +89,33 @@ class AdminServicePolicyTests {
         when(reads.user(2L)).thenReturn(Optional.of(detail(2,SystemRole.USER)));
         service.changeStatus(2L,UserStatus.BLOCKED,auth);
         verify(refreshSessions).findUnrevokedByUserUid(2L);
+    }
+
+    @Test void superAdminCanRevokeTargetSessionsAndAuditTheCount() {
+        User actor = user(1, SystemRole.SUPER_ADMIN);
+        User target = user(2, SystemRole.USER);
+        RefreshTokenSession session = RefreshTokenSession.create(2L, "session", "a".repeat(64),
+                null, null, LocalDateTime.now(), LocalDateTime.now().plusDays(1));
+        when(authorization.requireAdmin(auth)).thenReturn(actor);
+        when(users.findById(2L)).thenReturn(Optional.of(target));
+        when(refreshSessions.findActiveByUserUidForUpdate(eq(2L), any())).thenReturn(List.of(session));
+
+        assertEquals(1, service.revokeAllUserSessions(2L, auth));
+        assertFalse(session.isActiveAt(LocalDateTime.now().plusSeconds(1)));
+        verify(recorder).record(actor, AdminAuditActionType.USER_SESSIONS_REVOKED,
+                AdminAuditTargetType.USER, 2L, "사용자의 활성 Refresh Session 1개를 종료했습니다.");
+    }
+
+    @Test void systemAdminCannotRevokeSuperAdminSessions() {
+        User actor = user(1, SystemRole.SYSTEM_ADMIN);
+        User target = user(2, SystemRole.SUPER_ADMIN);
+        when(authorization.requireAdmin(auth)).thenReturn(actor);
+        when(users.findById(2L)).thenReturn(Optional.of(target));
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> service.revokeAllUserSessions(2L, auth));
+        assertEquals(ErrorCode.SYSTEM_ADMIN_TARGET_FORBIDDEN, error.getErrorCode());
+        verifyNoInteractions(recorder);
+        verifyNoInteractions(refreshSessions);
     }
 
     private User user(long uid,SystemRole role) {

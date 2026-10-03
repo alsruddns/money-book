@@ -32,6 +32,20 @@ public class AdminUserController {
         return ResponseEntity.ok(service.user(userUid,authentication));
     }
 
+    /** Returns a user's actor activity timeline with the standard bounded admin pagination. */
+    @GetMapping("/{userUid}/activities")
+    public ResponseEntity<AdminPageResponse<AdminActivityResponse>> activities(@PathVariable Long userUid,
+            @RequestParam(defaultValue="0") int page, @RequestParam(defaultValue="20") int size,
+            Authentication authentication) {
+        return ResponseEntity.ok(service.userActivities(userUid, page, size, authentication));
+    }
+
+    /** Revokes every active refresh session for an operationally affected user. */
+    @PostMapping("/{userUid}/sessions/revoke-all")
+    public ResponseEntity<Integer> revokeAllSessions(@PathVariable Long userUid, Authentication authentication) {
+        return ResponseEntity.ok(service.revokeAllUserSessions(userUid, authentication));
+    }
+
     /** 관리자 정책에 허용된 사용자 상태를 ACTIVE 또는 BLOCKED로 변경한다. */
     @PatchMapping("/{userUid}/status")
     public ResponseEntity<AdminUserDetailResponse> status(@PathVariable Long userUid,

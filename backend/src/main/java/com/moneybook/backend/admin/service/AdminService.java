@@ -12,16 +12,21 @@ public interface AdminService {
     AdminPageResponse<AdminUserResponse> users(String keyword, UserStatus status, SystemRole role,
                                                 int page, int size, Authentication authentication);
     AdminUserDetailResponse user(Long userUid, Authentication authentication);
+    AdminPageResponse<AdminActivityResponse> userActivities(Long userUid, int page, int size,
+                                                             Authentication authentication);
     AdminUserDetailResponse changeStatus(Long userUid, UserStatus status, Authentication authentication);
     AdminUserDetailResponse changeRole(Long userUid, SystemRole role, Authentication authentication);
     AdminPageResponse<AdminMoneyBookResponse> moneyBooks(String keyword, Long ownerUid,
                                                            int page, int size, Authentication authentication);
     AdminMoneyBookDetailResponse moneyBook(Long moneyBookUid, Authentication authentication);
+    AdminPageResponse<AdminMoneyBookMemberResponse> moneyBookMembers(Long moneyBookUid, int page, int size,
+                                                                      Authentication authentication);
+    int revokeAllUserSessions(Long userUid, Authentication authentication);
     AdminPageResponse<AdminActivityResponse> activities(Long moneyBookUid, Long actorUid, ActivityType type,
             ActivityTargetType target, LocalDate start, LocalDate end, int page, int size,
             Authentication authentication);
     AdminOverviewResponse overview(Authentication authentication);
-    AdminPageResponse<AdminAuditLogResponse> auditLogs(Long actorUid, AdminAuditActionType action,
+    AdminPageResponse<AdminAuditLogResponse> auditLogs(Long actorUid, Long targetUserUid, AdminAuditActionType action,
             AdminAuditTargetType target, LocalDate start, LocalDate end, int page, int size,
             Authentication authentication);
 }

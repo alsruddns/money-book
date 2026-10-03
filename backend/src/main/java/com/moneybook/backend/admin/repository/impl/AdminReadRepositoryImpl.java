@@ -12,6 +12,9 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.LinkedHashSet;
+import java.math.BigDecimal;
 
 /** 관리자 화면에 필요한 제한된 projection과 DB 집계를 제공한다. */
 @Repository
@@ -80,14 +83,21 @@ public class AdminReadRepositoryImpl implements AdminReadRepository {
         var rows = em.createQuery("select new com.moneybook.backend.admin.dto.AdminMoneyBookDetailResponse(" +
                 "b.moneyBookUid,b.name,b.ownerUserUid,u.nickname," +
                 "(select count(m.moneyBookUserUid) from MoneyBookUser m where m.moneyBook=b and m.invitationStatus=:accepted)," +
+                "(select count(m.moneyBookUserUid) from MoneyBookUser m where m.moneyBook=b and m.invitationStatus=:accepted and m.admin=true)," +
                 "(select count(c.categoryUid) from MoneyBookCategory c where c.moneyBook=b)," +
                 "(select count(a.accountUid) from MoneyBookAccount a where a.moneyBook=b)," +
                 "(select count(t.transactionUid) from MoneyBookTransaction t where t.moneyBook=b)," +
+                "(select count(t.transactionUid) from MoneyBookTransaction t where t.moneyBook=b and t.transactionType=:income)," +
+                "(select count(t.transactionUid) from MoneyBookTransaction t where t.moneyBook=b and t.transactionType=:expense)," +
                 "(select count(x.transferUid) from MoneyBookTransfer x where x.moneyBook=b)," +
+                "(select count(r.recurringTransactionUid) from RecurringTransaction r where r.moneyBook=b)," +
                 "(select count(c.closingUid) from MoneyBookMonthClosing c where c.moneyBook=b),b.regTime," +
-                "(select max(a.occurredAt) from MoneyBookActivity a where a.moneyBookUid=b.moneyBookUid)) " +
+                "b.modTime,(select max(a.occurredAt) from MoneyBookActivity a where a.moneyBookUid=b.moneyBookUid)," +
+                "(select count(a.activityUid) from MoneyBookActivity a where a.moneyBookUid=b.moneyBookUid and a.occurredAt>=:recentSince)) " +
                 "from MoneyBook b join User u on u.userUid=b.ownerUserUid where b.moneyBookUid=:uid",
                 AdminMoneyBookDetailResponse.class).setParameter("accepted", InvitationStatus.ACCEPTED)
+                .setParameter("income", TransactionType.INCOME).setParameter("expense", TransactionType.EXPENSE)
+                .setParameter("recentSince", LocalDateTime.now().minusDays(30))
                 .setParameter("uid", uid).getResultList();
         return rows.stream().findFirst();
     }
@@ -110,15 +120,99 @@ public class AdminReadRepositoryImpl implements AdminReadRepository {
     public AdminOverviewResponse overview() {
         Object[] counts = em.createQuery("select count(u.userUid)," +
                 "sum(case when u.status=:active then 1 else 0 end),sum(case when u.status=:blocked then 1 else 0 end)," +
+                "sum(case when u.status=:withdrawn then 1 else 0 end)," +
                 "sum(case when u.systemRole=:admin then 1 else 0 end),sum(case when u.systemRole=:super then 1 else 0 end) " +
                 "from User u", Object[].class).setParameter("active", UserStatus.ACTIVE)
-                .setParameter("blocked", UserStatus.BLOCKED).setParameter("admin", SystemRole.SYSTEM_ADMIN)
+                .setParameter("blocked", UserStatus.BLOCKED).setParameter("withdrawn", UserStatus.WITHDRAWN)
+                .setParameter("admin", SystemRole.SYSTEM_ADMIN)
                 .setParameter("super", SystemRole.SUPER_ADMIN).getSingleResult();
-        long books = em.createQuery("select count(b.moneyBookUid) from MoneyBook b", Long.class).getSingleResult();
-        LocalDateTime today = LocalDateTime.now(java.time.ZoneId.of("Asia/Seoul")).toLocalDate().atStartOfDay();
-        long todayActivities = countActivitiesBetween(today, today.plusDays(1));
+        LocalDateTime now = LocalDateTime.now(java.time.ZoneId.of("Asia/Seoul"));
+        LocalDateTime today = now.toLocalDate().atStartOfDay();
+        LocalDateTime last7 = today.minusDays(6);
+        LocalDateTime last30 = today.minusDays(29);
+        Object[] books = em.createQuery("select count(b.moneyBookUid)," +
+                "sum(case when b.regTime>=:today then 1 else 0 end)," +
+                "sum(case when b.regTime>=:last7 then 1 else 0 end)," +
+                "sum(case when b.regTime>=:last30 then 1 else 0 end) from MoneyBook b", Object[].class)
+                .setParameter("today", today).setParameter("last7", last7).setParameter("last30", last30)
+                .getSingleResult();
+        Object[] memberships = em.createQuery("select count(m.moneyBookUserUid)," +
+                "sum(case when m.invitationStatus=:accepted then 1 else 0 end)," +
+                "count(distinct case when m.invitationStatus=:accepted and u.status=:active then m.userUid else null end) " +
+                "from MoneyBookUser m left join User u on u.userUid=m.userUid", Object[].class)
+                .setParameter("accepted", InvitationStatus.ACCEPTED).setParameter("active", UserStatus.ACTIVE)
+                .getSingleResult();
+        Object[] userGrowth = em.createQuery("select " +
+                "sum(case when u.regTime>=:today then 1 else 0 end)," +
+                "sum(case when u.regTime>=:last7 then 1 else 0 end)," +
+                "sum(case when u.regTime>=:last30 then 1 else 0 end) from User u", Object[].class)
+                .setParameter("today", today).setParameter("last7", last7).setParameter("last30", last30)
+                .getSingleResult();
+        Object[] activityCounts = em.createQuery("select " +
+                "sum(case when a.occurredAt>=:today then 1 else 0 end)," +
+                "sum(case when a.occurredAt>=:last7 then 1 else 0 end)," +
+                "sum(case when a.occurredAt>=:last30 then 1 else 0 end) from MoneyBookActivity a", Object[].class)
+                .setParameter("today", today).setParameter("last7", last7).setParameter("last30", last30)
+                .getSingleResult();
+        long activeSessions = em.createQuery("select count(s.refreshSessionUid) from RefreshTokenSession s " +
+                "where s.revokedAt is null and s.expiresAt>:now", Long.class).setParameter("now", now).getSingleResult();
+        long recentAudits = em.createQuery("select count(a.adminAuditLogUid) from SystemAdminAuditLog a " +
+                "where a.occurredAt>=:since", Long.class).setParameter("since", last30).getSingleResult();
+        long acceptedMembers = number(memberships[1]);
+        long totalBooks = number(books[0]);
+        BigDecimal averageMembers = totalBooks == 0 ? BigDecimal.ZERO
+                : BigDecimal.valueOf(acceptedMembers).divide(BigDecimal.valueOf(totalBooks), 2,
+                        java.math.RoundingMode.HALF_UP);
         return new AdminOverviewResponse(number(counts[0]), number(counts[1]), number(counts[2]),
-                number(counts[3]), number(counts[4]), books, todayActivities);
+                number(counts[4]), number(counts[5]), totalBooks, number(activityCounts[0]),
+                number(counts[2]), number(counts[3]), number(memberships[0]), number(memberships[2]),
+                averageMembers, number(userGrowth[0]), number(userGrowth[1]), number(userGrowth[2]),
+                number(books[1]), number(books[2]), number(books[3]), number(activityCounts[1]),
+                number(activityCounts[2]), activeSessions, recentAudits, number(activityCounts[0]));
+    }
+
+    @Override
+    public Set<AuthProvider> authProviders(Long userUid) {
+        return new LinkedHashSet<>(em.createQuery("select distinct a.provider from UserAuth a " +
+                "where a.user.userUid=:uid order by a.provider", AuthProvider.class)
+                .setParameter("uid", userUid).getResultList());
+    }
+
+    @Override
+    public long activeSessionCount(Long userUid) {
+        return em.createQuery("select count(s.refreshSessionUid) from RefreshTokenSession s " +
+                "where s.userUid=:uid and s.revokedAt is null and s.expiresAt>:now", Long.class)
+                .setParameter("uid", userUid).setParameter("now", LocalDateTime.now()).getSingleResult();
+    }
+
+    @Override
+    public long activeSessionCount() {
+        return em.createQuery("select count(s.refreshSessionUid) from RefreshTokenSession s " +
+                "where s.revokedAt is null and s.expiresAt>:now", Long.class)
+                .setParameter("now", LocalDateTime.now()).getSingleResult();
+    }
+
+    @Override
+    public UserActivityStats userActivityStats(Long userUid, LocalDateTime recentSince) {
+        Object[] row = em.createQuery("select max(a.occurredAt)," +
+                "sum(case when a.occurredAt>=:since then 1 else 0 end) from MoneyBookActivity a " +
+                "where a.actorUserUid=:uid", Object[].class)
+                .setParameter("uid", userUid).setParameter("since", recentSince).getSingleResult();
+        return new UserActivityStats((LocalDateTime) row[0], number(row[1]));
+    }
+
+    @Override
+    public Page<AdminMoneyBookMemberResponse> moneyBookMembers(Long bookUid, Pageable pageable) {
+        var rows = em.createQuery("select new com.moneybook.backend.admin.dto.AdminMoneyBookMemberResponse(" +
+                "u.userUid,u.nickname,(b.ownerUserUid=u.userUid),m.admin,m.canCreate,m.canRead,m.canUpdate,m.canDelete," +
+                "m.invitationStatus,m.regTime) from MoneyBookUser m join User u on u.userUid=m.userUid " +
+                "join m.moneyBook b where b.moneyBookUid=:book order by " +
+                "case when b.ownerUserUid=u.userUid then 0 else 1 end,m.regTime desc,m.moneyBookUserUid desc",
+                AdminMoneyBookMemberResponse.class).setParameter("book", bookUid)
+                .setFirstResult((int) pageable.getOffset()).setMaxResults(pageable.getPageSize()).getResultList();
+        long total = em.createQuery("select count(m.moneyBookUserUid) from MoneyBookUser m " +
+                "where m.moneyBook.moneyBookUid=:book", Long.class).setParameter("book", bookUid).getSingleResult();
+        return new PageImpl<>(rows, pageable, total);
     }
 
     private long number(Object value) { return value == null ? 0L : ((Number) value).longValue(); }

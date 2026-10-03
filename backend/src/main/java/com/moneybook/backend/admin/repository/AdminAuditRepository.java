@@ -9,6 +9,6 @@ import java.time.LocalDate;
 
 public interface AdminAuditRepository {
     SystemAdminAuditLog save(SystemAdminAuditLog log);
-    Page<SystemAdminAuditLog> search(Long actorUid, AdminAuditActionType action,
+    Page<SystemAdminAuditLog> search(Long actorUid, Long targetUserUid, AdminAuditActionType action,
             AdminAuditTargetType target, LocalDate start, LocalDate end, Pageable pageable);
 }

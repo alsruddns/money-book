@@ -12,12 +12,17 @@ import java.time.LocalDateTime;
 
 interface AdminAuditJpaRepository extends JpaRepository<SystemAdminAuditLog, Long> {
     @Query(value = "select a from SystemAdminAuditLog a where (:actor is null or a.actorUserUid=:actor) " +
+            "and (:targetUser is null or (a.targetType=com.moneybook.backend.admin.enums.AdminAuditTargetType.USER " +
+            "and a.targetUid=:targetUser)) " +
             "and (:action is null or a.actionType=:action) and (:target is null or a.targetType=:target) " +
             "and (:start is null or a.occurredAt>=:start) and (:end is null or a.occurredAt<:end)",
             countQuery = "select count(a.adminAuditLogUid) from SystemAdminAuditLog a where (:actor is null or a.actorUserUid=:actor) " +
+                    "and (:targetUser is null or (a.targetType=com.moneybook.backend.admin.enums.AdminAuditTargetType.USER " +
+                    "and a.targetUid=:targetUser)) " +
                     "and (:action is null or a.actionType=:action) and (:target is null or a.targetType=:target) " +
                     "and (:start is null or a.occurredAt>=:start) and (:end is null or a.occurredAt<:end)")
-    Page<SystemAdminAuditLog> search(@Param("actor") Long actor, @Param("action") AdminAuditActionType action,
+    Page<SystemAdminAuditLog> search(@Param("actor") Long actor, @Param("targetUser") Long targetUser,
+            @Param("action") AdminAuditActionType action,
             @Param("target") AdminAuditTargetType target, @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end, Pageable pageable);
 }

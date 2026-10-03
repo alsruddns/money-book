@@ -29,4 +29,12 @@ public class AdminMoneyBookController {
             Authentication authentication) {
         return ResponseEntity.ok(service.moneyBook(moneyBookUid,authentication));
     }
+
+    /** Lists a book's member and invitation permission state for operational inspection only. */
+    @GetMapping("/{moneyBookUid}/members")
+    public ResponseEntity<AdminPageResponse<AdminMoneyBookMemberResponse>> members(
+            @PathVariable Long moneyBookUid, @RequestParam(defaultValue="0") int page,
+            @RequestParam(defaultValue="20") int size, Authentication authentication) {
+        return ResponseEntity.ok(service.moneyBookMembers(moneyBookUid, page, size, authentication));
+    }
 }
