@@ -1,4 +1,6 @@
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
   servlet:
     multipart:
       max-file-size: 20MB
@@ -36,3 +38,5 @@ info:
   app:
     name: MoneyBook
     version: ${APP_VERSION:0.0.1-SNAPSHOT}
+server:
+  shutdown: graceful
