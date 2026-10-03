@@ -34,7 +34,7 @@ money-book/
 - **데이터 관리:** CSV/XLSX 내보내기, JSON 백업 검증·미리보기·새 가계부로 복원, 가계부 주 시작 요일 설정
 - **계정 관리:** 내 계정 조회, 닉네임 변경, LOCAL 비밀번호 변경, OWNER 이전(활성 ACCEPTED 멤버만 대상, 새 OWNER 전체 권한 보장 및 Activity 기록), 회원 탈퇴(LOCAL 비밀번호 재확인, 소유 가계부가 있으면 차단, WITHDRAWN 전환, 닉네임 익명화, 인증정보와 가계부 membership 정리)
 - **탈퇴 토큰 차단:** 인증 요청마다 사용자 활성 상태를 확인해 탈퇴한 사용자의 Access Token을 거부하고, Refresh 요청도 WITHDRAWN 상태에서 실패
-- **감사 및 운영:** 가계부 활동내역, 서비스 전역 System Admin API, 관리자 운영 조회 및 감사로그
+- **감사 및 운영:** 가계부 활동내역, 서비스 전역 System Admin API, Admin Operations V2 집계/상세 조회, 사용자 세션 일괄 폐기, 대상 사용자 감사 필터 및 감사로그
 
 - **운영 모니터링:** Actuator Health/Liveness/Readiness, JVM·HTTP·HikariCP 지표, 인증된 Prometheus endpoint
 
@@ -47,7 +47,7 @@ money-book/
 - **계정 관리:** 내 계정 정보 조회, 닉네임 변경, LOCAL 비밀번호 변경, 가계부 OWNER 이전, 회원 탈퇴
   - OWNER 이전 UI, 탈퇴 전 소유권 이전 안내, LOCAL 비밀번호 재인증, 비밀번호 변경 후 세션 폐기에 따른 재로그인, 탈퇴 성공 후 토큰·인증 상태·API 캐시 정리
 - **레이아웃:** 데스크톱 사이드바, 모바일 내비게이션, 광고 슬롯 대응 구조
-- **System Admin:** 관리자 대시보드, 사용자 상태/역할 관리, 가계부 운영 조회, 전체 활동내역, SUPER_ADMIN 감사로그
+- **System Admin:** 운영 지표별 Overview, 사용자 상세/최근 활동/세션 조회, 관리자 확인 후 전체 세션 종료, 가계부 운영 지표와 읽기 전용 멤버 목록, 최근 활동, 필터형 활동/감사 로그. 감사 로그 메뉴는 SUPER_ADMIN 전용
 
 > Backend에 구현된 기능이라도 Frontend 화면이 없으면 Frontend 완료 항목으로 간주하지 않습니다. Admin 운영 화면은 서비스 전역 역할 기반으로 `/admin/**`에서 제공하며, 일반 MoneyBook 권한과 분리됩니다.
 
@@ -73,9 +73,9 @@ money-book/
 
 ## Current Focus
 
-**현재 단계: CI/CD**
+**현재 단계: 전체 UI/UX 최종 마감**
 
-다음 작업 순서:
+후속 운영 단계:
 
 1. CI
 2. CD
@@ -132,6 +132,8 @@ money-book/
 - [x] MoneyBook Activity Frontend
 - [x] System Admin Backend
 - [x] System Admin Frontend
+- [x] Admin Operations V2 Backend 운영 집계·사용자/가계부 상세·세션 종료·감사 필터
+- [x] Admin Operations V2 Frontend 운영 대시보드·상세·세션 관리·필터 UX
 
 ### Phase 8 — 계정 관리
 
