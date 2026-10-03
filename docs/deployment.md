@@ -67,7 +67,7 @@ docker compose --env-file .env.production -f compose.prod.yml down
 docker compose --env-file .env.production -f compose.prod.yml up -d --build
 ```
 
-`down`에 `-v`를 추가하면 PostgreSQL 데이터 볼륨을 삭제할 수 있으므로 운영 중 사용하지 않습니다. 지금은 수동 업데이트입니다. 배포 전 실행 중인 이미지와 Git revision을 기록하고, 검증한 revision에서 이미지를 빌드합니다. CI/CD는 이 작업 범위에 포함되지 않습니다.
+`down`에 `-v`를 추가하면 PostgreSQL 데이터 볼륨을 삭제할 수 있으므로 운영 중 사용하지 않습니다. 지금은 수동 업데이트입니다. 배포 전 실행 중인 이미지와 Git revision을 기록하고, 검증한 revision에서 이미지를 빌드합니다. Push/Pull Request 검증 CI는 [GitHub Actions 안내](ci.md)에 설명되어 있으며, CD/자동 배포는 아직 구현되지 않았습니다.
 
 이전 애플리케이션 revision으로 되돌리는 경우에도 이미 적용된 Flyway migration은 자동으로 되돌아가지 않습니다. migration이 포함된 배포는 이전 이미지와의 schema 호환성을 먼저 검토하고, 필요하면 백업 복원 계획을 세웁니다. Flyway 변경은 forward-only 원칙을 따릅니다.
 

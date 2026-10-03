@@ -75,20 +75,20 @@ money-book/
 
 ## Current Focus
 
-**현재 단계: CI/CD 준비**
+**현재 단계: Production CD / Deployment 준비**
 
-완료한 Production Infrastructure / Dockerization 구성:
+완료한 CI 및 Production Infrastructure 구성:
 
+- GitHub Actions Push/PR 검증: Backend, Frontend, Docker image, Compose/Caddy 설정
 - Backend/Frontend production image와 Compose 구성
 - Caddy reverse proxy 및 HTTPS 자동화 준비
 - DB 영속 volume, health check, 백업/복원 운영 안내
 
 후속 운영 단계:
 
-1. CI
-2. CD
-3. Production 도메인 및 DNS 확정
-4. 프로덕션 배포
+1. CD
+2. Production 도메인 및 DNS 확정
+3. 프로덕션 배포
 
 ## Development Roadmap
 
@@ -190,7 +190,7 @@ money-book/
 - [ ] Production domain 확정 및 DNS 설정
 - [x] PostgreSQL nullable-filter query handling fixed for admin activity and audit-log searches
 - [ ] Prometheus 서버 및 운영 모니터링 연동
-- [ ] CI
+- [x] GitHub Actions CI: Backend test/build, Frontend test/lint/typecheck/build, Docker image 및 Compose 설정 검증
 - [ ] CD
 - [ ] 프로덕션 배포
 
