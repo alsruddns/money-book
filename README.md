@@ -172,6 +172,8 @@ money-book/
 - [x] Complete Flyway chain applied to a clean, isolated PostgreSQL 16 database
 - [x] Production-profile Backend startup and Hibernate schema validation against the migrated PostgreSQL schema
 - [x] Release HTTP smoke validation for authentication, MoneyBook ledger, calendar, dashboard/reports, transfers, budget, closing, sessions, admin, and exports
+- [x] Frontend Browser E2E Smoke for signup/login, MoneyBook creation, categories/accounts, transactions, calendar, dashboard, and reports
+- [x] Desktop/tablet/mobile responsive route validation at 1440px, 1024px, 768px, 390px, and 375px viewports
 - [x] PostgreSQL nullable-filter query handling fixed for admin activity and audit-log searches
 - [ ] Prometheus 서버 및 운영 모니터링 연동
 - [ ] CI
