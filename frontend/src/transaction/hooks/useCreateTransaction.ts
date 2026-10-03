@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { getApiErrorMessage } from "@/common/api/getApiErrorMessage";
+import { getTransactionErrorMessage } from "../transactionError";
 import { useCreateTransactionMutation } from "../controller/transactionApi";
 import { parseTransactionRequest, type TransactionFormValues } from "../transactionForm";
 
@@ -15,7 +15,7 @@ export function useCreateTransaction(moneyBookUid: number) {
     try {
       await trigger({ moneyBookUid, request: parsed.request }).unwrap();
       return true;
-    } catch (error) { setErrorMessage(getApiErrorMessage(error, "거래를 등록하지 못했습니다.")); return false; }
+    } catch (error) { setErrorMessage(getTransactionErrorMessage(error, "거래를 등록하지 못했습니다.")); return false; }
   }
   return { createTransaction, isLoading, errorMessage };
 }

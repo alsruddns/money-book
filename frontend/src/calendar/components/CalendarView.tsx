@@ -13,7 +13,7 @@ import CalendarDayDetailDialog from "./CalendarDayDetailDialog";
 
 export default function CalendarView({ moneyBookUid }: { moneyBookUid: number }) {
   const [selectedDay, setSelectedDay] = useState<CalendarDayResponse | null>(null);
-  const { canRead } = useMoneyBookPermission(moneyBookUid);
+  const { canRead, canCreate, canUpdate, canDelete } = useMoneyBookPermission(moneyBookUid);
   const { year, month, moveMonth, goToToday } = useMonthNavigation();
   const { setting } = useMoneyBookSetting(moneyBookUid, canRead);
   const weekStartDay = setting?.weekStartDay ?? "SUNDAY";
@@ -39,7 +39,7 @@ export default function CalendarView({ moneyBookUid }: { moneyBookUid: number })
         </div>
         <div className="grid grid-cols-7">
           {cells.map((day, index) => day ?
-            <button key={day.date} type="button" onClick={() => setSelectedDay(day)} aria-label={`${day.date} 상세 보기`}
+        <button key={day.date} type="button" onClick={() => setSelectedDay(day)} aria-label={`${day.date} 상세 보기`}
               className="min-h-24 min-w-0 border-b border-r border-zinc-100 p-1 text-left hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-blue-600 sm:min-h-32 sm:p-2">
               <span className={`block text-sm font-semibold ${day.holiday || day.dayOfWeek === "SUNDAY" ? "text-red-700" : day.weekend ? "text-blue-700" : ""}`}>
                 {dayNumber(day.date)}{day.holiday && <span className="ml-1 text-[10px]">공휴일</span>}
@@ -53,6 +53,7 @@ export default function CalendarView({ moneyBookUid }: { moneyBookUid: number })
             </button> : <div key={`empty-${index}`} aria-hidden="true" className="border-b border-r border-zinc-100 bg-zinc-50" />)}
         </div>
       </div>}
-    {selectedDay && <CalendarDayDetailDialog moneyBookUid={moneyBookUid} day={selectedDay} onClose={() => setSelectedDay(null)} />}
+    {selectedDay && <CalendarDayDetailDialog moneyBookUid={moneyBookUid} day={selectedDay} canCreate={canCreate}
+      canUpdate={canUpdate} canDelete={canDelete} onClose={() => setSelectedDay(null)} />}
   </div>;
 }

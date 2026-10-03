@@ -10,13 +10,13 @@ import { useCreateTransaction } from "../hooks/useCreateTransaction";
 import { useUpdateTransaction } from "../hooks/useUpdateTransaction";
 import { todayLocalDate, type TransactionFormValues } from "../transactionForm";
 
-export default function TransactionFormDialog({ moneyBookUid, initial, onClose, onSaved }: {
-  moneyBookUid: number; initial?: TransactionResponse; onClose: () => void; onSaved: () => void;
+export default function TransactionFormDialog({ moneyBookUid, initial, initialDate, initialType, onClose, onSaved }: {
+  moneyBookUid: number; initial?: TransactionResponse; initialDate?: string; initialType?: TransactionType; onClose: () => void; onSaved: () => void;
 }) {
   const [values, setValues] = useState<TransactionFormValues>({
-    transactionType: initial?.transactionType ?? "EXPENSE",
+    transactionType: initial?.transactionType ?? initialType ?? "EXPENSE",
     amount: initial ? String(initial.amount) : "",
-    transactionDate: initial?.transactionDate ?? todayLocalDate(),
+    transactionDate: initial?.transactionDate ?? initialDate ?? todayLocalDate(),
     categoryUid: initial ? String(initial.categoryUid) : "",
     accountUid: initial ? String(initial.accountUid) : "",
     memo: initial?.memo ?? "",

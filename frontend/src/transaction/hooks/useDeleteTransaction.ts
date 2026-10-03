@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { getApiErrorMessage } from "@/common/api/getApiErrorMessage";
+import { getTransactionErrorMessage } from "../transactionError";
 import { useDeleteTransactionMutation } from "../controller/transactionApi";
 
 export function useDeleteTransaction(moneyBookUid: number) {
@@ -13,7 +13,7 @@ export function useDeleteTransaction(moneyBookUid: number) {
     try {
       await trigger({ moneyBookUid, transactionUid }).unwrap();
       return true;
-    } catch (error) { setErrorMessage(getApiErrorMessage(error, "거래를 삭제하지 못했습니다.")); return false; }
+    } catch (error) { setErrorMessage(getTransactionErrorMessage(error, "거래를 삭제하지 못했습니다.")); return false; }
   }
   return { deleteTransaction, isLoading, errorMessage };
 }
