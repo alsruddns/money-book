@@ -48,6 +48,7 @@ money-book/
   - OWNER 이전 UI, 탈퇴 전 소유권 이전 안내, LOCAL 비밀번호 재인증, 비밀번호 변경 후 세션 폐기에 따른 재로그인, 탈퇴 성공 후 토큰·인증 상태·API 캐시 정리
 - **레이아웃:** 데스크톱 사이드바, 모바일 내비게이션, 광고 슬롯 대응 구조
 - **System Admin:** 운영 지표별 Overview, 사용자 상세/최근 활동/세션 조회, 관리자 확인 후 전체 세션 종료, 가계부 운영 지표와 읽기 전용 멤버 목록, 최근 활동, 필터형 활동/감사 로그. 감사 로그 메뉴는 SUPER_ADMIN 전용
+- **공개 안내와 SEO:** 공개 Landing Page, 기본 개인정보 처리 안내와 이용 안내, canonical/Open Graph/Twitter metadata, robots.txt, 공개 URL sitemap, WebApplication JSON-LD
 
 > Backend에 구현된 기능이라도 Frontend 화면이 없으면 Frontend 완료 항목으로 간주하지 않습니다. Admin 운영 화면은 서비스 전역 역할 기반으로 `/admin/**`에서 제공하며, 일반 MoneyBook 권한과 분리됩니다.
 
@@ -67,19 +68,21 @@ money-book/
 - 로컬 Backend: `http://localhost:8080/api`
 - Browser의 API 요청은 항상 `/api/**` same-origin 경로를 사용하며, Next.js rewrite가 Backend로 전달합니다.
 - Frontend 환경변수 `BACKEND_API_URL`에는 Backend origin만 지정합니다. 예시와 로컬 기본값은 `frontend/.env.example`을 참고하세요. 개발 모드에서는 값이 없을 때 `http://localhost:8080`을 사용하고, Production에서는 값이 없으면 Next.js가 시작/빌드 단계에서 오류를 냅니다.
+- 공개 페이지 SEO URL은 서버 빌드 환경변수 `SITE_URL`로 설정합니다. 실제 도메인이 확정되기 전에는 비워 두며, Production에서 값이 없으면 canonical/사이트맵 주소를 임의 생성하지 않습니다. Google/Naver 사이트 인증 값은 등록 시 `GOOGLE_SITE_VERIFICATION`, `NAVER_SITE_VERIFICATION`으로 설정할 수 있습니다.
 - Hosting 환경에서는 `BACKEND_API_URL`을 서버 전용 Environment Variable로 설정합니다. 운영 URL은 코드나 `NEXT_PUBLIC_` 변수에 넣지 않습니다.
 - Backend는 기본 `local` profile을 사용합니다. 운영에서는 `SPRING_PROFILES_ACTIVE=prod`를 설정하고, `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`을 Backend 실행 환경에 주입합니다. Local에서도 `DB_PASSWORD`와 `JWT_SECRET`은 환경변수로 설정해야 합니다.
 - Backend의 공통 context path는 `/api`입니다. JWT secret과 DB 비밀번호는 저장소에 기록하지 않습니다.
 
 ## Current Focus
 
-**현재 단계: Landing Page 및 SEO**
+**현재 단계: Production Infrastructure 및 CI/CD 준비**
 
 후속 운영 단계:
 
-1. CI
-2. CD
-3. 프로덕션 배포
+1. Production 도메인 및 인프라 확정
+2. CI
+3. CD
+4. 프로덕션 배포
 
 ## Development Roadmap
 
@@ -161,7 +164,10 @@ money-book/
 - [x] 월간·연간 지출 TOP20 Frontend
 - [ ] 앱 내 알림
 - [ ] 게시판 (보류)
-- [ ] Landing Page 및 SEO
+- [x] 공개 Landing Page Frontend
+- [x] Technical SEO 기본 설정: Metadata, canonical, Open Graph/Twitter, robots.txt, sitemap.xml, JSON-LD
+- [ ] Google Search Console 등록
+- [ ] Naver Search Advisor 등록
 
 ### Phase 11 — 운영
 
@@ -174,6 +180,7 @@ money-book/
 - [x] Release HTTP smoke validation for authentication, MoneyBook ledger, calendar, dashboard/reports, transfers, budget, closing, sessions, admin, and exports
 - [x] Frontend Browser E2E Smoke for signup/login, MoneyBook creation, categories/accounts, transactions, calendar, dashboard, and reports
 - [x] Desktop/tablet/mobile responsive route validation at 1440px, 1024px, 768px, 390px, and 375px viewports
+- [ ] Production domain 확정 및 DNS 설정
 - [x] PostgreSQL nullable-filter query handling fixed for admin activity and audit-log searches
 - [ ] Prometheus 서버 및 운영 모니터링 연동
 - [ ] CI
