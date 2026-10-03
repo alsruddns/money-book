@@ -1,0 +1,22 @@
+{$SITE_DOMAIN} {
+	encode zstd gzip
+
+	@backendApi path /api/*
+	handle @backendApi {
+		reverse_proxy backend:8080 {
+			# Do not trust a client-supplied Forwarded/X-Forwarded-For value.
+			header_up -Forwarded
+			header_up -X-Forwarded-Port
+			header_up -X-Forwarded-Prefix
+			header_up -X-Forwarded-Ssl
+			header_up -X-Real-IP
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Forwarded-Host {host}
+		}
+	}
+
+	handle {
+		reverse_proxy frontend:3000
+	}
+}
