@@ -73,7 +73,7 @@ money-book/
 
 ## Current Focus
 
-**현재 단계: 통합 테스트 및 배포 전 검증**
+**현재 단계: Landing Page 및 SEO**
 
 후속 운영 단계:
 
@@ -169,7 +169,10 @@ money-book/
 - [x] Backend test stabilization: `./gradlew clean test` passes all 229 tests without skips
 - [x] Production profile configuration review: required DB/JWT environment variables, actuator exposure, stateless security, and graceful shutdown
 - [x] Local/production backup upload limits aligned to 20 MB file and 21 MB multipart request
-- [ ] Run the complete Flyway chain against an isolated clean PostgreSQL database
+- [x] Complete Flyway chain applied to a clean, isolated PostgreSQL 16 database
+- [x] Production-profile Backend startup and Hibernate schema validation against the migrated PostgreSQL schema
+- [x] Release HTTP smoke validation for authentication, MoneyBook ledger, calendar, dashboard/reports, transfers, budget, closing, sessions, admin, and exports
+- [x] PostgreSQL nullable-filter query handling fixed for admin activity and audit-log searches
 - [ ] Prometheus 서버 및 운영 모니터링 연동
 - [ ] CI
 - [ ] CD
