@@ -74,6 +74,14 @@ money-book/
 - **운영 API:** 서비스 관리자 기능은 `/api/admin/**`에서 별도로 제공합니다. Admin 권한은 현재 DB의 사용자 역할과 상태를 확인합니다.
 - **SUPER_ADMIN 지정:** 일반 회원가입이나 Admin API로 만들 수 없으며 운영 DB에서 명시적으로 지정합니다.
 
+## 보안 및 요청 제한
+
+- API는 인증 누락·무효 토큰을 `401`, 인증된 사용자의 권한 부족을 `403`, 없는 리소스를 `404`, 요청 제한 초과를 `429`로 구분합니다. `429`에는 `Retry-After`와 공통 오류 JSON을 반환합니다.
+- 일반 API 읽기는 사용자와 Client IP 각각 분당 600회, 일반 변경은 각각 분당 120회로 제한합니다. 민감 읽기는 분당 120회, 민감 변경은 분당 30회이며 로그인·복구·게시판에는 별도 더 엄격한 제한을 추가 적용합니다. Rate Limit key에는 사용자 식별자와 IP의 SHA-256 해시를 사용합니다.
+- Rate Limiter는 메모리 기반이며 현재 Backend 인스턴스 단위로 동작합니다. 단일 VM/Compose 운영에는 사용할 수 있지만 다중 인스턴스에서는 요청 제한 공유를 위해 Redis 등 중앙 저장소로 교체해야 합니다.
+- 브라우저 API는 Next.js same-origin `/api/**` proxy를 사용하며 Backend에는 CORS wildcard 허용을 두지 않습니다. Production Caddy는 전달 헤더를 정리한 뒤 Client IP와 scheme을 설정합니다. Backend는 Caddy만 연결된 proxy 네트워크에서 trusted forwarded header 처리를 사용하므로 Backend port를 외부에 공개하지 않아야 합니다.
+- CSRF는 stateless Bearer 인증 구조에 맞춰 유지하며, Production profile에서 HSTS를 적용합니다. SQL/stack trace 등 내부 오류 상세는 일반 5xx 응답으로 노출하지 않습니다.
+
 ## 로컬 및 프로덕션 환경
 
 - 로컬 Frontend: `http://localhost:3000`
