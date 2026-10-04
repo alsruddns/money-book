@@ -8,6 +8,7 @@ import com.moneybook.backend.auth.repository.UserAuthRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.core.env.Environment;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
@@ -33,6 +34,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.http.MediaType;
 import java.nio.charset.StandardCharsets;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Arrays;
 
 @Configuration
 public class SecurityConfig {
@@ -42,7 +44,7 @@ public class SecurityConfig {
             ObjectProvider<SystemAdminAuthorizationProvider> systemAdminAuthorizationProvider,
             ObjectProvider<UserRepository> userRepositories,
             ObjectProvider<UserAuthRepository> authRepositories,
-            JwtDecoder jwtDecoder) throws Exception {
+            JwtDecoder jwtDecoder, Environment environment) throws Exception {
         BearerTokenResolver defaultBearerTokenResolver = new DefaultBearerTokenResolver();
         BearerTokenResolver bearerTokenResolver = request -> {
             if (!isPublicAuthenticationRequest(request)) {
@@ -96,8 +98,13 @@ public class SecurityConfig {
                     headers.frameOptions(frame -> frame.deny());
                     headers.referrerPolicy(referrer -> referrer.policy(
                             ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN));
-                    headers.httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true)
-                            .maxAgeInSeconds(31536000));
+                    headers.httpStrictTransportSecurity(hsts -> {
+                        if (Arrays.asList(environment.getActiveProfiles()).contains("prod")) {
+                            hsts.includeSubDomains(true).maxAgeInSeconds(31536000);
+                        } else {
+                            hsts.disable();
+                        }
+                    });
                     headers.addHeaderWriter(new StaticHeadersWriter("Permissions-Policy",
                             "camera=(), microphone=(), geolocation=()"));
                     headers.addHeaderWriter(new StaticHeadersWriter("Content-Security-Policy",
@@ -157,6 +164,7 @@ public class SecurityConfig {
         response.setStatus(status);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setHeader("Cache-Control", "no-store");
         response.getWriter().write("{\"code\":\"" + code + "\",\"message\":\"" + message + "\"}");
     }
 }

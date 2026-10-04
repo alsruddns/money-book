@@ -15,6 +15,10 @@ public class RateLimitProperties {
     private int withdrawalPer10Minutes = 3;
     private int logoutAllPerMinute = 5;
     private int adminMutationPerMinute = 30;
+    private int readPerMinute = 600;
+    private int mutationPerMinute = 120;
+    private int sensitiveReadPerMinute = 120;
+    private int sensitiveMutationPerMinute = 30;
     private int maximumKeys = 50000;
 
     public int getLoginPerMinute() { return loginPerMinute; }
@@ -37,6 +41,14 @@ public class RateLimitProperties {
     public void setLogoutAllPerMinute(int value) { logoutAllPerMinute = positive(value); }
     public int getAdminMutationPerMinute() { return adminMutationPerMinute; }
     public void setAdminMutationPerMinute(int value) { adminMutationPerMinute = positive(value); }
+    public int getReadPerMinute() { return readPerMinute; }
+    public void setReadPerMinute(int value) { readPerMinute = positive(value); }
+    public int getMutationPerMinute() { return mutationPerMinute; }
+    public void setMutationPerMinute(int value) { mutationPerMinute = positive(value); }
+    public int getSensitiveReadPerMinute() { return sensitiveReadPerMinute; }
+    public void setSensitiveReadPerMinute(int value) { sensitiveReadPerMinute = positive(value); }
+    public int getSensitiveMutationPerMinute() { return sensitiveMutationPerMinute; }
+    public void setSensitiveMutationPerMinute(int value) { sensitiveMutationPerMinute = positive(value); }
     public int getMaximumKeys() { return maximumKeys; }
     public void setMaximumKeys(int value) { maximumKeys = positive(value); }
 

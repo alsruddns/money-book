@@ -38,6 +38,21 @@ test("API errors use safe status messages and explain 429 retry timing", () => {
   assert.equal(getApiErrorMessage({ status: 400, data: { message: "입력값을 확인해 주세요." } }, "fallback"), "입력값을 확인해 주세요.");
 });
 
+test("forbidden and not-found pages provide a route back to MoneyBook selection", () => {
+  const forbidden = fs.readFileSync(path.join(testDirectory, "../src/app/forbidden/page.tsx"), "utf8");
+  const notFound = fs.readFileSync(path.join(testDirectory, "../src/app/not-found.tsx"), "utf8");
+  const notFoundContent = fs.readFileSync(path.join(testDirectory, "../src/common/components/NotFoundPageContent.tsx"), "utf8");
+  const api = fs.readFileSync(path.join(testDirectory, "../src/common/api/baseApi.ts"), "utf8");
+  assert.match(forbidden, /<h1/);
+  assert.ok(forbidden.includes('href="/books"'));
+  assert.match(notFound, /NotFoundPageContent/);
+  assert.match(notFoundContent, /<h1/);
+  assert.ok(notFoundContent.includes('href="/books"'));
+  assert.match(api, /error\?\.status !== 403/);
+  assert.ok(api.includes("/forbidden"));
+  assert.match(api, /window\.location\.assign\(new URL\(destination/);
+});
+
 test("common dialogs expose a labelled modal and keep keyboard focus inside", () => {
   const source = fs.readFileSync(path.join(testDirectory, "../src/common/components/DialogShell.tsx"), "utf8");
   assert.match(source, /aria-modal="true"/);

@@ -30,6 +30,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ResponseEntity;
 
 import java.time.Instant;
 
@@ -84,6 +85,9 @@ class RateLimitSecurityControllerTests {
     static class ProtectedController {
         @GetMapping("/test/protected")
         String protectedRoute() { return "ok"; }
+
+        @GetMapping("/test/missing")
+        ResponseEntity<Void> missingRoute() { return ResponseEntity.notFound().build(); }
     }
 
     @Test
@@ -117,6 +121,9 @@ class RateLimitSecurityControllerTests {
                         .header("Authorization", bearer(JwtTokenType.ACCESS)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+        mockMvc.perform(get("/api/test/missing").contextPath("/api")
+                        .header("Authorization", bearer(JwtTokenType.ACCESS)))
+                .andExpect(status().isNotFound());
     }
 
     @Test

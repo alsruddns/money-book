@@ -18,6 +18,7 @@ function createHarness(initialTokens, handleRequest) {
   let tokens = initialTokens;
   const calls = [];
   const actions = [];
+  const redirects = [];
   let baseUrl;
   const storage = {
     getTokens: () => tokens,
@@ -59,6 +60,8 @@ function createHarness(initialTokens, handleRequest) {
     exports: compiledModule.exports,
     require: requireMock,
     Headers,
+    window: { location: { pathname: "/books/5", origin: "http://localhost:3000", assign: (path) => redirects.push(path) } },
+    URL,
   });
   const api = { dispatch: (action) => actions.push(action) };
   return {
@@ -66,6 +69,7 @@ function createHarness(initialTokens, handleRequest) {
     calls,
     baseUrl,
     actions,
+    redirects,
     getTokens: () => tokens,
   };
 }
@@ -180,6 +184,32 @@ test("429 responses carry Retry-After seconds for shared error messaging", async
   }));
   const result = await harness.query("auth/me");
   assert.equal(result.error.retryAfterSeconds, 25);
+});
+
+test("GET 403 and 404 responses navigate to their common access pages", async () => {
+  const harness = createHarness(null, () => ({ error: { status: 403, data: { code: "FORBIDDEN" } } }));
+  const result = await harness.query("money-books/5/reports/monthly");
+  assert.equal(result.error.status, 403);
+  assert.deepEqual(harness.redirects, ["http://localhost:3000/forbidden"]);
+
+  const missing = createHarness(null, () => ({ error: { status: 404, data: { code: "NOT_FOUND" } } }));
+  await missing.query("money-books/5/reports/monthly");
+  assert.deepEqual(missing.redirects, ["http://localhost:3000/not-found"]);
+});
+
+test("password change required GET responses route to the forced password screen", async () => {
+  const harness = createHarness({ accessToken: "access", refreshToken: "refresh" }, () => ({
+    error: { status: 403, data: { code: "PASSWORD_CHANGE_REQUIRED" } },
+  }));
+  await harness.query("money-books");
+  assert.deepEqual(harness.redirects, ["http://localhost:3000/change-required-password"]);
+});
+
+test("mutation 403 stays in its current flow and keeps its local error response", async () => {
+  const harness = createHarness({ accessToken: "access", refreshToken: "refresh" }, () => ({ error: { status: 403 } }));
+  const result = await harness.query({ url: "money-books/5/transactions", method: "POST" });
+  assert.equal(result.error.status, 403);
+  assert.deepEqual(harness.redirects, []);
 });
 
 test("a second 401 after retry clears auth without another refresh", async () => {

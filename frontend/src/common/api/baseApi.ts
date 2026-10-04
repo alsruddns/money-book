@@ -33,6 +33,7 @@ export const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, Fetch
     const sentAccessToken = tokenStorage.getTokens()?.accessToken;
     const result = await rawBaseQuery(args, api, extraOptions);
     if (result.error?.status !== 401 || isPublicAuthRequest(url)) {
+      redirectAccessErrorRead(result.error, args);
       return addRetryAfter(result);
     }
 
@@ -45,6 +46,7 @@ export const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, Fetch
     if (tokens.accessToken !== sentAccessToken) {
       const retryResult = await rawBaseQuery(args, api, extraOptions);
       if (retryResult.error?.status === 401) clearStoredAuth(api.dispatch);
+      redirectAccessErrorRead(retryResult.error, args);
       return addRetryAfter(retryResult);
     }
 
@@ -85,8 +87,28 @@ export const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, Fetch
 
     const retryResult = await rawBaseQuery(args, api, extraOptions);
     if (retryResult.error?.status === 401) clearStoredAuth(api.dispatch);
+    redirectAccessErrorRead(retryResult.error, args);
     return addRetryAfter(retryResult);
   };
+
+function redirectAccessErrorRead(error: FetchBaseQueryError | undefined, args: string | FetchArgs) {
+  const method = typeof args === "string" ? "GET" : args.method ?? "GET";
+  if ((error?.status !== 403 && error?.status !== 404)
+      || method.toUpperCase() !== "GET" || typeof window === "undefined") return;
+  if (error.status === 404) {
+    if (window.location.pathname !== "/not-found") {
+      window.location.assign(new URL("/not-found", window.location.origin).toString());
+    }
+    return;
+  }
+  const code = typeof error === "object" && "data" in error && typeof error.data === "object"
+    && error.data !== null && "code" in error.data && typeof error.data.code === "string"
+    ? error.data.code : null;
+  const destination = code === "PASSWORD_CHANGE_REQUIRED" ? "/change-required-password" : "/forbidden";
+  if (window.location.pathname !== destination) {
+    window.location.assign(new URL(destination, window.location.origin).toString());
+  }
+}
 
 function addRetryAfter<T extends { error?: FetchBaseQueryError; meta?: { response?: Response } }>(result: T): T {
   if (result.error?.status !== 429) return result;

@@ -15,7 +15,7 @@ public class PasswordChangeRequiredInterceptor implements HandlerInterceptor {
  @Override public boolean preHandle(HttpServletRequest request,HttpServletResponse response,Object handler)throws java.io.IOException {
   Authentication a=SecurityContextHolder.getContext().getAuthentication();
   if(!(a instanceof JwtAuthenticationToken)||a.getAuthorities().stream().noneMatch(x->x.getAuthority().equals("PASSWORD_CHANGE_REQUIRED"))||allowed(request))return true;
-  response.setStatus(403);response.setCharacterEncoding(StandardCharsets.UTF_8.name());response.setContentType("application/json");
+  response.setStatus(403);response.setHeader("Cache-Control","no-store");response.setCharacterEncoding(StandardCharsets.UTF_8.name());response.setContentType("application/json");
   response.getWriter().write("{\"code\":\"PASSWORD_CHANGE_REQUIRED\",\"message\":\"계속하려면 먼저 임시 비밀번호를 변경해야 합니다.\"}");return false;
  }
  private boolean allowed(HttpServletRequest r){String path=r.getRequestURI().substring(r.getContextPath().length());String method=r.getMethod();

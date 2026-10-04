@@ -71,9 +71,9 @@ class RateLimitInterceptorTests {
         clearInvocations(limiter);
         MockHttpServletRequest login = request("POST", "/auth/login");
         assertTrue(interceptor.preHandle(login, new MockHttpServletResponse(), new Object()));
-        verify(limiter).tryAcquire(eq("login-ip-minute"), eq("192.0.2.10"),
+        verify(limiter).tryAcquire(eq("login-ip-minute"), eq(RateLimitInterceptor.hashKey("192.0.2.10")),
                 eq(properties.getLoginPerMinute()), eq(Duration.ofMinutes(1)));
-        verify(limiter).tryAcquire(eq("login-ip-15m"), eq("192.0.2.10"),
+        verify(limiter).tryAcquire(eq("login-ip-15m"), eq(RateLimitInterceptor.hashKey("192.0.2.10")),
                 eq(properties.getLoginPer15Minutes()), eq(Duration.ofMinutes(15)));
     }
 
@@ -82,7 +82,42 @@ class RateLimitInterceptorTests {
         clearInvocations(limiter);
         MockHttpServletResponse response = new MockHttpServletResponse();
         assertTrue(interceptor.preHandle(request(method, path), response, new Object()));
-        verify(limiter).tryAcquire(eq(policy), eq(key), eq(limit), eq(window));
+        verify(limiter).tryAcquire(eq(policy), eq(RateLimitInterceptor.hashKey(key)), eq(limit), eq(window));
+    }
+
+    @Test
+    void everyApiUsesSeparateHashedUserAndIpReadQuotas() throws Exception {
+        clearInvocations(limiter);
+        assertTrue(interceptor.preHandle(request("GET", "/money-books/5/reports/monthly"),
+                new MockHttpServletResponse(), new Object()));
+        verify(limiter).tryAcquire(eq("read-user-minute"), eq(RateLimitInterceptor.hashKey("user-42")),
+                eq(properties.getReadPerMinute()), eq(Duration.ofMinutes(1)));
+        verify(limiter).tryAcquire(eq("read-ip-minute"), eq(RateLimitInterceptor.hashKey("192.0.2.10")),
+                eq(properties.getReadPerMinute()), eq(Duration.ofMinutes(1)));
+    }
+
+    @Test
+    void sensitiveMutationsHaveTighterHashedUserAndIpQuotas() throws Exception {
+        clearInvocations(limiter);
+        assertTrue(interceptor.preHandle(request("PUT", "/money-books/5/settings"),
+                new MockHttpServletResponse(), new Object()));
+        verify(limiter).tryAcquire(eq("sensitive-mutation-user-minute"), eq(RateLimitInterceptor.hashKey("user-42")),
+                eq(properties.getSensitiveMutationPerMinute()), eq(Duration.ofMinutes(1)));
+        verify(limiter).tryAcquire(eq("sensitive-mutation-ip-minute"), eq(RateLimitInterceptor.hashKey("192.0.2.10")),
+                eq(properties.getSensitiveMutationPerMinute()), eq(Duration.ofMinutes(1)));
+    }
+
+    @Test
+    void anonymousRequestsUseOnlyTheirHashedIpBucket() throws Exception {
+        SecurityContextHolder.clearContext();
+        clearInvocations(limiter);
+        assertTrue(interceptor.preHandle(request("GET", "/board/categories"),
+                new MockHttpServletResponse(), new Object()));
+        verify(limiter).tryAcquire(eq("read-ip-minute"), eq(RateLimitInterceptor.hashKey("192.0.2.10")),
+                eq(properties.getReadPerMinute()), eq(Duration.ofMinutes(1)));
+        org.mockito.Mockito.verify(limiter, org.mockito.Mockito.never()).tryAcquire(
+                eq("read-user-minute"), org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.any());
     }
 
     private MockHttpServletRequest request(String method, String path) {
