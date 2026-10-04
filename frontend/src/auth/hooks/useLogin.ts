@@ -29,7 +29,7 @@ export function useLogin() {
       tokenStorage.setTokens(tokens);
       dispatch(setTokens(tokens));
       dispatch(baseApi.util.resetApiState());
-      router.push("/books");
+      router.push(response.passwordChangeRequired ? "/change-required-password" : "/books");
     } catch (error) {
       setErrorMessage(getApiErrorMessage(error, "로그인에 실패했습니다."));
     }

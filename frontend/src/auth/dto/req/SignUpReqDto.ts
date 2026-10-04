@@ -3,4 +3,7 @@ export interface SignUpReqDto {
   password: string;
   passwordConfirm: string;
   nickname: string;
+  securityQuestionCode: string;
+  securityAnswer: string;
+  emailVerificationToken?: string;
 }

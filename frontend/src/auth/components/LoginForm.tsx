@@ -34,6 +34,7 @@ export default function LoginForm({ notice }: { notice?: string } = {}) {
         className="w-full rounded-lg bg-blue-600 px-4 py-2.5 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
         {isLoading ? "로그인 중..." : "로그인"}
       </button>
+      <p className="text-center text-sm"><Link href="/forgot-password" className="font-medium text-blue-700 hover:underline">비밀번호를 잊으셨나요?</Link></p>
       <p className="text-center text-sm text-zinc-600">
         계정이 없으신가요? <Link href="/signup" className="font-medium text-blue-700 hover:underline">회원가입</Link>
       </p>
