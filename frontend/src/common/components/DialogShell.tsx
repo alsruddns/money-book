@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, type ReactNode } from "react";
+import { acquireBodyScrollLock } from "./bodyScrollLock";
 
 interface DialogShellProps {
   title: string;
@@ -21,8 +22,7 @@ export default function DialogShell({ title, description, onClose, children }: D
 
   useEffect(() => {
     const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const releaseScrollLock = acquireBodyScrollLock();
     closeButtonRef.current?.focus();
 
     function handleKeyDown(event: KeyboardEvent) {
@@ -54,7 +54,7 @@ export default function DialogShell({ title, description, onClose, children }: D
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = previousOverflow;
+      releaseScrollLock();
       previouslyFocused?.focus();
     };
   }, []);

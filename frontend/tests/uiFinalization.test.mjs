@@ -8,13 +8,13 @@ import { fileURLToPath } from "node:url";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 
-function loadTypeScript(relativePath) {
+function loadTypeScript(relativePath, globals = {}) {
   const source = fs.readFileSync(path.join(testDirectory, relativePath), "utf8");
   const compiled = ts.transpileModule(source, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   }).outputText;
   const compiledModule = { exports: {} };
-  vm.runInNewContext(compiled, { module: compiledModule, exports: compiledModule.exports });
+  vm.runInNewContext(compiled, { module: compiledModule, exports: compiledModule.exports, ...globals });
   return compiledModule.exports;
 }
 
@@ -47,6 +47,64 @@ test("common dialogs expose a labelled modal and keep keyboard focus inside", ()
   assert.match(source, /previouslyFocused\?\.focus\(\)/);
   assert.match(source, /aria-describedby=\{description \? /);
   assert.match(source, /event\.target === event\.currentTarget/);
+});
+
+test("body scroll lock keeps stable-gutter viewport width and restores nested locks once", () => {
+  const values = new Map([["padding-right", "12px"]]);
+  const priorities = new Map([["padding-right", "important"]]);
+  const body = {
+    style: {
+      overflow: "auto",
+      getPropertyValue: (name) => values.get(name) ?? "",
+      getPropertyPriority: (name) => priorities.get(name) ?? "",
+      setProperty: (name, value, priority = "") => { values.set(name, value); priorities.set(name, priority); },
+      removeProperty: (name) => { values.delete(name); priorities.delete(name); },
+    },
+  };
+  const document = { body, documentElement: { clientWidth: 1200 } };
+  const window = { innerWidth: 1200, CSS: { supports: (query) => query === "scrollbar-gutter: stable" }, getComputedStyle: () => ({ paddingRight: "12px" }) };
+  const source = fs.readFileSync(path.join(testDirectory, "../src/common/components/bodyScrollLock.ts"), "utf8");
+  const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
+  const compiledModule = { exports: {} };
+  vm.runInNewContext(compiled, { module: compiledModule, exports: compiledModule.exports, document, window });
+  const { acquireBodyScrollLock } = compiledModule.exports;
+  const beforeWidth = document.documentElement.clientWidth;
+  const releaseFirst = acquireBodyScrollLock();
+  const releaseSecond = acquireBodyScrollLock();
+  assert.equal(body.style.overflow, "hidden");
+  assert.equal(values.get("padding-right"), "12px");
+  assert.equal(document.documentElement.clientWidth, beforeWidth);
+  releaseFirst();
+  assert.equal(body.style.overflow, "hidden");
+  releaseSecond();
+  assert.equal(body.style.overflow, "auto");
+  assert.equal(values.get("padding-right"), "12px");
+  assert.equal(priorities.get("padding-right"), "important");
+});
+
+test("body scroll lock compensates older browsers and restores the original inline padding", () => {
+  const values = new Map([["padding-right", "8px"]]);
+  const body = {
+    style: {
+      overflow: "",
+      getPropertyValue: (name) => values.get(name) ?? "",
+      getPropertyPriority: () => "",
+      setProperty: (name, value) => values.set(name, value),
+      removeProperty: (name) => values.delete(name),
+    },
+  };
+  const document = { body, documentElement: { clientWidth: 1185 } };
+  const window = { innerWidth: 1200, CSS: { supports: () => false }, getComputedStyle: () => ({ paddingRight: "8px" }) };
+  const source = fs.readFileSync(path.join(testDirectory, "../src/common/components/bodyScrollLock.ts"), "utf8");
+  const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
+  const compiledModule = { exports: {} };
+  vm.runInNewContext(compiled, { module: compiledModule, exports: compiledModule.exports, document, window });
+  const release = compiledModule.exports.acquireBodyScrollLock();
+  assert.equal(values.get("padding-right"), "23px");
+  assert.equal(body.style.overflow, "hidden");
+  release();
+  assert.equal(values.get("padding-right"), "8px");
+  assert.equal(body.style.overflow, "");
 });
 
 test("release UX keeps navigation focus, drawer focus, and backup size feedback accessible", () => {
