@@ -45,6 +45,10 @@ class RateLimitInterceptorTests {
                 properties.getWithdrawalPer10Minutes(), Duration.ofMinutes(10));
         assertPolicy("POST", "/account/sessions/logout-all", "logout-all-user-minute", "user-42",
                 properties.getLogoutAllPerMinute(), Duration.ofMinutes(1));
+        assertPolicy("POST", "/board/posts", "board-post-user-minute", "user-42",
+                10, Duration.ofMinutes(1));
+        assertPolicy("POST", "/board/posts/88/comments", "board-comment-user-minute", "user-42",
+                30, Duration.ofMinutes(1));
         assertPolicy("PATCH", "/admin/users/7/status", "admin-mutation-user-minute", "user-42",
                 properties.getAdminMutationPerMinute(), Duration.ofMinutes(1));
         assertPolicy("PATCH", "/admin/users/7/system-role", "admin-mutation-user-minute", "user-42",
