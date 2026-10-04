@@ -1,57 +1,206 @@
 package com.moneybook.backend.board.controller;
 
 import com.moneybook.backend.board.service.BoardService;
-import com.moneybook.backend.entity.*;
+import com.moneybook.backend.entity.BoardCategory;
+import com.moneybook.backend.entity.BoardComment;
+import com.moneybook.backend.entity.BoardPost;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.http.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
-/** 서비스 전체 공용 게시판 API를 제공하며 모든 응답의 작성자 식별값은 마스킹한다. */
-@RestController @RequestMapping("/board") @RequiredArgsConstructor
+/** 서비스 전체 공용 게시판과 최고 관리자 카테고리 API를 제공한다. */
+@RestController
+@RequestMapping("/board")
+@RequiredArgsConstructor
 public class BoardController {
- private final BoardService service;
- public record CategoryDto(Long categoryUid,String name,String description,int displayOrder,boolean active) { static CategoryDto of(BoardCategory c){return new CategoryDto(c.getCategoryUid(),c.getName(),c.getDescription(),c.getDisplayOrder(),c.isActive());} }
- public record CategoryReq(@NotBlank @Size(max=50) String name,@Size(max=300) String description,@Min(0) int displayOrder,Boolean active){}
- public record PostReq(@NotNull Long categoryUid,@NotBlank @Size(max=200) String title,@NotBlank @Size(max=20000) String content,boolean secret){}
- public record UpdatePostReq(@NotBlank @Size(max=200) String title,@NotBlank @Size(max=20000) String content,boolean secret){}
- public record NoticeReq(boolean notice){}
- public record CommentReq(Long parentCommentUid,@NotBlank @Size(max=5000) String content,boolean secret){}
- public record UpdateCommentReq(@NotBlank @Size(max=5000) String content,boolean secret){}
- public record PostDto(Long postUid,Long categoryUid,String categoryName,String title,String content,boolean secret,boolean notice,String authorDisplayName,boolean mine,long viewCount,long commentCount,LocalDateTime regTime,LocalDateTime modTime){}
- public record CommentDto(Long commentUid,Long parentCommentUid,String content,boolean secret,String authorDisplayName,boolean deleted,LocalDateTime regTime,List<CommentDto> replies){}
- private String mask(String s){ if(s==null||s.isEmpty())return "*"; int[] c=s.codePoints().toArray(); if(c.length==1)return "*"; if(c.length==2)return new String(c,0,1)+"*"; return new String(c,0,1)+"*".repeat(c.length-2)+new String(c,c.length-1,1); }
- private PostDto dto(BoardPost p,Authentication a,boolean detail){ boolean mine=Objects.equals(p.getAuthorUserUid(),Long.valueOf(a.getName())); boolean hidden=p.isSecret()&&!mine; return new PostDto(p.getPostUid(),p.getCategory().getCategoryUid(),p.getCategory().getName(),hidden?"비밀글입니다.":p.getTitle(),detail&&!hidden?p.getContent():null,p.isSecret(),p.isNotice(),"익명",mine,p.getViewCount(),0,p.getRegTime(),p.getModTime()); }
- /** 활성 카테고리를 조회한다. 카테고리 생성과 변경은 SUPER_ADMIN 전용이다. */
- @GetMapping("/categories") public List<CategoryDto> categories(Authentication a){return service.categories(a).stream().map(CategoryDto::of).toList();}
- /** SUPER_ADMIN이 카테고리를 추가한다. */
- @PostMapping("/categories") public ResponseEntity<CategoryDto> createCategory(@Valid @RequestBody CategoryReq r,Authentication a){return ResponseEntity.status(201).body(CategoryDto.of(service.createCategory(r.name(),r.description(),r.displayOrder(),a)));}
- /** SUPER_ADMIN이 카테고리 이름, 설명, 정렬, 활성 상태를 수정한다. */
- @PatchMapping("/categories/{id}") public CategoryDto updateCategory(@PathVariable Long id,@Valid @RequestBody CategoryReq r,Authentication a){return CategoryDto.of(service.updateCategory(id,r.name(),r.description(),r.displayOrder(),Boolean.TRUE.equals(r.active()),a));}
- /** 공지 우선 최신순으로 게시글을 페이지 조회한다. 비밀글 keyword 본문 검색은 제외한다. */
- @GetMapping("/posts") public Page<PostDto> posts(@RequestParam(required=false) Long categoryUid,@RequestParam(required=false) String keyword,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size,Authentication a){return service.posts(categoryUid,keyword,page,size,a).map(p->dto(p,a,false));}
- /** 활성 카테고리에 게시글을 등록한다. 공지 상태는 일반 등록 DTO에서 설정할 수 없다. */
- @PostMapping("/posts") public ResponseEntity<PostDto> create(@Valid @RequestBody PostReq r,Authentication a){return ResponseEntity.status(201).body(dto(service.createPost(r.categoryUid(),r.title(),r.content(),r.secret(),a),a,true));}
- /** 게시글 상세를 조회한다. 비밀글은 작성자와 SUPER_ADMIN만 열람할 수 있다. */
- @GetMapping("/posts/{id}") public PostDto detail(@PathVariable Long id,Authentication a){return dto(service.getPost(id,a),a,true);}
- /** 작성자가 자신의 게시글을 수정한다. */
- @PatchMapping("/posts/{id}") public PostDto update(@PathVariable Long id,@Valid @RequestBody UpdatePostReq r,Authentication a){return dto(service.updatePost(id,r.title(),r.content(),r.secret(),a),a,true);}
- /** 작성자 또는 SUPER_ADMIN이 게시글을 soft delete한다. */
- @DeleteMapping("/posts/{id}") public ResponseEntity<Void> delete(@PathVariable Long id,Authentication a){service.deletePost(id,a);return ResponseEntity.noContent().build();}
- /** SUPER_ADMIN이 게시글 공지 상태를 변경한다. */
- @PatchMapping("/posts/{id}/notice") public PostDto notice(@PathVariable Long id,@RequestBody NoticeReq r,Authentication a){return dto(service.notice(id,r.notice(),a),a,true);}
- /** 게시글에 댓글 또는 한 단계 대댓글을 작성한다. */
- @PostMapping("/posts/{id}/comments") public ResponseEntity<CommentDto> createComment(@PathVariable Long id,@Valid @RequestBody CommentReq r,Authentication a){return ResponseEntity.status(201).body(commentDto(service.createComment(id,r.parentCommentUid(),r.content(),r.secret(),a),a));}
- /** 게시글 댓글과 대댓글을 조회하며 열람 불가 비밀 댓글의 본문은 전달하지 않는다. */
- @GetMapping("/posts/{id}/comments") public List<CommentDto> comments(@PathVariable Long id,Authentication a){return service.comments(id,a).stream().map(c->commentDto(c,a)).toList();}
- /** 댓글 작성자가 댓글을 수정한다. */
- @PatchMapping("/comments/{id}") public CommentDto updateComment(@PathVariable Long id,@Valid @RequestBody UpdateCommentReq r,Authentication a){return commentDto(service.updateComment(id,r.content(),r.secret(),a),a);}
- /** 작성자 또는 SUPER_ADMIN이 댓글을 soft delete한다. */
- @DeleteMapping("/comments/{id}") public ResponseEntity<Void> deleteComment(@PathVariable Long id,Authentication a){service.deleteComment(id,a);return ResponseEntity.noContent().build();}
- private CommentDto commentDto(BoardComment c,Authentication a){boolean hidden=c.isSecret()&&!service.canReadComment(c,a); List<CommentDto> replies=c.getParent()==null?service.replies(c.getCommentUid(),a).stream().map(x->commentDto(x,a)).toList():List.of(); return new CommentDto(c.getCommentUid(),c.getParent()==null?null:c.getParent().getCommentUid(),hidden?"비밀 댓글입니다.":c.getContent(),c.isSecret(),"익명",c.isDeleted(),c.getRegTime(),replies);}
+    private final BoardService service;
+
+    public record CategoryDto(Long categoryUid, String name, String description, int displayOrder, boolean active) {
+        static CategoryDto of(BoardCategory category) {
+            return new CategoryDto(category.getCategoryUid(), category.getName(), category.getDescription(),
+                    category.getDisplayOrder(), category.isActive());
+        }
+    }
+
+    public record CategoryReq(@NotBlank @Size(max = 50) String name, @Size(max = 300) String description,
+                              @Min(0) int displayOrder, Boolean active) { }
+    public record PostReq(@NotNull Long categoryUid, @NotBlank @Size(max = 200) String title,
+                          @NotBlank @Size(max = 20000) String content, boolean secret) { }
+    public record UpdatePostReq(@NotBlank @Size(max = 200) String title,
+                                @NotBlank @Size(max = 20000) String content, boolean secret) { }
+    public record NoticeReq(boolean notice) { }
+    public record CommentReq(Long parentCommentUid, @NotBlank @Size(max = 5000) String content, boolean secret) { }
+    public record UpdateCommentReq(@NotBlank @Size(max = 5000) String content, boolean secret) { }
+    public record PostDto(Long postUid, Long categoryUid, String categoryName, String title, String content,
+                          boolean secret, boolean notice, String authorDisplayName, boolean mine,
+                          boolean canEdit, boolean canDelete, long viewCount, long commentCount,
+                          LocalDateTime regTime, LocalDateTime modTime) { }
+    public record CommentDto(Long commentUid, Long parentCommentUid, String content, boolean secret,
+                             String authorDisplayName, boolean deleted, LocalDateTime regTime,
+                             boolean canEdit, boolean canDelete, List<CommentDto> replies) { }
+
+    /** 활성 카테고리를 조회하며, SUPER_ADMIN만 includeInactive=true로 비활성 카테고리도 조회한다. */
+    @GetMapping("/categories")
+    public List<CategoryDto> categories(@RequestParam(defaultValue = "false") boolean includeInactive,
+                                        Authentication authentication) {
+        List<BoardCategory> result = includeInactive
+                ? service.adminCategories(authentication) : service.categories(authentication);
+        return result.stream().map(CategoryDto::of).toList();
+    }
+
+    /** SUPER_ADMIN만 카테고리를 생성할 수 있다. */
+    @PostMapping("/categories")
+    public ResponseEntity<CategoryDto> createCategory(@Valid @RequestBody CategoryReq request,
+                                                       Authentication authentication) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(CategoryDto.of(service.createCategory(
+                request.name(), request.description(), request.displayOrder(), authentication)));
+    }
+
+    /** SUPER_ADMIN만 이름, 설명, 정렬 순서와 활성 상태를 수정할 수 있다. */
+    @PatchMapping("/categories/{id}")
+    public CategoryDto updateCategory(@PathVariable Long id, @Valid @RequestBody CategoryReq request,
+                                      Authentication authentication) {
+        return CategoryDto.of(service.updateCategory(id, request.name(), request.description(),
+                request.displayOrder(), Boolean.TRUE.equals(request.active()), authentication));
+    }
+
+    /** 게시글을 공지 우선, 최신순으로 조회한다. page는 0부터 시작한다. */
+    @GetMapping("/posts")
+    public Page<PostDto> posts(@RequestParam(required = false) Long categoryUid,
+                               @RequestParam(required = false) String keyword,
+                               @RequestParam(defaultValue = "0") int page,
+                               @RequestParam(defaultValue = "20") int size,
+                               Authentication authentication) {
+        Page<BoardPost> result = service.posts(categoryUid, keyword, page, size, authentication);
+        Map<Long, String> authors = service.authorDisplayNames(
+                result.getContent().stream().map(BoardPost::getAuthorUserUid).toList());
+        Map<Long, Long> commentCounts = service.commentCounts(
+                result.getContent().stream().map(BoardPost::getPostUid).toList());
+        boolean superAdmin = service.isSuperAdmin(authentication);
+        Long viewerUid = userUid(authentication);
+        return result.map(post -> postDto(post, authors, commentCounts.getOrDefault(post.getPostUid(), 0L),
+                viewerUid, superAdmin, false));
+    }
+
+    /** 활성 카테고리에 새 게시글을 등록한다. 공지 상태는 별도 SUPER_ADMIN API로만 변경한다. */
+    @PostMapping("/posts")
+    public ResponseEntity<PostDto> create(@Valid @RequestBody PostReq request, Authentication authentication) {
+        BoardPost post = service.createPost(request.categoryUid(), request.title(), request.content(),
+                request.secret(), authentication);
+        return ResponseEntity.status(HttpStatus.CREATED).body(singlePost(post, authentication, true));
+    }
+
+    /** 게시글 상세를 조회한다. 비밀글은 작성자와 SUPER_ADMIN만 확인할 수 있다. */
+    @GetMapping("/posts/{id}")
+    public PostDto detail(@PathVariable Long id, Authentication authentication) {
+        return singlePost(service.getPost(id, authentication), authentication, true);
+    }
+
+    /** 작성자 본인이 게시글 제목, 내용과 비밀글 여부를 수정한다. */
+    @PatchMapping("/posts/{id}")
+    public PostDto update(@PathVariable Long id, @Valid @RequestBody UpdatePostReq request,
+                          Authentication authentication) {
+        return singlePost(service.updatePost(id, request.title(), request.content(), request.secret(), authentication),
+                authentication, true);
+    }
+
+    /** 작성자 또는 SUPER_ADMIN이 게시글을 soft delete한다. */
+    @DeleteMapping("/posts/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id, Authentication authentication) {
+        service.deletePost(id, authentication);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** SUPER_ADMIN 전용 공지 상태 변경 API이며 일반 게시글 수정 계약과 분리한다. */
+    @PatchMapping("/posts/{id}/notice")
+    public PostDto notice(@PathVariable Long id, @RequestBody NoticeReq request, Authentication authentication) {
+        return singlePost(service.notice(id, request.notice(), authentication), authentication, true);
+    }
+
+    /** 게시글에 댓글 또는 한 단계 대댓글을 등록한다. */
+    @PostMapping("/posts/{id}/comments")
+    public ResponseEntity<CommentDto> createComment(@PathVariable Long id, @Valid @RequestBody CommentReq request,
+                                                     Authentication authentication) {
+        BoardComment comment = service.createComment(id, request.parentCommentUid(), request.content(),
+                request.secret(), authentication);
+        return ResponseEntity.status(HttpStatus.CREATED).body(singleComment(comment, authentication));
+    }
+
+    /** 댓글과 대댓글을 조회하고, 권한 없는 비밀 댓글의 content는 placeholder로 반환한다. */
+    @GetMapping("/posts/{id}/comments")
+    public List<CommentDto> comments(@PathVariable Long id, Authentication authentication) {
+        List<BoardComment> rows = service.comments(id, authentication);
+        Long viewerUid = userUid(authentication);
+        boolean superAdmin = service.isSuperAdmin(authentication);
+        Map<Long, String> authors = service.authorDisplayNames(rows.stream().map(BoardComment::getAuthorUserUid).toList());
+        Map<Long, List<BoardComment>> children = rows.stream().filter(row -> row.getParent() != null)
+                .collect(Collectors.groupingBy(row -> row.getParent().getCommentUid()));
+        return rows.stream().filter(row -> row.getParent() == null)
+                .map(row -> commentDto(row, children, authors, viewerUid, superAdmin)).toList();
+    }
+
+    /** 작성자 본인이 댓글 또는 대댓글을 수정한다. */
+    @PatchMapping("/comments/{id}")
+    public CommentDto updateComment(@PathVariable Long id, @Valid @RequestBody UpdateCommentReq request,
+                                    Authentication authentication) {
+        return singleComment(service.updateComment(id, request.content(), request.secret(), authentication), authentication);
+    }
+
+    /** 작성자 또는 SUPER_ADMIN이 댓글 또는 대댓글을 soft delete한다. */
+    @DeleteMapping("/comments/{id}")
+    public ResponseEntity<Void> deleteComment(@PathVariable Long id, Authentication authentication) {
+        service.deleteComment(id, authentication);
+        return ResponseEntity.noContent().build();
+    }
+
+    private PostDto singlePost(BoardPost post, Authentication authentication, boolean detail) {
+        Long viewerUid = userUid(authentication);
+        Map<Long, String> authors = service.authorDisplayNames(List.of(post.getAuthorUserUid()));
+        long count = service.commentCounts(List.of(post.getPostUid())).getOrDefault(post.getPostUid(), 0L);
+        return postDto(post, authors, count, viewerUid, service.isSuperAdmin(authentication), detail);
+    }
+
+    private PostDto postDto(BoardPost post, Map<Long, String> authors, long commentCount, Long viewerUid,
+                            boolean superAdmin, boolean detail) {
+        boolean mine = Objects.equals(post.getAuthorUserUid(), viewerUid);
+        boolean hideTitle = post.isSecret() && !mine && !superAdmin;
+        return new PostDto(post.getPostUid(), post.getCategory().getCategoryUid(), post.getCategory().getName(),
+                hideTitle ? "비밀글입니다." : post.getTitle(), detail && !hideTitle ? post.getContent() : null,
+                post.isSecret(), post.isNotice(), authors.getOrDefault(post.getAuthorUserUid(), "*"), mine,
+                mine, mine || superAdmin, post.getViewCount(), commentCount, post.getRegTime(), post.getModTime());
+    }
+
+    private CommentDto singleComment(BoardComment comment, Authentication authentication) {
+        Long viewerUid = userUid(authentication);
+        Map<Long, String> authors = service.authorDisplayNames(List.of(comment.getAuthorUserUid()));
+        return commentDto(comment, Map.of(), authors, viewerUid, service.isSuperAdmin(authentication));
+    }
+
+    private CommentDto commentDto(BoardComment comment, Map<Long, List<BoardComment>> children,
+                                  Map<Long, String> authors, Long viewerUid, boolean superAdmin) {
+        boolean mine = Objects.equals(comment.getAuthorUserUid(), viewerUid);
+        boolean hideContent = comment.isSecret() && !mine && !superAdmin;
+        List<CommentDto> replies = children.getOrDefault(comment.getCommentUid(), List.of()).stream()
+                .map(reply -> commentDto(reply, children, authors, viewerUid, superAdmin)).toList();
+        return new CommentDto(comment.getCommentUid(), comment.getParent() == null ? null : comment.getParent().getCommentUid(),
+                hideContent ? "비밀 댓글입니다." : comment.getContent(), comment.isSecret(),
+                authors.getOrDefault(comment.getAuthorUserUid(), "*"), comment.isDeleted(), comment.getRegTime(),
+                mine && !comment.isDeleted(), (mine || superAdmin) && !comment.isDeleted(), replies);
+    }
+
+    private Long userUid(Authentication authentication) {
+        return Long.valueOf(authentication.getName());
+    }
 }

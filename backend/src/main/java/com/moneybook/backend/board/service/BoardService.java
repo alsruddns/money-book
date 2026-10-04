@@ -3,11 +3,17 @@ import com.moneybook.backend.entity.*;
 import org.springframework.data.domain.Page;
 import org.springframework.security.core.Authentication;
 import java.util.List;
+import java.util.Collection;
+import java.util.Map;
 public interface BoardService {
  List<BoardCategory> categories(Authentication a);
+ List<BoardCategory> adminCategories(Authentication a);
  BoardCategory createCategory(String name,String description,int order,Authentication a);
  BoardCategory updateCategory(Long uid,String name,String description,int order,boolean active,Authentication a);
  Page<BoardPost> posts(Long category,String keyword,int page,int size,Authentication a);
+ Map<Long, String> authorDisplayNames(Collection<Long> authorUids);
+ Map<Long, Long> commentCounts(Collection<Long> postUids);
+ boolean isSuperAdmin(Authentication a);
  BoardPost createPost(Long category,String title,String content,boolean secret,Authentication a);
  BoardPost getPost(Long uid,Authentication a);
  BoardPost updatePost(Long uid,String title,String content,boolean secret,Authentication a);

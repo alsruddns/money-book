@@ -15,4 +15,7 @@ public interface UserRepository {
 
     /** Locks multiple users in UID order to serialize ownership transfer against withdrawal. */
     List<User> findByIdsForUpdate(List<Long> userUids);
+
+    /** Fetches a set of users in one query for privacy-safe Board author labels. */
+    List<User> findAllByIds(List<Long> userUids);
 }

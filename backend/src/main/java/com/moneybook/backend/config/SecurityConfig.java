@@ -52,7 +52,7 @@ public class SecurityConfig {
         return http
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/auth/signup", "/auth/login", "/auth/refresh",
                         "/auth/logout", "/money-books", "/money-books/**", "/admin/**", "/account",
-                        "/account/sessions/**"))
+                        "/account/sessions/**", "/board/**"))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .headers(headers -> {
                     headers.contentTypeOptions(Customizer.withDefaults());

@@ -33,4 +33,9 @@ public class UserRepositoryImpl implements UserRepository {
     public List<User> findByIdsForUpdate(List<Long> userUids) {
         return userJpaRepository.findForUpdateInUidOrder(userUids);
     }
+
+    @Override
+    public List<User> findAllByIds(List<Long> userUids) {
+        return userJpaRepository.findAllById(userUids);
+    }
 }
