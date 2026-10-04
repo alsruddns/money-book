@@ -188,12 +188,12 @@ test("429 responses carry Retry-After seconds for shared error messaging", async
 
 test("GET 403 and 404 responses navigate to their common access pages", async () => {
   const harness = createHarness(null, () => ({ error: { status: 403, data: { code: "FORBIDDEN" } } }));
-  const result = await harness.query("money-books/5/reports/monthly");
+  const result = await harness.query("account/me");
   assert.equal(result.error.status, 403);
   assert.deepEqual(harness.redirects, ["http://localhost:3000/forbidden"]);
 
   const missing = createHarness(null, () => ({ error: { status: 404, data: { code: "NOT_FOUND" } } }));
-  await missing.query("money-books/5/reports/monthly");
+  await missing.query("account/me");
   assert.deepEqual(missing.redirects, ["http://localhost:3000/not-found"]);
 });
 
@@ -203,6 +203,14 @@ test("password change required GET responses route to the forced password screen
   }));
   await harness.query("money-books");
   assert.deepEqual(harness.redirects, ["http://localhost:3000/change-required-password"]);
+});
+
+test("MoneyBook access failures stay with the shared layout guard for replace navigation", async () => {
+  const harness = createHarness({ accessToken: "access", refreshToken: "refresh" }, () => ({
+    error: { status: 403, data: { code: "FORBIDDEN" } },
+  }));
+  await harness.query("money-books/5/settings");
+  assert.deepEqual(harness.redirects, []);
 });
 
 test("mutation 403 stays in its current flow and keeps its local error response", async () => {

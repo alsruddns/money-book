@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import DesktopAdRail from "@/common/components/advertisement/DesktopAdRail";
+import { getApiErrorMessage } from "@/common/api/getApiErrorMessage";
+import { useGetMoneyBookSettingQuery } from "@/settings/controller/moneyBookSettingApi";
 import { useMoneyBookPermission } from "../hooks/useMoneyBookPermission";
 import type { MoneyBookListResponse } from "../dto/res/MoneyBookListResponse";
 
@@ -97,6 +99,8 @@ export default function MoneyBookNavigation({ moneyBookUid, children }: { moneyB
   const permission = useMoneyBookPermission(moneyBookUid);
   const { moneyBook, isLoading, isError, errorMessage, canRead, isOwner, isAdmin } = permission;
   const pathname = usePathname();
+  const router = useRouter();
+  const access = useGetMoneyBookSettingQuery(moneyBookUid);
   const [isDrawerOpen, setDrawerOpen] = useState(false);
   const drawerRef = useRef<HTMLElement>(null);
   const drawerTriggerRef = useRef<HTMLButtonElement>(null);
@@ -126,7 +130,26 @@ export default function MoneyBookNavigation({ moneyBookUid, children }: { moneyB
     };
   }, [isDrawerOpen]);
 
-  if (isLoading || (!isError && !moneyBook)) return <NavigationSkeleton />;
+  const accessStatus = typeof access.error === "object" && access.error !== null && "status" in access.error
+    ? access.error.status : null;
+  const accessDenied = access.isError && accessStatus === 403;
+  const accessMissing = access.isError && accessStatus === 404;
+
+  useEffect(() => {
+    if (accessDenied) router.replace("/forbidden");
+    else if (accessMissing) router.replace("/not-found");
+    else if (!access.isLoading && !access.isError && !isLoading && !isError && !moneyBook) {
+      router.replace("/forbidden");
+    }
+  }, [accessDenied, accessMissing, access.isLoading, access.isError, isLoading, isError, moneyBook, router]);
+
+  if (access.isLoading && !access.currentData) return <NavigationSkeleton />;
+  if (accessDenied || accessMissing) return <NavigationSkeleton />;
+  if (access.isError) return <div role="alert" className="rounded-xl border border-red-200 bg-white p-5 text-red-700">
+    <p>{getApiErrorMessage(access.error, "가계부 접근 권한을 확인하지 못했습니다.")}</p>
+    <button type="button" onClick={() => void access.refetch()} className="mt-3 min-h-11 rounded-lg border px-4 font-medium">다시 시도</button>
+  </div>;
+  if (isLoading && !moneyBook) return <NavigationSkeleton />;
   if (isError) return <div className="grid min-w-0 gap-6 md:grid-cols-[15rem_minmax(0,1fr)]"><aside className="hidden rounded-xl border bg-white p-6 md:block" aria-hidden="true" /><p role="alert" className="rounded-xl border border-red-200 bg-white p-5 text-red-700">{errorMessage}</p></div>;
   if (!moneyBook) return <p role="alert" className="rounded-xl border bg-white p-5">접근 가능한 가계부를 찾을 수 없습니다.</p>;
   if (!canRead) return <div className="grid min-w-0 gap-6 md:grid-cols-[15rem_minmax(0,1fr)]"><aside className="hidden rounded-xl border bg-white p-6 md:block" aria-hidden="true" /><p role="alert" className="rounded-xl border bg-white p-5">가계부 조회 권한이 없습니다.</p></div>;

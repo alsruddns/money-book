@@ -100,8 +100,10 @@ test("book UID parser rejects missing, malformed, and unsafe values", () => {
 test("money book menu groups routes and limits management to readable admins", () => {
   const { getMoneyBookMenu, getDashboardReportTabs, isMoneyBookRouteActive } = loadModule("moneybook/components/MoneyBookNavigation.tsx", {
     react: { useEffect: () => {}, useState: () => [false, () => {}] },
-    "next/link": { default: link }, "next/navigation": { usePathname: () => "/books/7/categories" },
+    "next/link": { default: link }, "next/navigation": { usePathname: () => "/books/7/categories", useRouter: () => ({ replace: () => {} }) },
     "@/common/components/advertisement/DesktopAdRail": { default: () => null },
+    "@/common/api/getApiErrorMessage": { getApiErrorMessage: () => "error" },
+    "@/settings/controller/moneyBookSettingApi": { useGetMoneyBookSettingQuery: () => ({ isLoading: false, isError: false, currentData: {} }) },
     "../hooks/useMoneyBookPermission": { useMoneyBookPermission: () => ({}) },
   });
   const ownerGroups = getMoneyBookMenu(7, { canRead: true, isOwner: true, isAdmin: false });
@@ -127,8 +129,10 @@ test("money book layout keeps shared navigation and content shell", () => {
   const { default: Navigation } = loadModule("moneybook/components/MoneyBookNavigation.tsx", {
     react: React,
     "next/link": { default: ({ href, children, ...props }) => React.createElement("a", { href, ...props }, children) },
-    "next/navigation": { usePathname: () => "/books/7/categories" },
+    "next/navigation": { usePathname: () => "/books/7/categories", useRouter: () => ({ replace: () => {} }) },
     "@/common/components/advertisement/DesktopAdRail": { default: () => null },
+    "@/common/api/getApiErrorMessage": { getApiErrorMessage: () => "error" },
+    "@/settings/controller/moneyBookSettingApi": { useGetMoneyBookSettingQuery: () => ({ isLoading: false, isError: false, currentData: {} }) },
     "../hooks/useMoneyBookPermission": { useMoneyBookPermission: () => ({ moneyBook: { moneyBookUid: 7, name: "Book", isOwner: true, isAdmin: true }, isLoading: false, isError: false, canRead: true, isOwner: true, isAdmin: true }) },
   });
   const markup = renderToStaticMarkup(React.createElement(Navigation, { moneyBookUid: 7 }, React.createElement("p", null, "body")));
@@ -138,9 +142,49 @@ test("money book layout keeps shared navigation and content shell", () => {
   assert.match(markup, /body/);
   assert.match(markup, /md:grid-cols-\[15rem_minmax\(0,1fr\)\]/);
 });
+
+test("MoneyBook access guard redirects forbidden and missing resources without trapping loading", () => {
+  function renderAccessState(accessState, permissionState) {
+    const effects = [];
+    const routes = [];
+    const { default: Navigation } = loadModule("moneybook/components/MoneyBookNavigation.tsx", {
+      react: {
+        useEffect: (callback) => effects.push(callback),
+        useRef: (current) => ({ current }),
+        useState: (initial) => [initial, () => {}],
+      },
+      "next/link": { default: link },
+      "next/navigation": { usePathname: () => "/books/7", useRouter: () => ({ replace: (route) => routes.push(route) }) },
+      "@/common/components/advertisement/DesktopAdRail": { default: () => null },
+      "@/common/api/getApiErrorMessage": { getApiErrorMessage: () => "접근 오류" },
+      "@/settings/controller/moneyBookSettingApi": { useGetMoneyBookSettingQuery: () => accessState },
+      "../hooks/useMoneyBookPermission": { useMoneyBookPermission: () => permissionState },
+    });
+    const markup = renderToStaticMarkup(React.createElement(Navigation, { moneyBookUid: 7 }, React.createElement("p", null, "authorized content")));
+    effects[1]?.();
+    return { markup, routes };
+  }
+
+  const permission = { moneyBook: null, isLoading: false, isError: false, canRead: false, isOwner: false, isAdmin: false };
+  const forbidden = renderAccessState({ isLoading: false, isError: true, error: { status: 403 } }, permission);
+  assert.deepEqual(forbidden.routes, ["/forbidden"]);
+  assert.match(forbidden.markup, /접근 권한을 확인하는 중/);
+
+  const missing = renderAccessState({ isLoading: false, isError: true, error: { status: 404 } }, permission);
+  assert.deepEqual(missing.routes, ["/not-found"]);
+
+  const authorized = renderAccessState(
+    { isLoading: false, isFetching: true, isError: false, currentData: { moneyBookUid: 7 } },
+    { moneyBook: { moneyBookUid: 7, name: "Book", isOwner: true, isAdmin: true }, isLoading: false, isError: false, canRead: true, isOwner: true, isAdmin: true },
+  );
+  assert.deepEqual(authorized.routes, []);
+  assert.match(authorized.markup, /authorized content/);
+  assert.doesNotMatch(authorized.markup, /접근 권한을 확인하는 중/);
+});
+
 test("mobile drawer opens, closes from overlay and navigation, and handles Escape", () => {
   let open = false;
-  let effect;
+  const effects = [];
   let keyHandler;
   const documentMock = {
     body: { style: { overflow: "" } },
@@ -148,10 +192,12 @@ test("mobile drawer opens, closes from overlay and navigation, and handles Escap
     removeEventListener: () => {},
   };
   const { default: Navigation } = loadModule("moneybook/components/MoneyBookNavigation.tsx", {
-    react: { useEffect: (callback) => { effect = callback; }, useRef: (current) => ({ current }), useState: () => [open, (value) => { open = value; }] },
+    react: { useEffect: (callback) => { effects.push(callback); }, useRef: (current) => ({ current }), useState: () => [open, (value) => { open = value; }] },
     "next/link": { default: link },
-    "next/navigation": { usePathname: () => "/books/7/transactions" },
+    "next/navigation": { usePathname: () => "/books/7/transactions", useRouter: () => ({ replace: () => {} }) },
     "@/common/components/advertisement/DesktopAdRail": { default: () => null },
+    "@/common/api/getApiErrorMessage": { getApiErrorMessage: () => "error" },
+    "@/settings/controller/moneyBookSettingApi": { useGetMoneyBookSettingQuery: () => ({ isLoading: false, isError: false, currentData: {} }) },
     "../hooks/useMoneyBookPermission": { useMoneyBookPermission: () => ({
       moneyBook: { moneyBookUid: 7, name: "집", isOwner: false, isAdmin: true }, canRead: true,
     }) },
@@ -180,7 +226,7 @@ test("mobile drawer opens, closes from overlay and navigation, and handles Escap
 
   menuButton.props.onClick();
   render();
-  const cleanup = effect();
+  const cleanup = effects.at(-2)();
   assert.equal(documentMock.body.style.overflow, "hidden");
   keyHandler({ key: "Escape", preventDefault: () => {} });
   assert.equal(open, false);

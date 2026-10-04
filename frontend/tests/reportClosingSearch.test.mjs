@@ -105,8 +105,10 @@ test("MoneyBook sidebar exposes report and monthly closing routes with read acce
   const source = fs.readFileSync(path.join(sourceRoot, "moneybook/components/MoneyBookNavigation.tsx"), "utf8");
   const { getMoneyBookMenu } = load("moneybook/components/MoneyBookNavigation.tsx", {
     react: { useEffect() {}, useState: (value) => [value, () => {}] },
-    "next/link": { default: "a" }, "next/navigation": { usePathname: () => "/" },
+    "next/link": { default: "a" }, "next/navigation": { usePathname: () => "/", useRouter: () => ({ replace: () => {} }) },
     "@/common/components/advertisement/DesktopAdRail": { default: () => null },
+    "@/common/api/getApiErrorMessage": { getApiErrorMessage: () => "error" },
+    "@/settings/controller/moneyBookSettingApi": { useGetMoneyBookSettingQuery: () => ({ isLoading: false, isError: false, currentData: {} }) },
     "../hooks/useMoneyBookPermission": { useMoneyBookPermission: () => ({}) },
   });
   const routes = getMoneyBookMenu(7, { canRead: true, isOwner: false, isAdmin: false }).flatMap((group) => group.items.map((item) => item.href));
