@@ -65,6 +65,32 @@ test("signup question options come from Backend and email can be skipped or veri
   assert.match(source, /autoComplete="off"/);
 });
 
+test("signup rejects answer boundary whitespace without trimming valid input", () => {
+  const validation = load("auth/securityAnswerValidation.ts");
+  assert.equal(validation.hasSecurityAnswerBoundaryWhitespace(" 라면"), true);
+  assert.equal(validation.hasSecurityAnswerBoundaryWhitespace("라면 "), true);
+  assert.equal(validation.hasSecurityAnswerBoundaryWhitespace(" 라면 "), true);
+  assert.equal(validation.hasSecurityAnswerBoundaryWhitespace("라면"), false);
+  const source = text("auth/components/SignupForm.tsx");
+  assert.match(source, /hasSecurityAnswerBoundaryWhitespace\(form\.securityAnswer\)/);
+  assert.match(source, /securityAnswerError/);
+  assert.match(source, /securityAnswerWhitespaceMessage/);
+  assert.doesNotMatch(source, /form\.securityAnswer\.trim\(\)/);
+  assert.match(source, /signup\(\{ \.\.\.form/);
+});
+
+test("signup keeps email send errors separate from submit-time unverified guidance", () => {
+  const source = text("auth/components/SignupForm.tsx");
+  assert.match(source, /setVerificationError\(getApiErrorMessage\(error/);
+  assert.match(source, /showUnverifiedEmailError && !verificationToken/);
+  assert.match(source, /setShowUnverifiedEmailError\(true\)/);
+  assert.match(source, /setShowUnverifiedEmailError\(false\)/);
+  assert.match(source, /setVerificationToken\(""\); setVerificationUid\(null\)/);
+  assert.match(source, /setCode\(""\)/);
+  assert.match(source, /emailVerificationToken: verificationToken/);
+  assert.match(source, /!email \? <p/);
+});
+
 test("signup only renders recovery codes from response and clears the one-time result", () => {
   const source = text("auth/components/SignupForm.tsx");
   assert.match(source, /setRecoveryCodes\(result\.recoveryCodes/);

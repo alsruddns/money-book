@@ -7,6 +7,7 @@ import { useConfirmEmailVerificationMutation, useGetSecurityQuestionsQuery, useR
 import type { SignUpReqDto } from "../dto/req/SignUpReqDto";
 import { getApiErrorMessage } from "@/common/api/getApiErrorMessage";
 import { copyText } from "@/common/utils/copyText";
+import { hasSecurityAnswerBoundaryWhitespace, securityAnswerWhitespaceMessage } from "../securityAnswerValidation";
 
 const blank: SignUpReqDto = { loginId: "", password: "", passwordConfirm: "", nickname: "", securityQuestionCode: "", securityAnswer: "" };
 const inputClass = "mt-1 min-h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100";
@@ -23,6 +24,8 @@ export default function SignupForm() {
   const [verificationToken, setVerificationToken] = useState("");
   const [verificationMessage, setVerificationMessage] = useState("");
   const [verificationError, setVerificationError] = useState("");
+  const [securityAnswerError, setSecurityAnswerError] = useState("");
+  const [showUnverifiedEmailError, setShowUnverifiedEmailError] = useState(false);
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
@@ -30,6 +33,7 @@ export default function SignupForm() {
 
   function updateField(field: keyof SignUpReqDto, value: string) { setForm((current) => ({ ...current, [field]: value })); }
   async function sendCode() {
+    setShowUnverifiedEmailError(false); setVerificationUid(null); setCode("");
     setVerificationError(""); setVerificationMessage(""); setVerificationToken("");
     try { const result = await requestCode({ email, purpose: "SIGNUP" }).unwrap(); requestState.reset(); setVerificationUid(result.verificationUid); setVerificationMessage("인증번호를 전송했습니다. 10분 안에 인증을 완료해 주세요."); }
     catch (error) { setVerificationError(getApiErrorMessage(error, "인증번호를 요청하지 못했습니다.")); requestState.reset(); }
@@ -42,7 +46,19 @@ export default function SignupForm() {
   }
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (email.trim() && !verificationToken) { setVerificationError("이메일을 입력했다면 먼저 이메일 인증을 완료해 주세요."); return; }
+    if (hasSecurityAnswerBoundaryWhitespace(form.securityAnswer)) {
+      setSecurityAnswerError(securityAnswerWhitespaceMessage);
+      document.getElementById("security-answer")?.focus();
+      return;
+    }
+    setSecurityAnswerError("");
+    if (email.trim() && !verificationToken) {
+      setVerificationError("");
+      setShowUnverifiedEmailError(true);
+      document.getElementById("signup-email")?.focus();
+      return;
+    }
+    setShowUnverifiedEmailError(false);
     const result = await signup({ ...form, ...(verificationToken ? { emailVerificationToken: verificationToken } : {}) });
     if (result) setRecoveryCodes(result.recoveryCodes ?? []);
   }
@@ -72,17 +88,17 @@ export default function SignupForm() {
       <p className="text-sm text-zinc-600">보안 질문과 답변은 비밀번호를 분실했을 때 본인 확인에 사용됩니다. 입력한 답변을 정확하게 기억해주세요.</p>
       {questions.isLoading ? <p role="status" className="text-sm">보안 질문을 불러오는 중...</p> : questions.isError ? <p role="alert" className="text-sm text-red-700">보안 질문을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p> : <>
         <div><label htmlFor="security-question" className="text-sm font-medium">보안 질문 *</label><select id="security-question" required value={form.securityQuestionCode} onChange={(event) => updateField("securityQuestionCode", event.target.value)} className={inputClass}><option value="">질문을 선택하세요</option>{questions.data?.map((item) => <option key={item.code} value={item.code}>{item.question}</option>)}</select></div>
-        <div><label htmlFor="security-answer" className="text-sm font-medium">답변 *</label><input id="security-answer" name="securityAnswer" type="text" autoComplete="off" required maxLength={128} value={form.securityAnswer} onChange={(event) => updateField("securityAnswer", event.target.value)} className={inputClass} /></div>
+        <div><label htmlFor="security-answer" className="text-sm font-medium">답변 *</label><input id="security-answer" name="securityAnswer" type="text" autoComplete="off" required maxLength={128} value={form.securityAnswer} aria-invalid={Boolean(securityAnswerError)} aria-describedby={securityAnswerError ? "security-answer-error" : undefined} onChange={(event) => { updateField("securityAnswer", event.target.value); setSecurityAnswerError(""); }} className={inputClass} />{securityAnswerError && <p id="security-answer-error" role="alert" className="mt-1 text-sm text-red-700">{securityAnswerError}</p>}</div>
       </>}
     </fieldset>
     <fieldset className="space-y-3 rounded-lg border border-zinc-200 p-4">
       <legend className="px-1 text-sm font-semibold">이메일 (선택)</legend>
       <p className="text-sm text-zinc-600">이메일 등록은 선택사항입니다. 인증된 이메일이 있으면 비밀번호 분실 시 이메일 인증을 통해 직접 재설정할 수 있습니다. 이메일을 등록하지 않아도 서비스 이용에는 문제가 없습니다.</p>
       <label htmlFor="signup-email" className="text-sm font-medium">이메일 주소</label>
-      <div className="flex flex-col gap-2 sm:flex-row"><input id="signup-email" type="email" autoComplete="email" value={email} onChange={(event) => { setEmail(event.target.value); setVerificationToken(""); setVerificationUid(null); setVerificationMessage(""); }} className={`${inputClass} mt-0 min-w-0 flex-1`} /><button type="button" disabled={!email || requestState.isLoading || Boolean(verificationToken)} onClick={() => void sendCode()} className="min-h-11 shrink-0 rounded-lg border px-3 text-sm font-medium disabled:opacity-50">{requestState.isLoading ? "요청 중..." : "인증번호 받기"}</button></div>
+      <div className="flex flex-col gap-2 sm:flex-row"><input id="signup-email" type="email" autoComplete="email" value={email} onChange={(event) => { setEmail(event.target.value); setVerificationToken(""); setVerificationUid(null); setCode(""); setVerificationMessage(""); setVerificationError(""); setShowUnverifiedEmailError(false); }} className={`${inputClass} mt-0 min-w-0 flex-1`} /><button type="button" disabled={!email || requestState.isLoading || Boolean(verificationToken)} onClick={() => void sendCode()} className="min-h-11 shrink-0 rounded-lg border px-3 text-sm font-medium disabled:opacity-50">{requestState.isLoading ? "요청 중..." : "인증번호 받기"}</button></div>
       {verificationUid !== null && !verificationToken && <div><label htmlFor="signup-email-code" className="text-sm font-medium">인증번호</label><div className="flex flex-col gap-2 sm:flex-row"><input id="signup-email-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} className={`${inputClass} mt-0 min-w-0 flex-1`} /><button type="button" disabled={code.length !== 6 || confirmState.isLoading} onClick={() => void verifyCode()} className="min-h-11 shrink-0 rounded-lg border px-3 text-sm font-medium disabled:opacity-50">{confirmState.isLoading ? "확인 중..." : "인증하기"}</button></div></div>}
       {verificationMessage && <p role="status" className="text-sm text-green-700">{verificationMessage}</p>}{verificationError && <p role="alert" className="text-sm text-red-700">{verificationError}</p>}
-      {!email ? <p className="text-xs text-zinc-500">이메일 없이 가입하려면 이 항목을 비워두세요.</p> : !verificationToken && <p role="status" className="text-xs text-amber-800">가입하려면 입력한 이메일의 인증을 완료해주세요.</p>}
+      {!email ? <p className="text-xs text-zinc-500">이메일 없이 가입하려면 이 항목을 비워두세요.</p> : showUnverifiedEmailError && !verificationToken && <p role="alert" className="text-sm text-red-700">가입하려면 입력한 이메일의 인증을 완료해주세요.</p>}
     </fieldset>
     {errorMessage && <p role="alert" className="text-sm text-red-600">{errorMessage}</p>}
     <button type="submit" disabled={isLoading || questions.isLoading || questions.isError || Boolean(email && !verificationToken)} className="min-h-11 w-full rounded-lg bg-blue-600 px-4 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">{isLoading ? "가입 중..." : "회원가입"}</button>
