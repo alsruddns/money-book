@@ -88,6 +88,24 @@ class AuthControllerTests {
     }
 
     @Test
+    void signUpReturnsSpecificBoundaryWhitespaceValidationWithoutEchoingAnswer() throws Exception {
+        for (String answer : new String[] {" answer", "answer ", " answer "}) {
+            mockMvc.perform(post("/api/auth/signup").contextPath("/api")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"loginId":"new-user","password":"password123",
+                                     "passwordConfirm":"password123","nickname":"member",
+                                     "securityQuestionCode":"FAVORITE_FOOD","securityAnswer":"%s"}
+                                    """.formatted(answer)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                    .andExpect(jsonPath("$.message").value("보안 질문 답변의 앞뒤에는 공백을 입력할 수 없습니다."))
+                    .andExpect(result -> org.junit.jupiter.api.Assertions.assertFalse(
+                            result.getResponse().getContentAsString().contains(answer)));
+        }
+    }
+
+    @Test
     void signUpReturnsConflictForDuplicateLoginId() throws Exception {
         when(authService.signUp(any())).thenThrow(new BusinessException(ErrorCode.DUPLICATE_LOGIN_ID));
 

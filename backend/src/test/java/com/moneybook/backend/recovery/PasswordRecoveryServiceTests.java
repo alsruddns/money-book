@@ -89,7 +89,7 @@ class PasswordRecoveryServiceTests {
   when(verifications.findLatestActive("member@example.com","PASSWORD_RESET",77L)).thenReturn(Optional.empty());
   var matching=emailService.requestPasswordResetEmail("member","member@example.com");
   assertEquals(missing.message(),matching.message());
-  ArgumentCaptor<String> sentCode=ArgumentCaptor.forClass(String.class);verify(mail).sendVerificationCode(org.mockito.ArgumentMatchers.eq("member@example.com"),sentCode.capture());
+  ArgumentCaptor<String> sentCode=ArgumentCaptor.forClass(String.class);verify(mail).sendVerificationCode(org.mockito.ArgumentMatchers.eq("member@example.com"),sentCode.capture(),org.mockito.ArgumentMatchers.eq("PASSWORD_RESET"));
   ArgumentCaptor<EmailVerification> row=ArgumentCaptor.forClass(EmailVerification.class);verify(verifications,times(2)).save(row.capture());
   assertEquals(emailSecrets.sha256(sentCode.getValue()),row.getAllValues().get(1).getCodeHash());
   assertNotEquals(sentCode.getValue(),row.getAllValues().get(1).getCodeHash());

@@ -29,8 +29,13 @@ class PasswordRecoveryHttpSmokeTests {
     void anonymousPasswordRecoveryPathsReachTheApplicationOverHttp() throws Exception {
         assertEquals(200, get("/api/auth/security-questions").statusCode());
         assertEquals(200, get("/api/auth/security-questions", "Bearer invalid-stale-token").statusCode());
-        assertStatus(200, post("/api/auth/email-verifications/request",
-                "{\"email\":\"smoke@example.test\",\"purpose\":\"SIGNUP\"}"));
+        var verificationResponse = post("/api/auth/email-verifications/request",
+                "{\"email\":\"smoke@example.test\",\"purpose\":\"SIGNUP\"}");
+        assertStatus(200, verificationResponse);
+        var code = org.mockito.ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(emailSender).sendVerificationCode(org.mockito.ArgumentMatchers.eq("smoke@example.test"),
+                code.capture(), org.mockito.ArgumentMatchers.eq("SIGNUP"));
+        org.junit.jupiter.api.Assertions.assertFalse(verificationResponse.body().contains(code.getValue()));
         assertStatus(400, post("/api/auth/email-verifications/confirm",
                 "{\"verificationUid\":1,\"code\":\"123456\"}"));
         assertStatus(200, post("/api/auth/password-recovery/email/request",
