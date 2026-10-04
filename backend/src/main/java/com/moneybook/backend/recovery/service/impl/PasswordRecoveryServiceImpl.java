@@ -55,7 +55,7 @@ public class PasswordRecoveryServiceImpl implements PasswordRecoveryService {
         latest.ifPresent(v->{v.invalidate(now);verifications.save(v);});
         String code=secrets.newNumericCode();
         EmailVerification row=verifications.save(new EmailVerification(uid,normalized,purpose,secrets.sha256(code),now.plusMinutes(10),now.plusSeconds(60)));
-        emailSender.sendVerificationCode(normalized,code);
+        emailSender.sendVerificationCode(normalized,code,purpose);
         return new EmailVerificationResponse(row.getEmailVerificationUid(),"인증번호를 전송했습니다.");
     }
 
@@ -70,7 +70,7 @@ public class PasswordRecoveryServiceImpl implements PasswordRecoveryService {
         latest.ifPresent(v->{v.invalidate(now);verifications.save(v);});
         String code=secrets.newNumericCode();
         EmailVerification row=verifications.save(new EmailVerification(uid,normalized,PASSWORD_RESET,secrets.sha256(code),now.plusMinutes(10),now.plusSeconds(60)));
-        if(uid!=null)try{emailSender.sendVerificationCode(normalized,code);}catch(RuntimeException exception){log.warn("Password recovery email delivery failed cause={}",exception.getClass().getSimpleName());}
+        if(uid!=null)try{emailSender.sendVerificationCode(normalized,code,PASSWORD_RESET);}catch(IllegalStateException exception){log.error("Password recovery SMTP configuration is incomplete; check MAIL_HOST and MAIL_FROM");}catch(RuntimeException exception){log.warn("Password recovery email delivery failed cause={}",exception.getClass().getSimpleName());}
         return new EmailVerificationResponse(row.getEmailVerificationUid(),"입력한 정보와 일치하는 인증 이메일이 있는 경우 인증번호를 전송했습니다.");
     }
 
@@ -128,7 +128,8 @@ public class PasswordRecoveryServiceImpl implements PasswordRecoveryService {
 
     @Override @Transactional
     public void updateQuestion(Authentication authentication,SecurityQuestionUpdateRequest request){UserAuth local=requireLocal(authentication);checkCurrent(local,request.currentPassword());
-        if(!request.answer().equals(request.answer().strip())||request.answer().getBytes(StandardCharsets.UTF_8).length>72)throw new BusinessException(ErrorCode.VALIDATION_FAILED);
+        if(!request.answer().equals(request.answer().strip()))throw new BusinessException(ErrorCode.SECURITY_ANSWER_WHITESPACE);
+        if(request.answer().getBytes(StandardCharsets.UTF_8).length>72)throw new BusinessException(ErrorCode.VALIDATION_FAILED);
         local.changeSecurityQuestion(request.questionCode().name(),encoder.encode(request.answer()));auths.save(local);}
 
     @Override @Transactional

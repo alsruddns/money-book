@@ -75,9 +75,11 @@ public class AuthServiceImpl implements AuthService {
         }
         if (request.securityQuestionCode() == null || request.securityAnswer() == null
                 || request.securityAnswer().isBlank()
-                || !request.securityAnswer().equals(request.securityAnswer().strip())
                 || request.securityAnswer().getBytes(StandardCharsets.UTF_8).length > 72) {
             throw new BusinessException(ErrorCode.VALIDATION_FAILED);
+        }
+        if (!request.securityAnswer().equals(request.securityAnswer().strip())) {
+            throw new BusinessException(ErrorCode.SECURITY_ANSWER_WHITESPACE);
         }
         if (userAuthRepository.findByLocalLoginId(request.loginId()).isPresent()) {
             throw new BusinessException(ErrorCode.DUPLICATE_LOGIN_ID);

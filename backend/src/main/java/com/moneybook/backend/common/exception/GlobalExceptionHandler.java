@@ -34,8 +34,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException exception) {
         ErrorCode errorCode = ErrorCode.VALIDATION_FAILED;
+        String message = exception.getBindingResult().getFieldErrors().stream()
+                .filter(error -> "securityAnswer".equals(error.getField()) || "answer".equals(error.getField()))
+                .filter(error -> "NoSurroundingWhitespace".equals(error.getCode()))
+                .map(error -> "보안 질문 답변의 앞뒤에는 공백을 입력할 수 없습니다.")
+                .findFirst()
+                .orElse(errorCode.getMessage());
         return ResponseEntity.status(errorCode.getStatus())
-                .body(new ErrorResponse(errorCode.name(), errorCode.getMessage()));
+                .body(new ErrorResponse(errorCode.name(), message));
     }
 
     @ExceptionHandler(HandlerMethodValidationException.class)

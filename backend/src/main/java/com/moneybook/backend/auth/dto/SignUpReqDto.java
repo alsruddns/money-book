@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import com.moneybook.backend.enums.SecurityQuestionCode;
 import jakarta.validation.constraints.NotNull;
+import com.moneybook.backend.common.validation.NoSurroundingWhitespace;
 
 public record SignUpReqDto(
         @NotBlank @Size(max = 100) String loginId,
@@ -11,7 +12,7 @@ public record SignUpReqDto(
         @NotBlank @Size(max = 72) String passwordConfirm,
         @NotBlank @Size(max = 50) String nickname,
         @NotNull SecurityQuestionCode securityQuestionCode,
-        @NotBlank @Size(max = 128) String securityAnswer,
+        @NotBlank @Size(max = 128) @NoSurroundingWhitespace String securityAnswer,
         String emailVerificationToken
 ) {
     /** Test and internal source compatibility; JSON requests still require explicit recovery settings. */

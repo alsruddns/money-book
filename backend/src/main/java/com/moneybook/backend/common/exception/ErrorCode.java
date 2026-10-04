@@ -72,6 +72,7 @@ public enum ErrorCode {
     INVITATION_NOT_OWNED(HttpStatus.FORBIDDEN, "본인의 초대만 처리할 수 있습니다."),
     INVITATION_NOT_PENDING(HttpStatus.CONFLICT, "대기 중인 초대만 처리할 수 있습니다."),
     VALIDATION_FAILED(HttpStatus.BAD_REQUEST, "요청값이 올바르지 않습니다."),
+    SECURITY_ANSWER_WHITESPACE(HttpStatus.BAD_REQUEST, "보안 질문 답변의 앞뒤에는 공백을 입력할 수 없습니다."),
     SYSTEM_ADMIN_ACCESS_DENIED(HttpStatus.FORBIDDEN, "서비스 관리자 권한이 필요합니다."),
     SYSTEM_ADMIN_TARGET_FORBIDDEN(HttpStatus.FORBIDDEN, "관리할 수 없는 사용자입니다."),
     SYSTEM_ROLE_CHANGE_FORBIDDEN(HttpStatus.FORBIDDEN, "시스템 역할을 변경할 권한이 없습니다."),
