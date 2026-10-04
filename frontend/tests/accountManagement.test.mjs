@@ -1,4 +1,4 @@
-import test from "node:test";
+﻿import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -24,7 +24,7 @@ function loadModule(relativePath, mocks = {}, globals = {}) {
   const compiledModule = { exports: {} };
   vm.runInNewContext(compiled, {
     module: compiledModule, exports: compiledModule.exports,
-    require: (name) => name in mocks ? mocks[name] : name === "@/common/format/dateTime" ? loadModule("common/format/dateTime.ts") : name === "@/common/format/money" ? { formatNumber: (value) => Number(value).toLocaleString("ko-KR"), formatMoney: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCurrency: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCount: (value, unit = String.fromCharCode(0xAC74)) => `${Number(value).toLocaleString("ko-KR")}${unit}` } : localRequire(name),
+    require: (name) => name in mocks ? mocks[name] : name === "./AccountSecuritySection" ? { default: () => null } : name === "@/common/format/dateTime" ? loadModule("common/format/dateTime.ts") : name === "@/common/format/money" ? { formatNumber: (value) => Number(value).toLocaleString("ko-KR"), formatMoney: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCurrency: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCount: (value, unit = String.fromCharCode(0xAC74)) => `${Number(value).toLocaleString("ko-KR")}${unit}` } : localRequire(name),
     ...globals,
   });
   return compiledModule.exports;
@@ -80,7 +80,7 @@ test("nickname validation trims, rejects blank values and enforces the backend 5
     react: { useState: (initial) => [initial, () => {}] },
     "@/common/api/getApiErrorMessage": { getApiErrorMessage: () => "서버 오류" },
     "../accountValidation": { validateNickname },
-    "../controller/accountApi": { useUpdateAccountProfileMutation: () => [(body) => ({ unwrap: async () => calls.push(body) }), { isLoading: false }] },
+    "../controller/accountApi": { useUpdateAccountProfileMutation: () => [(body) => ({ unwrap: async () => calls.push(body) }), { isLoading: false, reset() {} }] },
   });
   const calls = [];
   const update = hook.useUpdateAccountProfile();
@@ -116,7 +116,7 @@ test("password hook sends the backend DTO, returns backend errors and never logs
     "../accountValidation": { validatePasswordUpdate: () => null },
     "../controller/accountApi": { useUpdateAccountPasswordMutation: () => [(body) => ({
       unwrap: async () => { calls.push(body); if (body.currentPassword === "wrong") throw new Error("bad"); },
-    }), { isLoading: false }] },
+    }), { isLoading: false, reset() {} }] },
   });
   const routes = [];
   const dispatched = [];
@@ -185,7 +185,7 @@ test("withdrawal keeps auth on failure and clears tokens, auth and API cache onl
     "@/common/api/baseApi": { baseApi: { util: { resetApiState: () => ({ type: "RESET_API" }) } } },
     "@/auth/session/clearLocalSession": { clearLocalSession: (dispatch, reset) => { tokenEvents.push(["clear"]); dispatch({ type: "CLEAR_AUTH" }); reset(); } },
     "@/store/store": {},
-    "../controller/accountApi": { useWithdrawAccountMutation: () => [(body) => ({ unwrap: async () => { sent = body; if (responseError) throw responseError; } }), { isLoading: false }] },
+    "../controller/accountApi": { useWithdrawAccountMutation: () => [(body) => ({ unwrap: async () => { sent = body; if (responseError) throw responseError; } }), { isLoading: false, reset() {} }] },
   }, { TextEncoder });
   const hook = useWithdrawAccount();
   assert.equal(await hook.withdraw("pass"), false);
