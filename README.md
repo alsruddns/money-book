@@ -34,7 +34,7 @@ money-book/
 - **데이터 관리:** CSV/XLSX 내보내기, JSON 백업 검증·미리보기·새 가계부로 복원, 가계부 주 시작 요일 설정
 - **계정 관리:** 내 계정 조회, 닉네임 변경, LOCAL 비밀번호 변경, OWNER 이전(활성 ACCEPTED 멤버만 대상, 새 OWNER 전체 권한 보장 및 Activity 기록), 회원 탈퇴(LOCAL 비밀번호 재확인, 소유 가계부가 있으면 차단, WITHDRAWN 전환, 닉네임 익명화, 인증정보와 가계부 membership 정리)
 - **탈퇴 토큰 차단:** 인증 요청마다 사용자 활성 상태를 확인해 탈퇴한 사용자의 Access Token을 거부하고, Refresh 요청도 WITHDRAWN 상태에서 실패
-- **Password Recovery V1 Backend:** 신규 LOCAL 가입 보안 질문과 BCrypt 답변, 8개 SHA-256 복구코드, 선택 이메일 인증 및 일회성 비밀번호 복구, SUPER_ADMIN 임시 비밀번호 초기화와 강제 변경
+- **Password Recovery V1:** Backend와 Frontend의 이메일 인증, 보안 질문, 복구코드, SUPER_ADMIN 임시 비밀번호 초기화 및 강제 변경 연동을 완료했습니다. 공개 복구 API는 인증 토큰이 없거나 만료된 상태에서도 접근할 수 있으며 보호된 계정/관리자 API의 인증 정책은 유지합니다.
 - **감사 및 운영:** 가계부 활동내역, 서비스 전역 System Admin API, Admin Operations V2 집계/상세 조회, 사용자 세션 일괄 폐기, 대상 사용자 감사 필터 및 감사로그
 
 - **운영 모니터링:** Actuator Health/Liveness/Readiness, JVM·HTTP·HikariCP 지표, 인증된 Prometheus endpoint
@@ -57,6 +57,11 @@ money-book/
 
 - Backend와 Frontend 계약 정합화, 작성자 마스킹, 비밀글 권한, 댓글 depth, 공지·카테고리 권한 및 관련 테스트를 구현했습니다.
 - **남은 검증:** 로컬 PostgreSQL 자격 증명으로 새 Backend를 기동하지 못해 Flyway/JPA PostgreSQL runtime 및 실제 게시판 HTTP smoke는 완료하지 못했습니다. 이 검증이 끝날 때까지 V1을 완료로 표시하지 않습니다.
+
+### Password Recovery V1
+
+- Backend와 Frontend 구현 및 복구 API HTTP smoke를 완료했습니다.
+- **남은 별도 검증:** 실제 PostgreSQL migration/runtime, SMTP 이메일 실제 발송, 전체 E2E는 아직 검증하지 않았습니다. 이 기능을 Production ready로 간주하지 않습니다.
 
 ## 권한 구조
 
@@ -82,9 +87,9 @@ money-book/
 
 ## Current Focus
 
-**현재 단계: Password Recovery V1 Frontend 연동**
+**현재 단계: Community Board V1 PostgreSQL runtime 및 실제 API smoke 검증**
 
-Backend 계약과 보안 검증을 구현했습니다. Frontend가 이메일 인증, 보안 질문, 복구코드, 임시 비밀번호 강제 변경 흐름을 연결해야 V1 전체가 완료됩니다.
+Password Recovery V1 Backend와 Frontend 연동은 완료했습니다. 게시판 PostgreSQL runtime 검증 및 나머지 별도 validation을 진행하고 있습니다.
 
 ## Development Roadmap
 
@@ -150,7 +155,8 @@ Backend 계약과 보안 검증을 구현했습니다. Frontend가 이메일 인
 - [x] 계정 탈퇴 Backend
 - [x] 계정 탈퇴 Frontend
 - [x] Password Recovery V1 Backend
-- [ ] Password Recovery V1 Frontend
+- [x] Password Recovery V1 Frontend
+- [ ] Password Recovery V1 실제 PostgreSQL migration, SMTP 이메일 발송 및 전체 E2E validation
 - [ ] 개인정보 삭제 정책
 
 ### Phase 9 — 보안

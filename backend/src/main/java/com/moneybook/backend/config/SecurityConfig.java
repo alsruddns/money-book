@@ -16,7 +16,12 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
+import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
+import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -27,6 +32,7 @@ import org.springframework.security.web.header.writers.StaticHeadersWriter;
 import org.springframework.security.config.Customizer;
 import org.springframework.http.MediaType;
 import java.nio.charset.StandardCharsets;
+import jakarta.servlet.http.HttpServletRequest;
 
 @Configuration
 public class SecurityConfig {
@@ -35,7 +41,22 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
             ObjectProvider<SystemAdminAuthorizationProvider> systemAdminAuthorizationProvider,
             ObjectProvider<UserRepository> userRepositories,
-            ObjectProvider<UserAuthRepository> authRepositories) throws Exception {
+            ObjectProvider<UserAuthRepository> authRepositories,
+            JwtDecoder jwtDecoder) throws Exception {
+        BearerTokenResolver defaultBearerTokenResolver = new DefaultBearerTokenResolver();
+        BearerTokenResolver bearerTokenResolver = request -> {
+            if (!isPublicAuthenticationRequest(request)) {
+                return defaultBearerTokenResolver.resolve(request);
+            }
+            try {
+                String token = defaultBearerTokenResolver.resolve(request);
+                if (token != null) jwtDecoder.decode(token);
+                return token;
+            } catch (AuthenticationException | JwtException invalidOptionalToken) {
+                // Public recovery/signup calls may carry a stale browser token; treat it as absent.
+                return null;
+            }
+        };
         JwtAuthenticationConverter defaultConverter = new JwtAuthenticationConverter();
         Converter<Jwt, AbstractAuthenticationToken> activeUserConverter = jwt -> {
             Long userUid;
@@ -94,17 +115,36 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/auth/security-questions").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/signup", "/auth/login", "/auth/refresh",
                                 "/auth/email-verifications/request", "/auth/email-verifications/confirm",
-                                "/auth/password-recovery/**").permitAll()
+                                "/auth/password-recovery/email/request", "/auth/password-recovery/email/reset",
+                                "/auth/password-recovery/security-question/reset",
+                                "/auth/password-recovery/recovery-code/reset").permitAll()
                         .requestMatchers("/admin/**")
                         .access(new SystemAdminAuthorizationManager(systemAdminAuthorizationProvider.getIfAvailable()))
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
+                        .bearerTokenResolver(bearerTokenResolver)
                         .authenticationEntryPoint((request, response, exception) ->
                                 writeSecurityError(response, 401, "UNAUTHORIZED", "인증이 필요합니다."))
                         .accessDeniedHandler((request, response, exception) ->
                                 writeSecurityError(response, 403, "FORBIDDEN", "접근 권한이 없습니다."))
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(activeUserConverter)))
                 .build();
+    }
+
+    private static boolean isPublicAuthenticationRequest(HttpServletRequest request) {
+        String path = request.getRequestURI().substring(request.getContextPath().length());
+        String method = request.getMethod();
+        if ("GET".equals(method) && "/auth/security-questions".equals(path)) return true;
+        if (!"POST".equals(method)) return false;
+        return "/auth/signup".equals(path)
+                || "/auth/login".equals(path)
+                || "/auth/refresh".equals(path)
+                || "/auth/email-verifications/request".equals(path)
+                || "/auth/email-verifications/confirm".equals(path)
+                || "/auth/password-recovery/email/request".equals(path)
+                || "/auth/password-recovery/email/reset".equals(path)
+                || "/auth/password-recovery/security-question/reset".equals(path)
+                || "/auth/password-recovery/recovery-code/reset".equals(path);
     }
 
     @Bean
