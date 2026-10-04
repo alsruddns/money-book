@@ -52,6 +52,11 @@ money-book/
 
 > Backend에 구현된 기능이라도 Frontend 화면이 없으면 Frontend 완료 항목으로 간주하지 않습니다. Admin 운영 화면은 서비스 전역 역할 기반으로 `/admin/**`에서 제공하며, 일반 MoneyBook 권한과 분리됩니다.
 
+### Community Board / Feedback Board V1
+
+- Backend와 Frontend 계약 정합화, 작성자 마스킹, 비밀글 권한, 댓글 depth, 공지·카테고리 권한 및 관련 테스트를 구현했습니다.
+- **남은 검증:** 로컬 PostgreSQL 자격 증명으로 새 Backend를 기동하지 못해 Flyway/JPA PostgreSQL runtime 및 실제 게시판 HTTP smoke는 완료하지 못했습니다. 이 검증이 끝날 때까지 V1을 완료로 표시하지 않습니다.
+
 ## 권한 구조
 
 가계부 내부 권한과 서비스 전역 역할은 서로 독립적입니다.
@@ -169,7 +174,7 @@ money-book/
 - [x] Dashboard V2 Frontend 분석 화면
 - [x] 월간·연간 지출 TOP20 Frontend
 - [ ] 앱 내 알림
-- [ ] 게시판 (보류)
+- [ ] Community Board / Feedback Board V1 PostgreSQL runtime 및 실제 API smoke 검증
 - [x] 공개 Landing Page Frontend
 - [x] Technical SEO 기본 설정: Metadata, canonical, Open Graph/Twitter, robots.txt, sitemap.xml, JSON-LD
 - [ ] Google Search Console 등록
