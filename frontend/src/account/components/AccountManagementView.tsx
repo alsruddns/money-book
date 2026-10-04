@@ -7,6 +7,7 @@ import { useUpdateAccountPassword } from "../hooks/useUpdateAccountPassword";
 import { useUpdateAccountProfile } from "../hooks/useUpdateAccountProfile";
 import { useWithdrawAccount } from "../hooks/useWithdrawAccount";
 import SessionSection from "./SessionSection";
+import AccountSecuritySection from "./AccountSecuritySection";
 
 const emptyPassword = { currentPassword: "", newPassword: "", newPasswordConfirm: "" };
 const fieldClass = "mt-1 min-h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-zinc-900";
@@ -127,6 +128,8 @@ function AccountDetailsView({ account }: { account: NonNullable<ReturnType<typeo
           </button>
         </form>}
     </section>
+
+    {hasLocalProvider && <AccountSecuritySection />}
 
     <SessionSection />
 

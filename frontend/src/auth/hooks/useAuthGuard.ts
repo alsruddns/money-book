@@ -3,14 +3,17 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useCurrentUser } from "./useCurrentUser";
+import { usePathname } from "next/navigation";
 
 export function useAuthGuard() {
   const router = useRouter();
-  const { isLoading, isAuthenticated } = useCurrentUser();
+  const pathname = usePathname();
+  const { isLoading, isAuthenticated, currentUser } = useCurrentUser();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) router.replace("/login");
-  }, [isLoading, isAuthenticated, router]);
+    else if (!isLoading && isAuthenticated && currentUser?.passwordChangeRequired && pathname !== "/change-required-password") router.replace("/change-required-password");
+  }, [isLoading, isAuthenticated, currentUser?.passwordChangeRequired, pathname, router]);
 
-  return { isLoading, isAuthenticated };
+  return { isLoading, isAuthenticated, passwordChangeRequired: currentUser?.passwordChangeRequired === true, pathname };
 }

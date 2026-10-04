@@ -101,6 +101,6 @@ function addRetryAfter<T extends { error?: FetchBaseQueryError; meta?: { respons
 export const baseApi = createApi({
   reducerPath: "baseApi",
   baseQuery: baseQueryWithReauth,
-  tagTypes: ["MoneyBook", "MoneyBookInvitation", "MoneyBookMember", "MoneyBookSetting", "MoneyBookActivity", "Category", "Account", "AccountMe", "AccountSessions", "AuthMe", "Transaction", "Calendar", "Budget", "Transfer", "Recurring", "Report", "Dashboard", "Closing", "AdminMe", "AdminOverview", "AdminUser", "AdminUserList", "AdminMoneyBook", "AdminMoneyBookList", "AdminActivity", "AdminAuditLog", "BoardPost", "BoardCategory"],
+  tagTypes: ["MoneyBook", "MoneyBookInvitation", "MoneyBookMember", "MoneyBookSetting", "MoneyBookActivity", "Category", "Account", "AccountMe", "AccountSessions", "AccountSecurity", "AuthMe", "Transaction", "Calendar", "Budget", "Transfer", "Recurring", "Report", "Dashboard", "Closing", "AdminMe", "AdminOverview", "AdminUser", "AdminUserList", "AdminMoneyBook", "AdminMoneyBookList", "AdminActivity", "AdminAuditLog", "BoardPost", "BoardCategory"],
   endpoints: () => ({}),
 });

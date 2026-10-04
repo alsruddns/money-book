@@ -6,11 +6,11 @@ import { useCurrentUser } from "./useCurrentUser";
 
 export function useRedirectIfAuthenticated() {
   const router = useRouter();
-  const { isLoading, isAuthenticated } = useCurrentUser();
+  const { isLoading, isAuthenticated, currentUser } = useCurrentUser();
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated) router.replace("/books");
-  }, [isLoading, isAuthenticated, router]);
+    if (!isLoading && isAuthenticated) router.replace(currentUser?.passwordChangeRequired ? "/change-required-password" : "/books");
+  }, [isLoading, isAuthenticated, currentUser?.passwordChangeRequired, router]);
 
   return { isLoading, isAuthenticated };
 }
