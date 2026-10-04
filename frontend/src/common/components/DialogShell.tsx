@@ -8,9 +8,10 @@ interface DialogShellProps {
   description?: string;
   onClose: () => void;
   children: ReactNode;
+  size?: "default" | "wide";
 }
 
-export default function DialogShell({ title, description, onClose, children }: DialogShellProps) {
+export default function DialogShell({ title, description, onClose, children, size = "default" }: DialogShellProps) {
   const dialogRef = useRef<HTMLElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const onCloseRef = useRef(onClose);
@@ -62,7 +63,7 @@ export default function DialogShell({ title, description, onClose, children }: D
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) onCloseRef.current(); }}>
       <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={description ? `${titleId}-description` : undefined} tabIndex={-1}
-        className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-5 text-zinc-900 shadow-xl sm:p-6">
+        className={`max-h-[90dvh] w-full ${size === "wide" ? "max-w-3xl" : "max-w-md"} overflow-y-auto rounded-xl bg-white p-5 text-zinc-900 shadow-xl sm:p-6`}>
         <div className="mb-5 flex items-center justify-between gap-3">
           <div><h2 id={titleId} className="text-xl font-semibold">{title}</h2>{description && <p id={`${titleId}-description`} className="mt-2 text-sm text-zinc-600">{description}</p>}</div>
           <button ref={closeButtonRef} type="button" onClick={onClose} aria-label="닫기"

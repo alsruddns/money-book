@@ -60,3 +60,24 @@ test("Board RTK endpoints match Backend paths, methods, pagination and narrow in
   assert.match(view, /role !== "SUPER_ADMIN"/);
   assert.match(view, /getApiErrorMessage\(error/);
 });
+
+test("board list opens the reusable post detail dialog without navigating away", async () => {
+  const view = await read("../src/board/components/BoardViews.tsx");
+  const shell = await read("../src/common/components/DialogShell.tsx");
+  assert.match(view, /onClick=\{\(\) => setSelectedPostUid\(post\.postUid\)\}/);
+  assert.match(view, /selectedPostUid !== null && <DialogShell[\s\S]*size="wide"[\s\S]*<PostDetailView uid=\{selectedPostUid\}/);
+  assert.match(view, /onDeleted=\{\(\) => \{ setSelectedPostUid\(null\);/);
+  assert.match(view, /posts\.data\?\.content\.length === 1 && query\.page > 0/);
+  assert.match(shell, /size\?: "default" \| "wide"/);
+  assert.match(shell, /max-h-\[90dvh\][\s\S]*max-w-3xl/);
+  assert.match(view, /onClose \? <button type="button" className=\{button\} onClick=\{onClose\}>/);
+  assert.match(view, /post\.canDelete \|\| admin/);
+  assert.match(view, /onDeleted\) onDeleted\(\); else router\.push\("\/board"\)/);
+  assert.match(view, /status === 403 \?/);
+  assert.match(view, /status === 404 \?/);
+  assert.match(view, /comment\.replies\.map\(\(child\) => item\(child, true\)\)/);
+  assert.match(view, /whitespace-pre-wrap break-words/);
+  assert.match(view, /className=\{`block w-full p-4 text-left/);
+  assert.match(view, /href=\{`\/board\/\$\{uid\}\/edit`\}/);
+  assert.match(view, /router\.push\("\/board"\)/);
+});
