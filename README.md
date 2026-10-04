@@ -34,7 +34,7 @@ money-book/
 - **데이터 관리:** CSV/XLSX 내보내기, JSON 백업 검증·미리보기·새 가계부로 복원, 가계부 주 시작 요일 설정
 - **계정 관리:** 내 계정 조회, 닉네임 변경, LOCAL 비밀번호 변경, OWNER 이전(활성 ACCEPTED 멤버만 대상, 새 OWNER 전체 권한 보장 및 Activity 기록), 회원 탈퇴(LOCAL 비밀번호 재확인, 소유 가계부가 있으면 차단, WITHDRAWN 전환, 닉네임 익명화, 인증정보와 가계부 membership 정리)
 - **탈퇴 토큰 차단:** 인증 요청마다 사용자 활성 상태를 확인해 탈퇴한 사용자의 Access Token을 거부하고, Refresh 요청도 WITHDRAWN 상태에서 실패
-- **Password Recovery V1:** Backend와 Frontend의 이메일 인증, 보안 질문, 복구코드, SUPER_ADMIN 임시 비밀번호 초기화 및 강제 변경 연동을 완료했습니다. 공개 복구 API는 인증 토큰이 없거나 만료된 상태에서도 접근할 수 있으며 보호된 계정/관리자 API의 인증 정책은 유지합니다.
+- **Password Recovery V1:** Backend와 Frontend의 이메일 인증, 보안 질문, 복구코드, SUPER_ADMIN 임시 비밀번호 초기화 및 강제 변경 연동을 완료했습니다. 인증 이메일은 trim/lowercase 정규화하고 계정 간 unique index로 중복을 차단합니다. 공개 복구 API는 인증 토큰이 없거나 만료된 상태에서도 접근할 수 있으며 보호된 계정/관리자 API의 인증 정책은 유지합니다.
 - **감사 및 운영:** 가계부 활동내역, 서비스 전역 System Admin API, Admin Operations V2 집계/상세 조회, 사용자 세션 일괄 폐기, 대상 사용자 감사 필터 및 감사로그
 
 - **운영 모니터링:** Actuator Health/Liveness/Readiness, JVM·HTTP·HikariCP 지표, 인증된 Prometheus endpoint
@@ -62,6 +62,7 @@ money-book/
 
 - Backend와 Frontend 구현 및 복구 API HTTP smoke를 완료했습니다.
 - **남은 별도 검증:** 실제 PostgreSQL migration/runtime, SMTP 이메일 실제 발송, 전체 E2E는 아직 검증하지 않았습니다. 이 기능을 Production ready로 간주하지 않습니다.
+- 인증 이메일 migration 적용 전에는 `lower(trim(verified_email))` 그룹 기준 중복을 확인해야 합니다. 기존 중복이 있으면 migration은 값을 임의 삭제하지 않고 실패하므로 먼저 계정 소유자를 확인해 수동으로 정리해야 합니다.
 
 ## 권한 구조
 

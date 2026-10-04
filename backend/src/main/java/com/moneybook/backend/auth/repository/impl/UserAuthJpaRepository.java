@@ -21,6 +21,10 @@ public interface UserAuthJpaRepository extends JpaRepository<UserAuth, Long> {
 
     Optional<UserAuth> findByUser_UserUidAndProvider(Long userUid, AuthProvider provider);
 
+    boolean existsByVerifiedEmail(String verifiedEmail);
+
+    boolean existsByVerifiedEmailAndUser_UserUidNot(String verifiedEmail, Long userUid);
+
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @Query("select auth from UserAuth auth where auth.user.userUid=:uid and auth.provider=com.moneybook.backend.enums.AuthProvider.LOCAL")
     Optional<UserAuth> findLocalForUpdate(@Param("uid") Long userUid);

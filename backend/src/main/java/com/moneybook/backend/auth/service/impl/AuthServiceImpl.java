@@ -42,6 +42,8 @@ import java.util.Locale;
 import java.time.Duration;
 import com.moneybook.backend.entity.PasswordRecoveryCode;
 import com.moneybook.backend.recovery.RecoverySecretGenerator;
+import com.moneybook.backend.recovery.EmailAddressNormalizer;
+import com.moneybook.backend.recovery.VerifiedEmailConstraint;
 import com.moneybook.backend.recovery.repository.PasswordRecoveryRepository;
 import com.moneybook.backend.recovery.repository.EmailVerificationRepository;
 
@@ -85,18 +87,26 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.DUPLICATE_LOGIN_ID);
         }
 
+        com.moneybook.backend.entity.EmailVerification signupVerification = null;
+        String verifiedEmail = null;
+        if (request.emailVerificationToken() != null && !request.emailVerificationToken().isBlank()) {
+            signupVerification = emailVerifications.findActiveGrant(
+                    recoverySecrets.sha256(request.emailVerificationToken()), "SIGNUP")
+                    .filter(v -> v.getUserUid() == null && v.grantActive(LocalDateTime.now()))
+                    .orElseThrow(() -> new BusinessException(ErrorCode.VALIDATION_FAILED));
+            verifiedEmail = EmailAddressNormalizer.normalize(signupVerification.getEmail());
+            if (userAuthRepository.existsVerifiedEmail(verifiedEmail)) {
+                throw new BusinessException(ErrorCode.EMAIL_ALREADY_IN_USE);
+            }
+        }
+
         User user = userRepository.save(User.create(request.nickname(), null));
         UserAuth userAuth = UserAuth.local(user, request.loginId(), passwordEncoder.encode(request.password()));
         userAuth.changeSecurityQuestion(request.securityQuestionCode().name(), passwordEncoder.encode(request.securityAnswer()));
-        if (request.emailVerificationToken() != null && !request.emailVerificationToken().isBlank()) {
-            var verification = emailVerifications.findActiveGrant(
-                    recoverySecrets.sha256(request.emailVerificationToken()), "SIGNUP")
-                    .filter(v -> v.getUserUid() == null && v.getGrantExpiresAt() != null
-                            && v.getGrantExpiresAt().isAfter(LocalDateTime.now()))
-                    .orElseThrow(() -> new BusinessException(ErrorCode.VALIDATION_FAILED));
-            verification.consumeGrant(LocalDateTime.now());
-            userAuth.changeVerifiedEmail(verification.getEmail(), LocalDateTime.now());
-            emailVerifications.save(verification);
+        if (signupVerification != null) {
+            signupVerification.consumeGrant(LocalDateTime.now());
+            userAuth.changeVerifiedEmail(verifiedEmail, LocalDateTime.now());
+            emailVerifications.save(signupVerification);
         }
         try {
             userAuthRepository.save(userAuth);
@@ -104,7 +114,7 @@ public class AuthServiceImpl implements AuthService {
             if (isDuplicateLocalLoginId(exception)) {
                 throw new BusinessException(ErrorCode.DUPLICATE_LOGIN_ID);
             }
-            if (isDuplicateVerifiedEmail(exception)) throw new BusinessException(ErrorCode.EMAIL_ALREADY_IN_USE);
+            if (VerifiedEmailConstraint.wasViolated(exception)) throw new BusinessException(ErrorCode.EMAIL_ALREADY_IN_USE);
             throw exception;
         }
         var codes = recoverySecrets.newRecoveryCodes(8);
@@ -225,14 +235,6 @@ public class AuthServiceImpl implements AuthService {
                     && LOCAL_LOGIN_ID_CONSTRAINT.equals(constraintViolation.getConstraintName())) {
                 return true;
             }
-        }
-        return false;
-    }
-
-    private boolean isDuplicateVerifiedEmail(Throwable exception) {
-        for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
-            if (cause instanceof ConstraintViolationException violation
-                    && "uq_user_auth_verified_email".equals(violation.getConstraintName())) return true;
         }
         return false;
     }

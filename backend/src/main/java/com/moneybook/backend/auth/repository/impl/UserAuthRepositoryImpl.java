@@ -43,6 +43,14 @@ public class UserAuthRepositoryImpl implements UserAuthRepository {
         return userAuthJpaRepository.findLocalForUpdate(userUid);
     }
 
+    @Override public boolean existsVerifiedEmail(String verifiedEmail) {
+        return userAuthJpaRepository.existsByVerifiedEmail(verifiedEmail);
+    }
+
+    @Override public boolean existsVerifiedEmailForAnotherUser(String verifiedEmail, Long userUid) {
+        return userAuthJpaRepository.existsByVerifiedEmailAndUser_UserUidNot(verifiedEmail, userUid);
+    }
+
     @Override
     public int deleteAllByUserUid(Long userUid) {
         return userAuthJpaRepository.deleteAllForUser(userUid);

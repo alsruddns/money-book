@@ -22,5 +22,11 @@ public interface UserAuthRepository {
 
     Optional<UserAuth> findLocalByUserUidForUpdate(Long userUid);
 
+    /** Checks whether any LOCAL credential already owns a normalized verified email. */
+    boolean existsVerifiedEmail(String verifiedEmail);
+
+    /** Checks email ownership while excluding the account currently being updated. */
+    boolean existsVerifiedEmailForAnotherUser(String verifiedEmail, Long userUid);
+
     int deleteAllByUserUid(Long userUid);
 }

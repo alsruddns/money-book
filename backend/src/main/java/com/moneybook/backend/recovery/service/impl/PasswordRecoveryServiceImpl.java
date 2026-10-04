@@ -138,9 +138,23 @@ public class PasswordRecoveryServiceImpl implements PasswordRecoveryService {
         return new RecoveryCodesResponse(codes,"기존 복구코드는 다시 확인할 수 없습니다.");}
 
     @Override @Transactional
-    public void applyEmail(Authentication authentication,String token){UserAuth local=requireLocal(authentication);EmailVerification v=verifications.findActiveGrant(secrets.sha256(token),"ACCOUNT_EMAIL")
-            .filter(x->Objects.equals(x.getUserUid(),local.getUser().getUserUid())&&x.grantActive(LocalDateTime.now())).orElseThrow(()->new BusinessException(ErrorCode.EMAIL_VERIFICATION_FAILED));
-        v.consumeGrant(LocalDateTime.now());local.changeVerifiedEmail(v.getEmail(),LocalDateTime.now());try{auths.save(local);verifications.save(v);}catch(DataIntegrityViolationException e){throw new BusinessException(ErrorCode.EMAIL_ALREADY_IN_USE);}}
+    public void applyEmail(Authentication authentication,String token){
+        UserAuth local=requireLocal(authentication);
+        Long userUid=local.getUser().getUserUid();
+        EmailVerification verification=verifications.findActiveGrant(secrets.sha256(token),"ACCOUNT_EMAIL")
+                .filter(x->Objects.equals(x.getUserUid(),userUid)&&x.grantActive(LocalDateTime.now()))
+                .orElseThrow(()->new BusinessException(ErrorCode.EMAIL_VERIFICATION_FAILED));
+        String email=EmailAddressNormalizer.normalize(verification.getEmail());
+        if(!email.equals(local.getVerifiedEmail())&&auths.existsVerifiedEmailForAnotherUser(email,userUid))
+            throw new BusinessException(ErrorCode.EMAIL_ALREADY_IN_USE);
+        verification.consumeGrant(LocalDateTime.now());
+        local.changeVerifiedEmail(email,LocalDateTime.now());
+        try{auths.save(local);}catch(DataIntegrityViolationException exception){
+            if(VerifiedEmailConstraint.wasViolated(exception))throw new BusinessException(ErrorCode.EMAIL_ALREADY_IN_USE);
+            throw exception;
+        }
+        verifications.save(verification);
+    }
 
     @Override @Transactional
     public void removeEmail(Authentication authentication,String currentPassword){UserAuth local=requireLocal(authentication);checkCurrent(local,currentPassword);
@@ -154,6 +168,6 @@ public class PasswordRecoveryServiceImpl implements PasswordRecoveryService {
     private UserAuth requireLocal(Authentication a){User u=activeUser(a);return auths.findLocalByUserUidForUpdate(u.getUserUid()).orElseThrow(()->new BusinessException(ErrorCode.LOCAL_AUTH_NOT_FOUND));}
     private User activeUser(Authentication a){if(!(a instanceof JwtAuthenticationToken))throw new BusinessException(ErrorCode.INVALID_ACCESS_TOKEN);Long uid;try{uid=Long.valueOf(a.getName());}catch(RuntimeException e){throw new BusinessException(ErrorCode.INVALID_ACCESS_TOKEN);}return users.findById(uid).filter(u->u.getStatus()==UserStatus.ACTIVE).orElseThrow(()->new BusinessException(ErrorCode.USER_INACTIVE));}
     private void checkCurrent(UserAuth a,String password){if(!encoder.matches(password,a.getPasswordHash()))throw new BusinessException(ErrorCode.INVALID_CURRENT_PASSWORD);}
-    private String normalizeEmail(String email){if(email==null||email.isBlank()||email.length()>254)throw new BusinessException(ErrorCode.VALIDATION_FAILED);return email.strip().toLowerCase(Locale.ROOT);}
+    private String normalizeEmail(String email){if(email==null||email.isBlank()||email.length()>254)throw new BusinessException(ErrorCode.VALIDATION_FAILED);return EmailAddressNormalizer.normalize(email);}
     private String maskEmail(String email){if(email==null)return null;int at=email.indexOf('@');if(at<1)return "***";return email.substring(0,1)+"***"+email.substring(at);}
 }

@@ -92,6 +92,73 @@ class PasswordRecoveryServiceTests {
   ArgumentCaptor<String> sentCode=ArgumentCaptor.forClass(String.class);verify(mail).sendVerificationCode(org.mockito.ArgumentMatchers.eq("member@example.com"),sentCode.capture(),org.mockito.ArgumentMatchers.eq("PASSWORD_RESET"));
   ArgumentCaptor<EmailVerification> row=ArgumentCaptor.forClass(EmailVerification.class);verify(verifications,times(2)).save(row.capture());
   assertEquals(emailSecrets.sha256(sentCode.getValue()),row.getAllValues().get(1).getCodeHash());
-  assertNotEquals(sentCode.getValue(),row.getAllValues().get(1).getCodeHash());
+ assertNotEquals(sentCode.getValue(),row.getAllValues().get(1).getCodeHash());
+ }
+
+ @Test void signupEmailVerificationRequestNormalizesAddressWithoutDisclosingOwnership(){
+  var mail=mock(EmailSender.class);
+  var emailService=new PasswordRecoveryServiceImpl(users,auths,verifications,codes,sessions,encoder,secrets,mail);
+  when(verifications.findLatestActive("member@example.com","SIGNUP",null)).thenReturn(Optional.empty());
+  when(verifications.save(any(EmailVerification.class))).thenAnswer(invocation->invocation.getArgument(0));
+  var response=emailService.requestVerification("  Member@Example.COM  ","SIGNUP",null);
+  assertEquals("인증번호를 전송했습니다.",response.message());
+  ArgumentCaptor<EmailVerification> saved=ArgumentCaptor.forClass(EmailVerification.class);
+  verify(verifications).save(saved.capture());
+  assertEquals("member@example.com",saved.getValue().getEmail());
+  verify(mail).sendVerificationCode(eq("member@example.com"),anyString(),eq("SIGNUP"));
+  verifyNoInteractions(auths);
+ }
+
+ @Test void accountEmailApplyRejectsAnotherOwnerButAllowsSameOwnerEmailIdempotently(){
+  when(auths.findLocalByUserUidForUpdate(9L)).thenReturn(Optional.of(local));
+  when(users.findById(9L)).thenReturn(Optional.of(user));
+  String token="account-email-grant";
+  EmailVerification duplicate=accountEmailGrant("other@example.com",token);
+  when(verifications.findActiveGrant(secrets.sha256(token),"ACCOUNT_EMAIL")).thenReturn(Optional.of(duplicate));
+  when(auths.existsVerifiedEmailForAnotherUser("other@example.com",9L)).thenReturn(true);
+
+  BusinessException exception=assertThrows(BusinessException.class,()->service.applyEmail(authentication("9"),token));
+
+  assertEquals(ErrorCode.EMAIL_ALREADY_IN_USE,exception.getErrorCode());
+  assertNull(duplicate.getGrantConsumedAt());
+  verify(auths,never()).save(any());
+
+  local.changeVerifiedEmail("current@example.com",java.time.LocalDateTime.now());
+  String sameToken="same-account-email-grant";
+  EmailVerification same=accountEmailGrant(" Current@Example.com ",sameToken);
+  when(verifications.findActiveGrant(secrets.sha256(sameToken),"ACCOUNT_EMAIL")).thenReturn(Optional.of(same));
+  service.applyEmail(authentication("9"),sameToken);
+  assertEquals("current@example.com",local.getVerifiedEmail());
+  verify(auths,never()).existsVerifiedEmailForAnotherUser("current@example.com",9L);
+ }
+
+ @Test void accountEmailUpdateRaceBecomesDomainErrorAndGrantCanBeRetried(){
+  when(auths.findLocalByUserUidForUpdate(9L)).thenReturn(Optional.of(local));
+  when(users.findById(9L)).thenReturn(Optional.of(user));
+  String token="racing-account-email-grant";
+  EmailVerification verification=accountEmailGrant("race@example.com",token);
+  when(verifications.findActiveGrant(secrets.sha256(token),"ACCOUNT_EMAIL")).thenReturn(Optional.of(verification));
+  var violation=new org.hibernate.exception.ConstraintViolationException("duplicate",null,
+          "update user_auth",VerifiedEmailConstraint.INDEX_NAME);
+  when(auths.save(local)).thenThrow(new org.springframework.dao.DataIntegrityViolationException("unique email",violation));
+
+  BusinessException exception=assertThrows(BusinessException.class,()->service.applyEmail(authentication("9"),token));
+
+  assertEquals(ErrorCode.EMAIL_ALREADY_IN_USE,exception.getErrorCode());
+  assertNotNull(verification.getGrantConsumedAt());
+  // The surrounding transaction rolls the grant consumption back when the mapped exception escapes.
+ }
+
+ private EmailVerification accountEmailGrant(String email,String token){
+  EmailVerification verification=new EmailVerification(9L,email,"ACCOUNT_EMAIL",secrets.sha256("123456"),
+          java.time.LocalDateTime.now().plusMinutes(10),java.time.LocalDateTime.now().plusSeconds(60));
+  verification.issueGrant(secrets.sha256(token),java.time.LocalDateTime.now().plusMinutes(10));
+  return verification;
+ }
+
+ private org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken authentication(String uid){
+  var jwt=org.springframework.security.oauth2.jwt.Jwt.withTokenValue("test-token").header("alg","HS256")
+          .subject(uid).build();
+  return new org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken(jwt);
  }
 }

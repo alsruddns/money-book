@@ -45,6 +45,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -239,6 +240,81 @@ class AuthServiceImplTests {
                 () -> service.refresh(new RefreshRequest("refresh-token")));
 
         assertEquals(ErrorCode.USER_INACTIVE, exception.getErrorCode());
+    }
+
+    @Test
+    void signUpConsumesGrantAndStoresNormalizedVerifiedEmail() {
+        String token = "signup-email-grant";
+        var verification = new com.moneybook.backend.entity.EmailVerification(null, "  Alice@Example.com  ",
+                "SIGNUP", secrets.sha256("123456"), java.time.LocalDateTime.now().plusMinutes(10),
+                java.time.LocalDateTime.now().plusSeconds(60));
+        verification.issueGrant(secrets.sha256(token), java.time.LocalDateTime.now().plusMinutes(10));
+        when(emailVerifications.findActiveGrant(secrets.sha256(token), "SIGNUP")).thenReturn(Optional.of(verification));
+        when(userAuthRepository.existsVerifiedEmail("alice@example.com")).thenReturn(false);
+        when(userAuthRepository.findByLocalLoginId("new-email-user")).thenReturn(Optional.empty());
+        User persistedUser = mock(User.class);
+        when(persistedUser.getUserUid()).thenReturn(43L);
+        when(persistedUser.getNickname()).thenReturn("Email User");
+        when(userRepository.save(any(User.class))).thenReturn(persistedUser);
+
+        SignUpReqDto request = new SignUpReqDto("new-email-user", "password123", "password123", "Email User",
+                SecurityQuestionCode.FAVORITE_COLOR, "Blue", token);
+        service.signUp(request);
+
+        ArgumentCaptor<UserAuth> authCaptor = ArgumentCaptor.forClass(UserAuth.class);
+        verify(userAuthRepository).save(authCaptor.capture());
+        assertEquals("alice@example.com", authCaptor.getValue().getVerifiedEmail());
+        assertTrue(verification.getGrantConsumedAt() != null);
+        assertEquals(ErrorCode.VALIDATION_FAILED,
+                assertThrows(BusinessException.class, () -> service.signUp(request)).getErrorCode());
+    }
+
+    @Test
+    void signUpRejectsDuplicateNormalizedEmailBeforeCreatingUserOrConsumingGrant() {
+        String token = "duplicate-signup-email-grant";
+        var verification = new com.moneybook.backend.entity.EmailVerification(null, " ALICE@example.COM ",
+                "SIGNUP", secrets.sha256("123456"), java.time.LocalDateTime.now().plusMinutes(10),
+                java.time.LocalDateTime.now().plusSeconds(60));
+        verification.issueGrant(secrets.sha256(token), java.time.LocalDateTime.now().plusMinutes(10));
+        when(emailVerifications.findActiveGrant(secrets.sha256(token), "SIGNUP")).thenReturn(Optional.of(verification));
+        when(userAuthRepository.existsVerifiedEmail("alice@example.com")).thenReturn(true);
+        when(userAuthRepository.findByLocalLoginId("duplicate-email-user")).thenReturn(Optional.empty());
+
+        BusinessException exception = assertThrows(BusinessException.class, () -> service.signUp(
+                new SignUpReqDto("duplicate-email-user", "password123", "password123", "Email User",
+                        SecurityQuestionCode.FAVORITE_COLOR, "Blue", token)));
+
+        assertEquals(ErrorCode.EMAIL_ALREADY_IN_USE, exception.getErrorCode());
+        verifyNoInteractions(userRepository);
+        verify(userAuthRepository, never()).save(any());
+        verify(emailVerifications, never()).save(any());
+        assertNull(verification.getGrantConsumedAt());
+    }
+
+    @Test
+    void signupMapsUniqueIndexRaceToEmailAlreadyInUse() {
+        String token = "racing-signup-email-grant";
+        var verification = new com.moneybook.backend.entity.EmailVerification(null, "race@example.com", "SIGNUP",
+                secrets.sha256("123456"), java.time.LocalDateTime.now().plusMinutes(10),
+                java.time.LocalDateTime.now().plusSeconds(60));
+        verification.issueGrant(secrets.sha256(token), java.time.LocalDateTime.now().plusMinutes(10));
+        when(emailVerifications.findActiveGrant(secrets.sha256(token), "SIGNUP")).thenReturn(Optional.of(verification));
+        when(userAuthRepository.existsVerifiedEmail("race@example.com")).thenReturn(false);
+        when(userAuthRepository.findByLocalLoginId("racing-user")).thenReturn(Optional.empty());
+        User persistedUser = mock(User.class);
+        when(persistedUser.getUserUid()).thenReturn(44L);
+        when(persistedUser.getNickname()).thenReturn("Race User");
+        when(userRepository.save(any(User.class))).thenReturn(persistedUser);
+        var violation = new org.hibernate.exception.ConstraintViolationException("duplicate", null,
+                "insert into user_auth", "uq_user_auth_verified_email");
+        when(userAuthRepository.save(any(UserAuth.class))).thenThrow(
+                new org.springframework.dao.DataIntegrityViolationException("unique email", violation));
+
+        BusinessException exception = assertThrows(BusinessException.class, () -> service.signUp(
+                new SignUpReqDto("racing-user", "password123", "password123", "Race User",
+                        SecurityQuestionCode.FAVORITE_COLOR, "Blue", token)));
+
+        assertEquals(ErrorCode.EMAIL_ALREADY_IN_USE, exception.getErrorCode());
     }
 
     @Test
