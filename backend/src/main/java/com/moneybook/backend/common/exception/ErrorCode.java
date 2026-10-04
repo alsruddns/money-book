@@ -77,7 +77,14 @@ public enum ErrorCode {
     SYSTEM_ROLE_CHANGE_FORBIDDEN(HttpStatus.FORBIDDEN, "시스템 역할을 변경할 권한이 없습니다."),
     SUPER_ADMIN_MODIFICATION_FORBIDDEN(HttpStatus.FORBIDDEN, "최고 관리자는 변경할 수 없습니다."),
     SELF_ADMIN_MODIFICATION_FORBIDDEN(HttpStatus.FORBIDDEN, "본인 계정은 변경할 수 없습니다."),
-    INVALID_SYSTEM_ROLE(HttpStatus.BAD_REQUEST, "요청한 시스템 역할을 설정할 수 없습니다.");
+    INVALID_SYSTEM_ROLE(HttpStatus.BAD_REQUEST, "요청한 시스템 역할을 설정할 수 없습니다."),
+    BOARD_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "게시판 카테고리를 찾을 수 없습니다."),
+    BOARD_POST_NOT_FOUND(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."),
+    BOARD_COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다."),
+    BOARD_FORBIDDEN(HttpStatus.FORBIDDEN, "게시판 작업 권한이 없습니다."),
+    BOARD_SECRET_ACCESS_DENIED(HttpStatus.FORBIDDEN, "비밀 게시글을 조회할 권한이 없습니다."),
+    BOARD_INVALID_PARENT_COMMENT(HttpStatus.BAD_REQUEST, "대댓글에는 답글을 작성할 수 없습니다."),
+    BOARD_CATEGORY_IN_USE(HttpStatus.CONFLICT, "게시글에서 사용 중인 카테고리는 삭제할 수 없습니다.");
 
     private final HttpStatus status;
     private final String message;

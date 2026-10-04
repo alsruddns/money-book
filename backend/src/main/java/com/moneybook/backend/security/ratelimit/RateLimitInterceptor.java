@@ -36,6 +36,12 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         String method = request.getMethod();
         String ip = request.getRemoteAddr() == null ? "unknown" : request.getRemoteAddr();
         String user = authenticatedUserKey();
+        if (path.equals("/board/posts") && HttpMethod.POST.matches(method)) {
+            return allow(response, "board-post-user-minute", user, 10, Duration.ofMinutes(1));
+        }
+        if (path.matches("/board/posts/[0-9]+/comments") && HttpMethod.POST.matches(method)) {
+            return allow(response, "board-comment-user-minute", user, 30, Duration.ofMinutes(1));
+        }
         if (isSensitiveEndpoint(method, path)) response.setHeader("Cache-Control", "no-store");
 
         if (is(method, path, HttpMethod.POST, "/auth/login")) {
