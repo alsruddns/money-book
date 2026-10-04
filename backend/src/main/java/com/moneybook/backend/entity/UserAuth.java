@@ -46,6 +46,21 @@ public class UserAuth extends BaseEntity {
     @Column(name = "provider_user_id", length = 255)
     private String providerUserId;
 
+    @Column(name = "security_question_code", length = 40)
+    private String securityQuestionCode;
+
+    @Column(name = "security_answer_hash", length = 100)
+    private String securityAnswerHash;
+
+    @Column(name = "verified_email", length = 254)
+    private String verifiedEmail;
+
+    @Column(name = "email_verified_at")
+    private java.time.LocalDateTime emailVerifiedAt;
+
+    @Column(name = "password_change_required", nullable = false)
+    private boolean passwordChangeRequired;
+
     private UserAuth(User user, AuthProvider provider, String loginId,
                      String passwordHash, String providerUserId) {
         this.user = Objects.requireNonNull(user, "user");
@@ -75,6 +90,29 @@ public class UserAuth extends BaseEntity {
             throw new IllegalStateException("Only LOCAL authentication has a password hash");
         }
         this.passwordHash = requireText(passwordHash, "passwordHash");
+    }
+
+    public void changeSecurityQuestion(String code, String answerHash) {
+        requireLocal();
+        this.securityQuestionCode = requireText(code, "securityQuestionCode");
+        this.securityAnswerHash = requireText(answerHash, "securityAnswerHash");
+    }
+
+    public void changeVerifiedEmail(String email, java.time.LocalDateTime verifiedAt) {
+        requireLocal();
+        this.verifiedEmail = email;
+        this.emailVerifiedAt = email == null ? null : Objects.requireNonNull(verifiedAt, "verifiedAt");
+    }
+
+    public void requirePasswordChange() { requireLocal(); this.passwordChangeRequired = true; }
+
+    public void completePasswordChange(String encodedPassword) {
+        changePasswordHash(encodedPassword);
+        this.passwordChangeRequired = false;
+    }
+
+    private void requireLocal() {
+        if (provider != AuthProvider.LOCAL) throw new IllegalStateException("Only LOCAL authentication has recovery settings");
     }
 
     private static String requireText(String value, String fieldName) {

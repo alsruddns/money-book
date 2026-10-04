@@ -4,6 +4,7 @@ import com.moneybook.backend.admin.provider.SystemAdminAuthorizationManager;
 import com.moneybook.backend.admin.provider.SystemAdminAuthorizationProvider;
 import com.moneybook.backend.enums.UserStatus;
 import com.moneybook.backend.user.repository.UserRepository;
+import com.moneybook.backend.auth.repository.UserAuthRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
@@ -17,6 +18,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import java.util.ArrayList;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.security.web.header.writers.StaticHeadersWriter;
@@ -30,29 +34,41 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
             ObjectProvider<SystemAdminAuthorizationProvider> systemAdminAuthorizationProvider,
-            ObjectProvider<UserRepository> userRepositories) throws Exception {
+            ObjectProvider<UserRepository> userRepositories,
+            ObjectProvider<UserAuthRepository> authRepositories) throws Exception {
         JwtAuthenticationConverter defaultConverter = new JwtAuthenticationConverter();
         Converter<Jwt, AbstractAuthenticationToken> activeUserConverter = jwt -> {
+            Long userUid;
+            try {
+                userUid = Long.valueOf(jwt.getSubject());
+            } catch (RuntimeException exception) {
+                throw new InvalidBearerTokenException("Invalid access token");
+            }
             UserRepository users = userRepositories.getIfAvailable();
             if (users != null) {
-                Long userUid;
-                try {
-                    userUid = Long.valueOf(jwt.getSubject());
-                } catch (RuntimeException exception) {
-                    throw new InvalidBearerTokenException("Invalid access token");
-                }
                 boolean active = users.findById(userUid)
                         .map(user -> user.getStatus() == UserStatus.ACTIVE).orElse(false);
                 if (!active) {
                     throw new InvalidBearerTokenException("Invalid access token");
                 }
             }
-            return defaultConverter.convert(jwt);
+            AbstractAuthenticationToken converted=defaultConverter.convert(jwt);
+            UserAuthRepository auths=authRepositories.getIfAvailable();
+            if(auths!=null) {
+                boolean changeRequired=auths.findLocalByUserUid(userUid).map(com.moneybook.backend.entity.UserAuth::isPasswordChangeRequired).orElse(false);
+                if(changeRequired) {
+                    var authorities=new ArrayList<>(converted.getAuthorities());
+                    authorities.add(new SimpleGrantedAuthority("PASSWORD_CHANGE_REQUIRED"));
+                    return new JwtAuthenticationToken(jwt,authorities,converted.getName());
+                }
+            }
+            return converted;
         };
         return http
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/auth/signup", "/auth/login", "/auth/refresh",
                         "/auth/logout", "/money-books", "/money-books/**", "/admin/**", "/account",
-                        "/account/sessions/**", "/board/**"))
+                        "/account/sessions/**", "/account/security/**", "/board/**",
+                        "/auth/email-verifications/**", "/auth/password-recovery/**"))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .headers(headers -> {
                     headers.contentTypeOptions(Customizer.withDefaults());
@@ -75,7 +91,10 @@ public class SecurityConfig {
                         .requestMatchers("/health").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/actuator/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/auth/signup", "/auth/login", "/auth/refresh").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/auth/security-questions").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/signup", "/auth/login", "/auth/refresh",
+                                "/auth/email-verifications/request", "/auth/email-verifications/confirm",
+                                "/auth/password-recovery/**").permitAll()
                         .requestMatchers("/admin/**")
                         .access(new SystemAdminAuthorizationManager(systemAdminAuthorizationProvider.getIfAvailable()))
                         .anyRequest().authenticated())

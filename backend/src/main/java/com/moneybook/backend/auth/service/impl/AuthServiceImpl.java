@@ -40,6 +40,10 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Locale;
 import java.time.Duration;
+import com.moneybook.backend.entity.PasswordRecoveryCode;
+import com.moneybook.backend.recovery.RecoverySecretGenerator;
+import com.moneybook.backend.recovery.repository.PasswordRecoveryRepository;
+import com.moneybook.backend.recovery.repository.EmailVerificationRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -55,6 +59,9 @@ public class AuthServiceImpl implements AuthService {
     private final RefreshSessionRepository refreshSessions;
     private final RateLimiter rateLimiter;
     private final RateLimitProperties rateLimitProperties;
+    private final RecoverySecretGenerator recoverySecrets;
+    private final PasswordRecoveryRepository recoveryCodes;
+    private final EmailVerificationRepository emailVerifications;
 
     /** Creates the user and LOCAL credentials atomically; a duplicate login ID rolls both inserts back. */
     @Override
@@ -66,21 +73,41 @@ public class AuthServiceImpl implements AuthService {
         if (request.password().getBytes(StandardCharsets.UTF_8).length > 72) {
             throw new BusinessException(ErrorCode.INVALID_PASSWORD_LENGTH);
         }
+        if (request.securityQuestionCode() == null || request.securityAnswer() == null
+                || request.securityAnswer().isBlank()
+                || !request.securityAnswer().equals(request.securityAnswer().strip())
+                || request.securityAnswer().getBytes(StandardCharsets.UTF_8).length > 72) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED);
+        }
         if (userAuthRepository.findByLocalLoginId(request.loginId()).isPresent()) {
             throw new BusinessException(ErrorCode.DUPLICATE_LOGIN_ID);
         }
 
         User user = userRepository.save(User.create(request.nickname(), null));
         UserAuth userAuth = UserAuth.local(user, request.loginId(), passwordEncoder.encode(request.password()));
+        userAuth.changeSecurityQuestion(request.securityQuestionCode().name(), passwordEncoder.encode(request.securityAnswer()));
+        if (request.emailVerificationToken() != null && !request.emailVerificationToken().isBlank()) {
+            var verification = emailVerifications.findActiveGrant(
+                    recoverySecrets.sha256(request.emailVerificationToken()), "SIGNUP")
+                    .filter(v -> v.getUserUid() == null && v.getGrantExpiresAt() != null
+                            && v.getGrantExpiresAt().isAfter(LocalDateTime.now()))
+                    .orElseThrow(() -> new BusinessException(ErrorCode.VALIDATION_FAILED));
+            verification.consumeGrant(LocalDateTime.now());
+            userAuth.changeVerifiedEmail(verification.getEmail(), LocalDateTime.now());
+            emailVerifications.save(verification);
+        }
         try {
             userAuthRepository.save(userAuth);
         } catch (DataIntegrityViolationException exception) {
             if (isDuplicateLocalLoginId(exception)) {
                 throw new BusinessException(ErrorCode.DUPLICATE_LOGIN_ID);
             }
+            if (isDuplicateVerifiedEmail(exception)) throw new BusinessException(ErrorCode.EMAIL_ALREADY_IN_USE);
             throw exception;
         }
-        return new SignUpResDto(user.getUserUid(), user.getNickname());
+        var codes = recoverySecrets.newRecoveryCodes(8);
+        codes.forEach(code -> recoveryCodes.save(new PasswordRecoveryCode(user.getUserUid(), recoverySecrets.sha256(code))));
+        return new SignUpResDto(user.getUserUid(), user.getNickname(), codes);
     }
 
     /** Validates LOCAL credentials and active user state before issuing an Access Token. */
@@ -112,7 +139,8 @@ public class AuthServiceImpl implements AuthService {
         refreshSessions.save(RefreshTokenSession.create(user.getUserUid(), sessionKey,
                 jwtTokenProvider.hashRefreshToken(refreshToken), userAgent, ipAddress,
                 now, LocalDateTime.ofInstant(expiresAt, ZoneOffset.UTC)));
-        return new LoginResponse(user.getUserUid(), user.getNickname(), accessToken, refreshToken);
+        return new LoginResponse(user.getUserUid(), user.getNickname(), accessToken, refreshToken,
+                userAuth.isPasswordChangeRequired());
     }
 
     /** Validates and rotates the persisted Refresh Session before returning a new token pair. */
@@ -184,7 +212,9 @@ public class AuthServiceImpl implements AuthService {
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw new BusinessException(ErrorCode.USER_INACTIVE);
         }
-        return new CurrentUserResponse(user.getUserUid(), user.getNickname(), user.getStatus(), user.getSystemRole());
+        boolean forced = userAuthRepository.findLocalByUserUid(userUid)
+                .map(UserAuth::isPasswordChangeRequired).orElse(false);
+        return new CurrentUserResponse(user.getUserUid(), user.getNickname(), user.getStatus(), user.getSystemRole(), forced);
     }
 
     private boolean isDuplicateLocalLoginId(Throwable exception) {
@@ -193,6 +223,14 @@ public class AuthServiceImpl implements AuthService {
                     && LOCAL_LOGIN_ID_CONSTRAINT.equals(constraintViolation.getConstraintName())) {
                 return true;
             }
+        }
+        return false;
+    }
+
+    private boolean isDuplicateVerifiedEmail(Throwable exception) {
+        for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ConstraintViolationException violation
+                    && "uq_user_auth_verified_email".equals(violation.getConstraintName())) return true;
         }
         return false;
     }

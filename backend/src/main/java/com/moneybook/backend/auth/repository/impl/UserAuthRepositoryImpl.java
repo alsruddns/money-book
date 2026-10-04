@@ -35,6 +35,14 @@ public class UserAuthRepositoryImpl implements UserAuthRepository {
         return userAuthJpaRepository.findByUser_UserUid(userUid);
     }
 
+    @Override public Optional<UserAuth> findLocalByUserUid(Long userUid) {
+        return userAuthJpaRepository.findByUser_UserUidAndProvider(userUid, AuthProvider.LOCAL);
+    }
+
+    @Override public Optional<UserAuth> findLocalByUserUidForUpdate(Long userUid) {
+        return userAuthJpaRepository.findLocalForUpdate(userUid);
+    }
+
     @Override
     public int deleteAllByUserUid(Long userUid) {
         return userAuthJpaRepository.deleteAllForUser(userUid);

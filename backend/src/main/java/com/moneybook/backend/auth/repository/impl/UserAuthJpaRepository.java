@@ -19,6 +19,12 @@ public interface UserAuthJpaRepository extends JpaRepository<UserAuth, Long> {
 
     List<UserAuth> findByUser_UserUid(Long userUid);
 
+    Optional<UserAuth> findByUser_UserUidAndProvider(Long userUid, AuthProvider provider);
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select auth from UserAuth auth where auth.user.userUid=:uid and auth.provider=com.moneybook.backend.enums.AuthProvider.LOCAL")
+    Optional<UserAuth> findLocalForUpdate(@Param("uid") Long userUid);
+
     @Modifying
     @Query("delete from UserAuth auth where auth.user.userUid = :userUid")
     int deleteAllForUser(@Param("userUid") Long userUid);

@@ -35,6 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(AuthController.class)
 @Import({SecurityConfig.class, JwtConfig.class, RateLimitWebConfig.class, RateLimitInterceptor.class,
+        com.moneybook.backend.accountmanagement.PasswordChangeRequiredInterceptor.class,
         RateLimitSecurityControllerTests.ProtectedController.class})
 @TestPropertySource(properties = {
         "jwt.secret=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",

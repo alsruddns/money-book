@@ -11,13 +11,17 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Import(InMemoryRateLimiter.class)
 public class RateLimitWebConfig implements WebMvcConfigurer {
     private final RateLimitInterceptor interceptor;
+    private final com.moneybook.backend.accountmanagement.PasswordChangeRequiredInterceptor passwordChangeInterceptor;
 
-    public RateLimitWebConfig(RateLimitInterceptor interceptor) {
+    public RateLimitWebConfig(RateLimitInterceptor interceptor,
+            com.moneybook.backend.accountmanagement.PasswordChangeRequiredInterceptor passwordChangeInterceptor) {
         this.interceptor = interceptor;
+        this.passwordChangeInterceptor = passwordChangeInterceptor;
     }
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(interceptor);
+        registry.addInterceptor(passwordChangeInterceptor);
     }
 }

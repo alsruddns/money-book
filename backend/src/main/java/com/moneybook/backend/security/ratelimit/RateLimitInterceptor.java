@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
 @Component
 public class RateLimitInterceptor implements HandlerInterceptor {
     private static final Pattern ADMIN_MUTATION = Pattern.compile(
-            "/admin/users/[0-9]+/(status|system-role|sessions/revoke-all)");
+            "/admin/users/[0-9]+/(status|system-role|sessions/revoke-all|password-reset)");
     private final RateLimiter limiter;
     private final RateLimitProperties properties;
 
@@ -43,6 +43,19 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             return allow(response, "board-comment-user-minute", user, 30, Duration.ofMinutes(1));
         }
         if (isSensitiveEndpoint(method, path)) response.setHeader("Cache-Control", "no-store");
+
+        if (path.equals("/auth/email-verifications/request") && HttpMethod.POST.matches(method))
+            return allow(response,"recovery-email-send-ip-hour",ip,5,Duration.ofHours(1));
+        if (path.equals("/auth/password-recovery/email/request") && HttpMethod.POST.matches(method))
+            return allow(response,"recovery-email-request-ip-hour",ip,5,Duration.ofHours(1));
+        if (path.equals("/auth/email-verifications/confirm") && HttpMethod.POST.matches(method))
+            return allow(response,"recovery-email-check-ip-15m",ip,10,Duration.ofMinutes(15));
+        if (path.startsWith("/auth/password-recovery/") && HttpMethod.POST.matches(method))
+            return allow(response,"password-recovery-ip-15m",ip,5,Duration.ofMinutes(15));
+        if (path.equals("/account/security/recovery-codes/regenerate") && HttpMethod.POST.matches(method))
+            return allow(response,"recovery-code-regenerate-user-10m",user,5,Duration.ofMinutes(10));
+        if (path.startsWith("/account/security/") && (HttpMethod.PUT.matches(method)||HttpMethod.PATCH.matches(method)||HttpMethod.DELETE.matches(method)))
+            return allow(response,"account-security-user-10m",user,10,Duration.ofMinutes(10));
 
         if (is(method, path, HttpMethod.POST, "/auth/login")) {
             return allow(response, "login-ip-minute", ip, properties.getLoginPerMinute(), Duration.ofMinutes(1))
@@ -104,6 +117,9 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     private boolean isSensitiveEndpoint(String method, String path) {
         return (HttpMethod.POST.matches(method) && (path.startsWith("/auth/") || path.equals("/account/sessions/logout-all")))
                 || (HttpMethod.PATCH.matches(method) && path.equals("/account/password"))
+                || path.equals("/account/security") || path.startsWith("/account/security/")
+                || path.startsWith("/auth/password-recovery/")
+                || path.startsWith("/auth/email-verifications/")
                 || ((HttpMethod.PATCH.matches(method) || HttpMethod.POST.matches(method))
                 && ADMIN_MUTATION.matcher(path).matches())
                 || (HttpMethod.DELETE.matches(method) && path.equals("/account"));

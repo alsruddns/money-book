@@ -2,6 +2,7 @@ package com.moneybook.backend.monitoring;
 
 import com.moneybook.backend.entity.User;
 import com.moneybook.backend.enums.JwtTokenType;
+import com.moneybook.backend.auth.repository.UserAuthRepository;
 import com.moneybook.backend.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,10 +49,12 @@ class MonitoringActuatorTests {
     @Autowired private JwtEncoder jwtEncoder;
     @Autowired private ApplicationContext applicationContext;
     @MockitoBean private UserRepository userRepository;
+    @MockitoBean private UserAuthRepository userAuthRepository;
 
     @BeforeEach
     void allowActiveTestUser() {
         when(userRepository.findById(anyLong())).thenReturn(Optional.of(User.create("Test User", null)));
+        when(userAuthRepository.findLocalByUserUid(anyLong())).thenReturn(Optional.empty());
     }
 
     @Test

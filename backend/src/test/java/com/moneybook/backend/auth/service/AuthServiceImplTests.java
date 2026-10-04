@@ -22,6 +22,10 @@ import com.moneybook.backend.entity.UserAuth;
 import com.moneybook.backend.entity.RefreshTokenSession;
 import com.moneybook.backend.enums.AuthProvider;
 import com.moneybook.backend.enums.UserStatus;
+import com.moneybook.backend.enums.SecurityQuestionCode;
+import com.moneybook.backend.recovery.RecoverySecretGenerator;
+import com.moneybook.backend.recovery.repository.PasswordRecoveryRepository;
+import com.moneybook.backend.recovery.repository.EmailVerificationRepository;
 import com.moneybook.backend.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,9 +58,12 @@ class AuthServiceImplTests {
     private final RefreshSessionRepository refreshSessions = mock(RefreshSessionRepository.class);
     private final RateLimiter rateLimiter = mock(RateLimiter.class);
     private final RateLimitProperties rateLimitProperties = new RateLimitProperties();
+    private final PasswordRecoveryRepository recoveryCodes=mock(PasswordRecoveryRepository.class);
+    private final EmailVerificationRepository emailVerifications=mock(EmailVerificationRepository.class);
+    private final RecoverySecretGenerator secrets=new RecoverySecretGenerator();
     private final AuthServiceImpl service = new AuthServiceImpl(
             userRepository, userAuthRepository, passwordEncoder, jwtTokenProvider, refreshSessions,
-            rateLimiter, rateLimitProperties);
+            rateLimiter, rateLimitProperties,secrets,recoveryCodes,emailVerifications);
 
     @BeforeEach
     void allowLoginRateLimitByDefault() {
@@ -66,7 +73,7 @@ class AuthServiceImplTests {
 
     @Test
     void signUpStoresOnlyBcryptHashAndLocalIdentity() {
-        SignUpReqDto request = new SignUpReqDto("new-user", "password123", "password123", "닉네임");
+        SignUpReqDto request = new SignUpReqDto("new-user", "password123", "password123", "닉네임",SecurityQuestionCode.FAVORITE_FOOD,"제육볶음",null);
         User persistedUser = mock(User.class);
         when(persistedUser.getUserUid()).thenReturn(42L);
         when(persistedUser.getNickname()).thenReturn("닉네임");
@@ -86,14 +93,18 @@ class AuthServiceImplTests {
         assertNull(auth.getProviderUserId());
         assertFalse(request.password().equals(auth.getPasswordHash()));
         assertTrue(passwordEncoder.matches(request.password(), auth.getPasswordHash()));
+        assertEquals(SecurityQuestionCode.FAVORITE_FOOD.name(),auth.getSecurityQuestionCode());
+        assertTrue(passwordEncoder.matches(request.securityAnswer(),auth.getSecurityAnswerHash()));
         assertEquals(42L, response.userUid());
         assertEquals("닉네임", response.nickname());
+        assertEquals(8,response.recoveryCodes().size());
+        verify(recoveryCodes,org.mockito.Mockito.times(8)).save(any());
     }
 
     @Test
     void signUpRejectsDuplicateLoginIdBeforeWriting() {
         when(userAuthRepository.findByLocalLoginId("taken")).thenReturn(Optional.of(mock(UserAuth.class)));
-        SignUpReqDto request = new SignUpReqDto("taken", "password123", "password123", "닉네임");
+        SignUpReqDto request = new SignUpReqDto("taken", "password123", "password123", "닉네임",SecurityQuestionCode.FAVORITE_FOOD,"제육볶음",null);
 
         BusinessException exception = assertThrows(BusinessException.class, () -> service.signUp(request));
 
@@ -103,7 +114,7 @@ class AuthServiceImplTests {
 
     @Test
     void signUpRejectsMismatchedPasswordBeforeWriting() {
-        SignUpReqDto request = new SignUpReqDto("new-user", "password123", "different", "닉네임");
+        SignUpReqDto request = new SignUpReqDto("new-user", "password123", "different", "닉네임",SecurityQuestionCode.FAVORITE_FOOD,"제육볶음",null);
 
         BusinessException exception = assertThrows(BusinessException.class, () -> service.signUp(request));
 

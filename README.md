@@ -34,6 +34,7 @@ money-book/
 - **데이터 관리:** CSV/XLSX 내보내기, JSON 백업 검증·미리보기·새 가계부로 복원, 가계부 주 시작 요일 설정
 - **계정 관리:** 내 계정 조회, 닉네임 변경, LOCAL 비밀번호 변경, OWNER 이전(활성 ACCEPTED 멤버만 대상, 새 OWNER 전체 권한 보장 및 Activity 기록), 회원 탈퇴(LOCAL 비밀번호 재확인, 소유 가계부가 있으면 차단, WITHDRAWN 전환, 닉네임 익명화, 인증정보와 가계부 membership 정리)
 - **탈퇴 토큰 차단:** 인증 요청마다 사용자 활성 상태를 확인해 탈퇴한 사용자의 Access Token을 거부하고, Refresh 요청도 WITHDRAWN 상태에서 실패
+- **Password Recovery V1 Backend:** 신규 LOCAL 가입 보안 질문과 BCrypt 답변, 8개 SHA-256 복구코드, 선택 이메일 인증 및 일회성 비밀번호 복구, SUPER_ADMIN 임시 비밀번호 초기화와 강제 변경
 - **감사 및 운영:** 가계부 활동내역, 서비스 전역 System Admin API, Admin Operations V2 집계/상세 조회, 사용자 세션 일괄 폐기, 대상 사용자 감사 필터 및 감사로그
 
 - **운영 모니터링:** Actuator Health/Liveness/Readiness, JVM·HTTP·HikariCP 지표, 인증된 Prometheus endpoint
@@ -76,24 +77,14 @@ money-book/
 - 공개 페이지 SEO URL은 서버 빌드 환경변수 `SITE_URL`로 설정합니다. 실제 도메인이 확정되기 전에는 비워 두며, Production에서 값이 없으면 canonical/사이트맵 주소를 임의 생성하지 않습니다. Google/Naver 사이트 인증 값은 등록 시 `GOOGLE_SITE_VERIFICATION`, `NAVER_SITE_VERIFICATION`으로 설정할 수 있습니다.
 - Hosting 환경에서는 `BACKEND_API_URL`을 서버 전용 Environment Variable로 설정합니다. 운영 URL은 코드나 `NEXT_PUBLIC_` 변수에 넣지 않습니다.
 - Backend는 기본 `local` profile을 사용합니다. 운영에서는 `SPRING_PROFILES_ACTIVE=prod`를 설정하고, `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`을 Backend 실행 환경에 주입합니다. Local에서도 `DB_PASSWORD`와 `JWT_SECRET`은 환경변수로 설정해야 합니다.
+- SMTP 이메일 인증은 `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM` 환경변수로 구성합니다. 이메일은 선택 정보이며 인증된 주소만 복구용으로 저장됩니다.
 - Backend의 공통 context path는 `/api`입니다. JWT secret과 DB 비밀번호는 저장소에 기록하지 않습니다.
 
 ## Current Focus
 
-**현재 단계: Production CD / Deployment 준비**
+**현재 단계: Password Recovery V1 Frontend 연동**
 
-완료한 CI 및 Production Infrastructure 구성:
-
-- GitHub Actions Push/PR 검증: Backend, Frontend, Docker image, Compose/Caddy 설정
-- Backend/Frontend production image와 Compose 구성
-- Caddy reverse proxy 및 HTTPS 자동화 준비
-- DB 영속 volume, health check, 백업/복원 운영 안내
-
-후속 운영 단계:
-
-1. CD
-2. Production 도메인 및 DNS 확정
-3. 프로덕션 배포
+Backend 계약과 보안 검증을 구현했습니다. Frontend가 이메일 인증, 보안 질문, 복구코드, 임시 비밀번호 강제 변경 흐름을 연결해야 V1 전체가 완료됩니다.
 
 ## Development Roadmap
 
@@ -158,6 +149,8 @@ money-book/
 - [x] OWNER 이전 Frontend
 - [x] 계정 탈퇴 Backend
 - [x] 계정 탈퇴 Frontend
+- [x] Password Recovery V1 Backend
+- [ ] Password Recovery V1 Frontend
 - [ ] 개인정보 삭제 정책
 
 ### Phase 9 — 보안

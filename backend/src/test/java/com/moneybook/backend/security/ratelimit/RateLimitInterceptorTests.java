@@ -55,6 +55,18 @@ class RateLimitInterceptorTests {
                 properties.getAdminMutationPerMinute(), Duration.ofMinutes(1));
         assertPolicy("POST", "/admin/users/7/sessions/revoke-all", "admin-mutation-user-minute", "user-42",
                 properties.getAdminMutationPerMinute(), Duration.ofMinutes(1));
+        assertPolicy("POST", "/admin/users/7/password-reset", "admin-mutation-user-minute", "user-42",
+                properties.getAdminMutationPerMinute(), Duration.ofMinutes(1));
+        assertPolicy("POST", "/auth/email-verifications/request", "recovery-email-send-ip-hour", "192.0.2.10",
+                5, Duration.ofHours(1));
+        assertPolicy("POST", "/auth/email-verifications/confirm", "recovery-email-check-ip-15m", "192.0.2.10",
+                10, Duration.ofMinutes(15));
+        assertPolicy("POST", "/auth/password-recovery/email/request", "recovery-email-request-ip-hour", "192.0.2.10",
+                5, Duration.ofHours(1));
+        assertPolicy("POST", "/auth/password-recovery/security-question/reset", "password-recovery-ip-15m", "192.0.2.10",
+                5, Duration.ofMinutes(15));
+        assertPolicy("POST", "/account/security/recovery-codes/regenerate", "recovery-code-regenerate-user-10m", "user-42",
+                5, Duration.ofMinutes(10));
 
         clearInvocations(limiter);
         MockHttpServletRequest login = request("POST", "/auth/login");

@@ -18,5 +18,9 @@ public interface UserAuthRepository {
 
     List<UserAuth> findByUserUid(Long userUid);
 
+    Optional<UserAuth> findLocalByUserUid(Long userUid);
+
+    Optional<UserAuth> findLocalByUserUidForUpdate(Long userUid);
+
     int deleteAllByUserUid(Long userUid);
 }

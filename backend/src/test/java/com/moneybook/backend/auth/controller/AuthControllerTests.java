@@ -70,7 +70,8 @@ class AuthControllerTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"loginId":"new-user","password":"password123",
-                                 "passwordConfirm":"password123","nickname":"닉네임"}
+                                 "passwordConfirm":"password123","nickname":"닉네임",
+                                 "securityQuestionCode":"FAVORITE_FOOD","securityAnswer":"제육볶음"}
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.userUid").value(42))
@@ -94,7 +95,8 @@ class AuthControllerTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"loginId":"taken","password":"password123",
-                                 "passwordConfirm":"password123","nickname":"닉네임"}
+                                 "passwordConfirm":"password123","nickname":"닉네임",
+                                 "securityQuestionCode":"FAVORITE_FOOD","securityAnswer":"제육볶음"}
                                 """))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("DUPLICATE_LOGIN_ID"));

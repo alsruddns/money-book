@@ -82,7 +82,7 @@ public class AccountManagementServiceImpl implements AccountManagementService {
             throw new BusinessException(ErrorCode.SAME_AS_CURRENT_PASSWORD);
         }
 
-        localAuth.changePasswordHash(passwordEncoder.encode(request.newPassword()));
+        localAuth.completePasswordChange(passwordEncoder.encode(request.newPassword()));
         userAuthRepository.save(localAuth);
         revokeAllSessions(user.getUserUid(), "PASSWORD_CHANGED");
         return toResponse(user);
