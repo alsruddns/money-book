@@ -76,7 +76,7 @@ test("signup rejects answer boundary whitespace without trimming valid input", (
   assert.match(source, /securityAnswerError/);
   assert.match(source, /securityAnswerWhitespaceMessage/);
   assert.doesNotMatch(source, /form\.securityAnswer\.trim\(\)/);
-  assert.match(source, /signup\(\{ \.\.\.form/);
+  assert.match(source, /signup\(\s*\{ \.\.\.form/);
 });
 
 test("signup keeps email send errors separate from submit-time unverified guidance", () => {
@@ -89,6 +89,30 @@ test("signup keeps email send errors separate from submit-time unverified guidan
   assert.match(source, /setCode\(""\)/);
   assert.match(source, /emailVerificationToken: verificationToken/);
   assert.match(source, /!email \? <p/);
+});
+
+test("signup duplicate verified email gets a field error and focuses the email input", () => {
+  const form = text("auth/components/SignupForm.tsx");
+  const hook = text("auth/hooks/useSignup.ts");
+  assert.match(hook, /getApiErrorCode\(error\) === "EMAIL_ALREADY_IN_USE"/);
+  assert.match(form, /document\.getElementById\("signup-email"\)\?\.focus\(\)/);
+  assert.match(form, /aria-invalid=\{duplicateEmailError\}/);
+  assert.match(form, /이미 다른 계정에서 사용 중인 이메일입니다/);
+  assert.match(form, /errorMessage && !duplicateEmailError/);
+});
+
+test("shared API error parsing exposes the backend duplicate email code", () => {
+  const errors = load("common/api/getApiErrorMessage.ts");
+  assert.equal(errors.getApiErrorCode({ status: 409, data: { code: "EMAIL_ALREADY_IN_USE" } }), "EMAIL_ALREADY_IN_USE");
+  assert.equal(errors.getApiErrorCode({ status: 409, data: { code: "OTHER_ERROR" } }), "OTHER_ERROR");
+  assert.equal(errors.getApiErrorCode({ status: 409, data: "invalid" }), null);
+});
+
+test("signup optional and verified email submission paths remain supported", () => {
+  const form = text("auth/components/SignupForm.tsx");
+  assert.match(form, /이메일 없이 가입하려면 이 항목을 비워두세요/);
+  assert.match(form, /emailVerificationToken: verificationToken/);
+  assert.match(text("auth/dto/req/SignUpReqDto.ts"), /emailVerificationToken\?:\s*string/);
 });
 
 test("signup only renders recovery codes from response and clears the one-time result", () => {
@@ -161,6 +185,20 @@ test("email add and change require a verification grant; deletion uses supported
   assert.match(source, /confirmCode\(\{ verificationUid, code: emailCode \}\)/);
   assert.match(source, /applyEmail\(\{ verificationToken \}\)/);
   assert.match(source, /removeEmail\(\{ currentPassword: password \}\)/);
+});
+
+test("account email duplicate shows an email field error and preserves its grant for retry", () => {
+  const source = text("account/components/AccountSecuritySection.tsx");
+  assert.match(source, /getApiErrorCode\(reason\) === "EMAIL_ALREADY_IN_USE"/);
+  assert.match(source, /document\.getElementById\("account-recovery-email"\)\?\.focus\(\)/);
+  assert.match(source, /aria-invalid=\{emailDuplicateError\}/);
+  assert.match(source, /이미 다른 계정에서 사용 중인 이메일입니다/);
+  assert.match(source, /setSuccess\("복구 이메일을 등록했습니다\."\)/);
+  assert.match(source, /setSuccess\("복구 이메일을 삭제했습니다\."\)/);
+  const saveEmail = source.match(/async function saveEmail\(\)[\s\S]*?async function deleteEmail/)?.[0] ?? "";
+  const duplicateCatch = saveEmail.match(/catch \(reason\) \{([\s\S]*?)\n\s*\}/)?.[1] ?? "";
+  assert.match(duplicateCatch, /setEmailDuplicateError\(true\)/);
+  assert.doesNotMatch(duplicateCatch, /setVerificationToken\(""\)/);
 });
 
 test("Admin reset endpoint matches Backend and temporary secret remains transient", () => {

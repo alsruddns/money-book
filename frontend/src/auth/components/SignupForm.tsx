@@ -25,6 +25,7 @@ export default function SignupForm() {
   const [verificationMessage, setVerificationMessage] = useState("");
   const [verificationError, setVerificationError] = useState("");
   const [securityAnswerError, setSecurityAnswerError] = useState("");
+  const [duplicateEmailError, setDuplicateEmailError] = useState(false);
   const [showUnverifiedEmailError, setShowUnverifiedEmailError] = useState(false);
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
   const [copied, setCopied] = useState(false);
@@ -59,7 +60,14 @@ export default function SignupForm() {
       return;
     }
     setShowUnverifiedEmailError(false);
-    const result = await signup({ ...form, ...(verificationToken ? { emailVerificationToken: verificationToken } : {}) });
+    setDuplicateEmailError(false);
+    const result = await signup(
+      { ...form, ...(verificationToken ? { emailVerificationToken: verificationToken } : {}) },
+      () => {
+        setDuplicateEmailError(true);
+        document.getElementById("signup-email")?.focus();
+      },
+    );
     if (result) setRecoveryCodes(result.recoveryCodes ?? []);
   }
 
@@ -95,12 +103,13 @@ export default function SignupForm() {
       <legend className="px-1 text-sm font-semibold">이메일 (선택)</legend>
       <p className="text-sm text-zinc-600">이메일 등록은 선택사항입니다. 인증된 이메일이 있으면 비밀번호 분실 시 이메일 인증을 통해 직접 재설정할 수 있습니다. 이메일을 등록하지 않아도 서비스 이용에는 문제가 없습니다.</p>
       <label htmlFor="signup-email" className="text-sm font-medium">이메일 주소</label>
-      <div className="flex flex-col gap-2 sm:flex-row"><input id="signup-email" type="email" autoComplete="email" value={email} onChange={(event) => { setEmail(event.target.value); setVerificationToken(""); setVerificationUid(null); setCode(""); setVerificationMessage(""); setVerificationError(""); setShowUnverifiedEmailError(false); }} className={`${inputClass} mt-0 min-w-0 flex-1`} /><button type="button" disabled={!email || requestState.isLoading || Boolean(verificationToken)} onClick={() => void sendCode()} className="min-h-11 shrink-0 rounded-lg border px-3 text-sm font-medium disabled:opacity-50">{requestState.isLoading ? "요청 중..." : "인증번호 받기"}</button></div>
+      <div className="flex flex-col gap-2 sm:flex-row"><input id="signup-email" type="email" autoComplete="email" value={email} aria-invalid={duplicateEmailError} aria-describedby={duplicateEmailError ? "signup-email-duplicate-error" : undefined} onChange={(event) => { setEmail(event.target.value); setDuplicateEmailError(false); setVerificationToken(""); setVerificationUid(null); setCode(""); setVerificationMessage(""); setVerificationError(""); setShowUnverifiedEmailError(false); }} className={`${inputClass} mt-0 min-w-0 flex-1`} /><button type="button" disabled={!email || requestState.isLoading || Boolean(verificationToken)} onClick={() => void sendCode()} className="min-h-11 shrink-0 rounded-lg border px-3 text-sm font-medium disabled:opacity-50">{requestState.isLoading ? "요청 중..." : "인증번호 받기"}</button></div>
+      {duplicateEmailError && <p id="signup-email-duplicate-error" role="alert" className="text-sm text-red-700">이미 다른 계정에서 사용 중인 이메일입니다.</p>}
       {verificationUid !== null && !verificationToken && <div><label htmlFor="signup-email-code" className="text-sm font-medium">인증번호</label><div className="flex flex-col gap-2 sm:flex-row"><input id="signup-email-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} className={`${inputClass} mt-0 min-w-0 flex-1`} /><button type="button" disabled={code.length !== 6 || confirmState.isLoading} onClick={() => void verifyCode()} className="min-h-11 shrink-0 rounded-lg border px-3 text-sm font-medium disabled:opacity-50">{confirmState.isLoading ? "확인 중..." : "인증하기"}</button></div></div>}
       {verificationMessage && <p role="status" className="text-sm text-green-700">{verificationMessage}</p>}{verificationError && <p role="alert" className="text-sm text-red-700">{verificationError}</p>}
       {!email ? <p className="text-xs text-zinc-500">이메일 없이 가입하려면 이 항목을 비워두세요.</p> : showUnverifiedEmailError && !verificationToken && <p role="alert" className="text-sm text-red-700">가입하려면 입력한 이메일의 인증을 완료해주세요.</p>}
     </fieldset>
-    {errorMessage && <p role="alert" className="text-sm text-red-600">{errorMessage}</p>}
+    {errorMessage && !duplicateEmailError && <p role="alert" className="text-sm text-red-600">{errorMessage}</p>}
     <button type="submit" disabled={isLoading || questions.isLoading || questions.isError || Boolean(email && !verificationToken)} className="min-h-11 w-full rounded-lg bg-blue-600 px-4 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">{isLoading ? "가입 중..." : "회원가입"}</button>
     <p className="text-center text-sm text-zinc-600">이미 계정이 있으신가요? <Link href="/login" className="font-medium text-blue-700 hover:underline">로그인</Link></p>
   </form>;

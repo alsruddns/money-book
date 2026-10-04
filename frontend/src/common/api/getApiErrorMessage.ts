@@ -1,5 +1,13 @@
 import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 
+export function getApiErrorCode(error: unknown): string | null {
+  if (typeof error !== "object" || error === null || !("data" in error)) return null;
+  const data = error.data;
+  return typeof data === "object" && data !== null && "code" in data && typeof data.code === "string"
+    ? data.code
+    : null;
+}
+
 export function getApiErrorMessage(error: unknown, fallback: string): string {
   if (typeof error === "object" && error !== null && "status" in error) {
     const apiError = error as FetchBaseQueryError;
