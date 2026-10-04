@@ -30,7 +30,7 @@ export default function GlobalHeader() {
       <nav aria-label="전역 메뉴" className="hidden items-center gap-1 md:flex">
         {navLinks.map((item) => <Link key={item.href} href={item.href} aria-current={pathname === item.href || (item.href !== "/books" && pathname.startsWith(`${item.href}/`)) ? "page" : undefined}
           className="min-h-11 rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">{item.label}</Link>)}
-        <button type="button" disabled={logout.isLoading} onClick={() => void logout.logout()} className="min-h-11 cursor-pointer rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:cursor-not-allowed disabled:opacity-50">
+        <button type="button" disabled={logout.isLoading} onClick={() => void logout.logout()} className="min-h-11 cursor-pointer rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-blue-700 active:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:cursor-not-allowed disabled:opacity-50">
           {logout.isLoading ? "로그아웃 중..." : "로그아웃"}
         </button>
       </nav>
@@ -41,7 +41,7 @@ export default function GlobalHeader() {
       <div className="mx-auto flex max-w-screen-2xl flex-col gap-1 px-1">
         {navLinks.map((item) => <Link key={item.href} href={item.href} onClick={() => setOpen(false)} aria-current={pathname === item.href || (item.href !== "/books" && pathname.startsWith(`${item.href}/`)) ? "page" : undefined}
           className="flex min-h-11 items-center rounded-lg px-3 text-sm font-medium hover:bg-zinc-100">{item.label}</Link>)}
-        <button type="button" disabled={logout.isLoading} onClick={() => void logout.logout()} className="min-h-11 rounded-lg px-3 text-left text-sm font-medium hover:bg-zinc-100 disabled:opacity-50">로그아웃</button>
+        <button type="button" disabled={logout.isLoading} onClick={() => void logout.logout()} className="min-h-11 cursor-pointer rounded-lg px-3 text-left text-sm font-medium hover:bg-zinc-100 active:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:cursor-not-allowed disabled:opacity-50">로그아웃</button>
       </div>
     </nav>}
   </header>;
