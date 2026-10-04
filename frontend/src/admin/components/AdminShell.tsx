@@ -9,6 +9,7 @@ const nav = [
   { href: "/admin/users", label: "사용자 관리" },
   { href: "/admin/money-books", label: "가계부 관리" },
   { href: "/admin/activities", label: "전체 활동내역" },
+  { href: "/admin/board/categories", label: "게시판 관리", superOnly: true },
   { href: "/admin/audit-logs", label: "관리자 감사로그", superOnly: true },
 ];
 

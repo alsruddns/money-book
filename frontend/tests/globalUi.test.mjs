@@ -40,12 +40,12 @@ test("global navigation exposes role-specific entries and preserves UID URLs", (
   const { getGlobalNavItems, isGlobalHeaderHidden } = loadModule("common/components/globalNavigation.ts");
   for (const role of ["USER", null, "UNKNOWN"]) {
     const items = getGlobalNavItems(role);
-    assert.deepEqual(JSON.parse(JSON.stringify(items.map((item) => item.href))), ["/books", "/books/invitations", "/account"]);
+    assert.deepEqual(JSON.parse(JSON.stringify(items.map((item) => item.href))), ["/books", "/books/invitations", "/board", "/account"]);
   }
   for (const role of ["SYSTEM_ADMIN", "SUPER_ADMIN"]) {
     const items = getGlobalNavItems(role);
     assert.ok(items.some((item) => item.href === "/admin"));
-    assert.deepEqual(JSON.parse(JSON.stringify(items.map((item) => item.href))), ["/books", "/books/invitations", "/admin", "/account"]);
+    assert.deepEqual(JSON.parse(JSON.stringify(items.map((item) => item.href))), ["/books", "/books/invitations", "/board", "/admin", "/account"]);
   }
   assert.equal(isGlobalHeaderHidden("/login"), true);
   assert.equal(isGlobalHeaderHidden("/account"), false);

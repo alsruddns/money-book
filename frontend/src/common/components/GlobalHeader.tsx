@@ -29,8 +29,8 @@ export default function GlobalHeader() {
       <Link href="/books" className="shrink-0 text-lg font-semibold">가계부</Link>
       <nav aria-label="전역 메뉴" className="hidden items-center gap-1 md:flex">
         {navLinks.map((item) => <Link key={item.href} href={item.href} aria-current={pathname === item.href || (item.href !== "/books" && pathname.startsWith(`${item.href}/`)) ? "page" : undefined}
-          className="min-h-11 rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 hover:text-blue-700">{item.label}</Link>)}
-        <button type="button" disabled={logout.isLoading} onClick={() => void logout.logout()} className="min-h-11 rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 disabled:opacity-50">
+          className="min-h-11 rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">{item.label}</Link>)}
+        <button type="button" disabled={logout.isLoading} onClick={() => void logout.logout()} className="min-h-11 cursor-pointer rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:cursor-not-allowed disabled:opacity-50">
           {logout.isLoading ? "로그아웃 중..." : "로그아웃"}
         </button>
       </nav>

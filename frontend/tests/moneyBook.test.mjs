@@ -105,7 +105,9 @@ test("money book menu groups routes and limits management to readable admins", (
     "../hooks/useMoneyBookPermission": { useMoneyBookPermission: () => ({}) },
   });
   const ownerGroups = getMoneyBookMenu(7, { canRead: true, isOwner: true, isAdmin: false });
-  assert.equal(ownerGroups.length, 5);
+  assert.equal(ownerGroups.length, 4);
+  assert.equal(ownerGroups.some((group) => group.label === "분석"), false);
+  assert.equal(ownerGroups[0].items[0].label, "리포트");
   const ownerItems = ownerGroups.flatMap((group) => group.items);
   assert.ok(ownerItems.some((item) => item.href === "/books/7/activities"));
   assert.ok(ownerItems.some((item) => item.href === "/books/7/members"));
@@ -131,7 +133,8 @@ test("money book layout keeps shared navigation and content shell", () => {
   });
   const markup = renderToStaticMarkup(React.createElement(Navigation, { moneyBookUid: 7 }, React.createElement("p", null, "body")));
   assert.match(markup, /href="\/books\/7\/categories" aria-current="page"/);
-  assert.match(markup, /href="\/books\/7\/reports\/monthly"/);
+  assert.match(markup, /리포트/);
+  assert.doesNotMatch(markup, /aria-label="가계부 기능"[^]*분석/);
   assert.match(markup, /body/);
   assert.match(markup, /md:grid-cols-\[15rem_minmax\(0,1fr\)\]/);
 });

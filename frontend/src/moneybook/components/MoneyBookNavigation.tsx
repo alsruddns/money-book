@@ -15,17 +15,12 @@ export function getMoneyBookMenu(moneyBookUid: number, permission: Permission): 
   const root = `/books/${moneyBookUid}`;
   const readable = permission.canRead;
   const groups: MenuGroup[] = [
-    { label: "대시보드", items: [{ label: "요약", href: root }] },
+    { label: "대시보드", items: [{ label: "리포트", href: root }] },
     { label: "가계부", items: readable ? [
       { label: "캘린더", href: `${root}/calendar` },
       { label: "거래내역", href: `${root}/transactions` },
       { label: "이체", href: `${root}/transfers` },
       { label: "정기거래", href: `${root}/recurring-transactions` },
-    ] : [] },
-    { label: "분석", items: readable ? [
-      { label: "월간 분석", href: `${root}/reports/monthly` },
-      { label: "연간 분석", href: `${root}/reports/yearly` },
-      { label: "지출 순위", href: `${root}/reports/expense-ranking` },
     ] : [] },
     { label: "예산", items: readable ? [{ label: "예산", href: `${root}/budgets` }] : [] },
   ];
@@ -51,10 +46,10 @@ function NavigationLinks({ groups, pathname, root, onNavigate }: {
 }) {
   return <nav aria-label="가계부 기능" className="space-y-5">
     {groups.map((group) => <section key={group.label}>
-      <h2 className="mb-2 px-3 text-xs font-semibold text-zinc-500">{group.label}</h2>
+      <h2 className="mb-2 rounded-md px-3 py-1 text-sm font-semibold text-zinc-900">{group.label}</h2>
       <div className="space-y-1">{group.items.map((item) => <Link key={item.href} href={item.href} onClick={onNavigate}
         aria-current={isMoneyBookRouteActive(pathname, item.href, root) ? "page" : undefined}
-        className={`flex min-h-10 items-center rounded-lg px-3 py-2 text-sm font-medium ${isMoneyBookRouteActive(pathname, item.href, root)
+        className={`ml-5 flex min-h-10 items-center rounded-lg px-3 py-2 text-sm font-normal ${isMoneyBookRouteActive(pathname, item.href, root)
           ? "bg-blue-50 text-blue-800" : "text-zinc-700 hover:bg-zinc-100 hover:text-blue-700"}`}>{item.label}</Link>)}</div>
     </section>)}
   </nav>;
