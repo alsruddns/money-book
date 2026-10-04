@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import DesktopAdRail from "@/common/components/advertisement/DesktopAdRail";
@@ -49,7 +49,7 @@ function NavigationLinks({ groups, pathname, root, onNavigate }: {
       <h2 className="mb-2 rounded-md px-3 py-1 text-sm font-semibold text-zinc-900">{group.label}</h2>
       <div className="space-y-1">{group.items.map((item) => <Link key={item.href} href={item.href} onClick={onNavigate}
         aria-current={isMoneyBookRouteActive(pathname, item.href, root) ? "page" : undefined}
-        className={`ml-5 flex min-h-10 items-center rounded-lg px-3 py-2 text-sm font-normal ${isMoneyBookRouteActive(pathname, item.href, root)
+        className={`ml-5 flex min-h-10 items-center rounded-lg px-3 py-2 text-sm font-normal transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${isMoneyBookRouteActive(pathname, item.href, root)
           ? "bg-blue-50 text-blue-800" : "text-zinc-700 hover:bg-zinc-100 hover:text-blue-700"}`}>{item.label}</Link>)}</div>
     </section>)}
   </nav>;
@@ -98,14 +98,32 @@ export default function MoneyBookNavigation({ moneyBookUid, children }: { moneyB
   const { moneyBook, isLoading, isError, errorMessage, canRead, isOwner, isAdmin } = permission;
   const pathname = usePathname();
   const [isDrawerOpen, setDrawerOpen] = useState(false);
+  const drawerRef = useRef<HTMLElement>(null);
+  const drawerTriggerRef = useRef<HTMLButtonElement>(null);
+  const drawerCloseRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!isDrawerOpen) return;
     const previousOverflow = document.body.style.overflow;
+    const trigger = drawerTriggerRef.current;
     document.body.style.overflow = "hidden";
-    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setDrawerOpen(false); };
-    document.addEventListener("keydown", closeOnEscape);
-    return () => { document.body.style.overflow = previousOverflow; document.removeEventListener("keydown", closeOnEscape); };
+    drawerCloseRef.current?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.preventDefault(); setDrawerOpen(false); return; }
+      if (event.key !== "Tab" || !drawerRef.current) return;
+      const focusable = drawerRef.current.querySelectorAll<HTMLElement>('a[href], button:not([disabled])');
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+      trigger?.focus();
+    };
   }, [isDrawerOpen]);
 
   if (isLoading || (!isError && !moneyBook)) return <NavigationSkeleton />;
@@ -117,7 +135,7 @@ export default function MoneyBookNavigation({ moneyBookUid, children }: { moneyB
   const sidebar = <SidebarContent moneyBook={moneyBook} groups={groups} pathname={pathname} onNavigate={() => setDrawerOpen(false)} />;
   return <div className="min-w-0">
     <div className="mb-5 flex min-w-0 items-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 md:hidden">
-      <button type="button" aria-label="가계부 메뉴 열기" aria-expanded={isDrawerOpen} aria-controls="moneybook-mobile-menu" onClick={() => setDrawerOpen(true)} className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-zinc-200 text-sm hover:bg-zinc-50">메뉴</button>
+      <button ref={drawerTriggerRef} type="button" aria-label="가계부 메뉴 열기" aria-expanded={isDrawerOpen} aria-controls="moneybook-mobile-menu" onClick={() => setDrawerOpen(true)} className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-zinc-200 text-sm hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">메뉴</button>
       <span className="min-w-0 truncate font-semibold">{moneyBook.name}</span>
     </div>
     <div className="grid min-w-0 gap-6 md:grid-cols-[15rem_minmax(0,1fr)]">
@@ -125,8 +143,8 @@ export default function MoneyBookNavigation({ moneyBookUid, children }: { moneyB
       <div className="min-w-0 max-w-full"><div className="flex min-w-0 gap-6"><div className="min-w-0 max-w-full flex-1 overflow-x-auto"><DashboardReportsTabs moneyBookUid={moneyBookUid} pathname={pathname} />{children}</div><DesktopAdRail /></div></div>
     </div>
     {isDrawerOpen && <div className="fixed inset-0 z-50 md:hidden"><button type="button" aria-label="가계부 메뉴 닫기" onClick={() => setDrawerOpen(false)} className="absolute inset-0 bg-black/50" />
-      <aside id="moneybook-mobile-menu" aria-label="가계부 메뉴" className="relative h-full w-[min(18rem,85vw)] overflow-y-auto bg-white shadow-xl">
-        <button type="button" aria-label="가계부 메뉴 닫기" onClick={() => setDrawerOpen(false)} className="absolute right-3 top-3 flex size-10 items-center justify-center rounded-lg hover:bg-zinc-100">닫기</button>{sidebar}
+      <aside ref={drawerRef} id="moneybook-mobile-menu" role="dialog" aria-modal="true" aria-label="가계부 메뉴" className="relative h-full w-[min(18rem,85vw)] overflow-y-auto bg-white shadow-xl">
+        <button ref={drawerCloseRef} type="button" aria-label="가계부 메뉴 닫기" onClick={() => setDrawerOpen(false)} className="absolute right-3 top-3 flex size-11 items-center justify-center rounded-lg hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">닫기</button>{sidebar}
       </aside></div>}
   </div>;
 }

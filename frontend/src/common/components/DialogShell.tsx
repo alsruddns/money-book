@@ -4,11 +4,12 @@ import { useEffect, useId, useRef, type ReactNode } from "react";
 
 interface DialogShellProps {
   title: string;
+  description?: string;
   onClose: () => void;
   children: ReactNode;
 }
 
-export default function DialogShell({ title, onClose, children }: DialogShellProps) {
+export default function DialogShell({ title, description, onClose, children }: DialogShellProps) {
   const dialogRef = useRef<HTMLElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const onCloseRef = useRef(onClose);
@@ -59,13 +60,13 @@ export default function DialogShell({ title, onClose, children }: DialogShellPro
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) onCloseRef.current(); }}>
+      <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={description ? `${titleId}-description` : undefined} tabIndex={-1}
         className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-5 text-zinc-900 shadow-xl sm:p-6">
         <div className="mb-5 flex items-center justify-between gap-3">
-          <h2 id={titleId} className="text-xl font-semibold">{title}</h2>
+          <div><h2 id={titleId} className="text-xl font-semibold">{title}</h2>{description && <p id={`${titleId}-description`} className="mt-2 text-sm text-zinc-600">{description}</p>}</div>
           <button ref={closeButtonRef} type="button" onClick={onClose} aria-label="닫기"
-            className="rounded-lg px-3 py-2 text-zinc-600 hover:bg-zinc-100">닫기</button>
+            className="min-h-11 shrink-0 rounded-lg px-3 py-2 text-zinc-600 hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">닫기</button>
         </div>
         {children}
       </section>

@@ -45,6 +45,24 @@ test("common dialogs expose a labelled modal and keep keyboard focus inside", ()
   assert.match(source, /event\.key === "Escape"/);
   assert.match(source, /event\.shiftKey && document\.activeElement === first/);
   assert.match(source, /previouslyFocused\?\.focus\(\)/);
+  assert.match(source, /aria-describedby=\{description \? /);
+  assert.match(source, /event\.target === event\.currentTarget/);
+});
+
+test("release UX keeps navigation focus, drawer focus, and backup size feedback accessible", () => {
+  const header = fs.readFileSync(path.join(testDirectory, "../src/common/components/GlobalHeader.tsx"), "utf8");
+  const navigation = fs.readFileSync(path.join(testDirectory, "../src/moneybook/components/MoneyBookNavigation.tsx"), "utf8");
+  const backup = fs.readFileSync(path.join(testDirectory, "../src/settings/components/BackupRestoreSection.tsx"), "utf8");
+  const signup = fs.readFileSync(path.join(testDirectory, "../src/auth/components/SignupForm.tsx"), "utf8");
+  const clipboard = fs.readFileSync(path.join(testDirectory, "../src/common/utils/copyText.ts"), "utf8");
+  assert.match(header, /isGlobalNavItemActive\(pathname, item\.href\)/);
+  assert.match(navigation, /event\.key !== "Tab"/);
+  assert.match(navigation, /trigger\?\.focus\(\)/);
+  assert.match(navigation, /aria-modal="true"/);
+  assert.match(backup, /fileSizeError &&/);
+  assert.match(signup, /copyText\(recoveryCodes\.join/);
+  assert.match(signup, /가입하려면 입력한 이메일의 인증을 완료해주세요/);
+  assert.match(clipboard, /catch \{/);
 });
 
 test("transaction and report screens use shared date/percentage formatting", () => {

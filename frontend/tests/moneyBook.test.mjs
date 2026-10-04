@@ -148,7 +148,7 @@ test("mobile drawer opens, closes from overlay and navigation, and handles Escap
     removeEventListener: () => {},
   };
   const { default: Navigation } = loadModule("moneybook/components/MoneyBookNavigation.tsx", {
-    react: { useEffect: (callback) => { effect = callback; }, useState: () => [open, (value) => { open = value; }] },
+    react: { useEffect: (callback) => { effect = callback; }, useRef: (current) => ({ current }), useState: () => [open, (value) => { open = value; }] },
     "next/link": { default: link },
     "next/navigation": { usePathname: () => "/books/7/transactions" },
     "@/common/components/advertisement/DesktopAdRail": { default: () => null },
@@ -182,7 +182,7 @@ test("mobile drawer opens, closes from overlay and navigation, and handles Escap
   render();
   const cleanup = effect();
   assert.equal(documentMock.body.style.overflow, "hidden");
-  keyHandler({ key: "Escape" });
+  keyHandler({ key: "Escape", preventDefault: () => {} });
   assert.equal(open, false);
   cleanup();
   assert.equal(documentMock.body.style.overflow, "");

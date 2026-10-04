@@ -63,7 +63,7 @@ export default function ForgotPasswordForm() {
   const busy = resetEmailState.isLoading || resetQuestionState.isLoading || resetCodeState.isLoading;
   return <div className="space-y-5">
     <div role="tablist" aria-label="비밀번호 복구 방법" className="grid grid-cols-3 rounded-lg bg-zinc-100 p-1">
-      {([["email", "이메일"], ["question", "보안 질문"], ["code", "복구 코드"]] as const).map(([key, label]) => <button key={key} role="tab" aria-selected={method === key} type="button" onClick={() => resetNotices(key)} className={`min-h-10 rounded-md px-1 text-xs font-medium sm:text-sm ${method === key ? "bg-white text-blue-800 shadow-sm" : "text-zinc-600 hover:text-zinc-900"}`}>{label}</button>)}
+      {([["email", "이메일"], ["question", "보안 질문"], ["code", "복구 코드"]] as const).map(([key, label]) => <button key={key} aria-pressed={method === key} type="button" onClick={() => resetNotices(key)} className={`min-h-10 rounded-md px-1 text-xs font-medium sm:text-sm ${method === key ? "bg-white text-blue-800 shadow-sm" : "text-zinc-600 hover:text-zinc-900"}`}>{label}</button>)}
     </div>
     <form onSubmit={submit} className="space-y-4">
       {method === "email" ? <>

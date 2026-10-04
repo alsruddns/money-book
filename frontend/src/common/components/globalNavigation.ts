@@ -15,3 +15,8 @@ export function getGlobalNavItems(role: GlobalSystemRole | null | undefined) {
 export function isGlobalHeaderHidden(pathname: string): boolean {
   return pathname === "/" || pathname === "/login" || pathname === "/signup";
 }
+
+export function isGlobalNavItemActive(pathname: string, href: string): boolean {
+  if (href === "/books") return pathname === href || (pathname.startsWith("/books/") && pathname !== "/books/invitations");
+  return pathname === href || pathname.startsWith(`${href}/`);
+}

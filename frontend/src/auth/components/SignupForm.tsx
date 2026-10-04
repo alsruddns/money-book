@@ -6,6 +6,7 @@ import { useSignup } from "../hooks/useSignup";
 import { useConfirmEmailVerificationMutation, useGetSecurityQuestionsQuery, useRequestEmailVerificationMutation } from "../controller/passwordRecoveryApi";
 import type { SignUpReqDto } from "../dto/req/SignUpReqDto";
 import { getApiErrorMessage } from "@/common/api/getApiErrorMessage";
+import { copyText } from "@/common/utils/copyText";
 
 const blank: SignUpReqDto = { loginId: "", password: "", passwordConfirm: "", nickname: "", securityQuestionCode: "", securityAnswer: "" };
 const inputClass = "mt-1 min-h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100";
@@ -24,6 +25,7 @@ export default function SignupForm() {
   const [verificationError, setVerificationError] = useState("");
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
   const [done, setDone] = useState(false);
 
   function updateField(field: keyof SignUpReqDto, value: string) { setForm((current) => ({ ...current, [field]: value })); }
@@ -54,7 +56,8 @@ export default function SignupForm() {
   if (recoveryCodes) return <section className="space-y-5" aria-labelledby="recovery-codes-title">
     <h2 id="recovery-codes-title" className="text-xl font-semibold">계정 복구코드를 저장해주세요</h2>
     {recoveryCodes.length ? <ul className="grid gap-2 rounded-lg bg-zinc-50 p-4 font-mono text-sm sm:grid-cols-2">{recoveryCodes.map((value) => <li key={value} className="break-all">{value}</li>)}</ul> : <p role="alert" className="text-sm text-red-700">복구코드를 표시할 수 없습니다. 계정 복구 설정을 확인해 주세요.</p>}
-    <button type="button" disabled={!recoveryCodes.length} onClick={() => { void navigator.clipboard.writeText(recoveryCodes.join("\n")).then(() => setCopied(true)); }} className="min-h-11 w-full rounded-lg border px-4 font-medium">{copied ? "복사했습니다" : "전체 복사"}</button>
+    <button type="button" disabled={!recoveryCodes.length} onClick={async () => { const success = await copyText(recoveryCodes.join("\n")); setCopied(success); setCopyError(!success); }} className="min-h-11 w-full rounded-lg border px-4 font-medium">{copied ? "복사했습니다" : "전체 복사"}</button>
+    {copyError && <p role="alert" className="text-sm text-red-700">복사하지 못했습니다. 코드를 직접 선택해 복사해주세요.</p>}
     <div className="space-y-1 text-sm text-zinc-600"><p>복구코드는 지금 한 번만 표시됩니다.</p><p>보안 질문 답변을 잊었거나 다른 복구 방법을 사용할 수 없을 때 필요합니다.</p><p>별도로 보관하지 않으면 기존 코드를 다시 확인할 수 없습니다.</p></div>
     <button type="button" onClick={() => { setRecoveryCodes(null); setForm(blank); setVerificationToken(""); reset(); setDone(true); }} className="min-h-11 w-full rounded-lg bg-blue-600 px-4 font-medium text-white">복구코드를 저장했습니다</button>
   </section>;
@@ -79,7 +82,7 @@ export default function SignupForm() {
       <div className="flex flex-col gap-2 sm:flex-row"><input id="signup-email" type="email" autoComplete="email" value={email} onChange={(event) => { setEmail(event.target.value); setVerificationToken(""); setVerificationUid(null); setVerificationMessage(""); }} className={`${inputClass} mt-0 min-w-0 flex-1`} /><button type="button" disabled={!email || requestState.isLoading || Boolean(verificationToken)} onClick={() => void sendCode()} className="min-h-11 shrink-0 rounded-lg border px-3 text-sm font-medium disabled:opacity-50">{requestState.isLoading ? "요청 중..." : "인증번호 받기"}</button></div>
       {verificationUid !== null && !verificationToken && <div><label htmlFor="signup-email-code" className="text-sm font-medium">인증번호</label><div className="flex flex-col gap-2 sm:flex-row"><input id="signup-email-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} className={`${inputClass} mt-0 min-w-0 flex-1`} /><button type="button" disabled={code.length !== 6 || confirmState.isLoading} onClick={() => void verifyCode()} className="min-h-11 shrink-0 rounded-lg border px-3 text-sm font-medium disabled:opacity-50">{confirmState.isLoading ? "확인 중..." : "인증하기"}</button></div></div>}
       {verificationMessage && <p role="status" className="text-sm text-green-700">{verificationMessage}</p>}{verificationError && <p role="alert" className="text-sm text-red-700">{verificationError}</p>}
-      {!email && <p className="text-xs text-zinc-500">이메일 없이 가입하려면 이 항목을 비워두세요.</p>}
+      {!email ? <p className="text-xs text-zinc-500">이메일 없이 가입하려면 이 항목을 비워두세요.</p> : !verificationToken && <p role="status" className="text-xs text-amber-800">가입하려면 입력한 이메일의 인증을 완료해주세요.</p>}
     </fieldset>
     {errorMessage && <p role="alert" className="text-sm text-red-600">{errorMessage}</p>}
     <button type="submit" disabled={isLoading || questions.isLoading || questions.isError || Boolean(email && !verificationToken)} className="min-h-11 w-full rounded-lg bg-blue-600 px-4 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">{isLoading ? "가입 중..." : "회원가입"}</button>
