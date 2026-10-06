@@ -1,0 +1,38 @@
+spring:
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 21MB
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/money_book}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+management:
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: never
+      show-components: never
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db,diskSpace
+  info:
+    env:
+      enabled: true
+info:
+  app:
+    name: MoneyBook
+    version: ${APP_VERSION:0.0.1-SNAPSHOT}
