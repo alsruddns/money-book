@@ -20,7 +20,7 @@ function loadModule(relativePath, mocks = {}, globals = {}) {
   const compiledModule = { exports: {} };
   vm.runInNewContext(compiled, {
     module: compiledModule, exports: compiledModule.exports,
-    require: (name) => name in mocks ? mocks[name] : localRequire(name),
+    require: (name) => name in mocks ? mocks[name] : name === "@/i18n/messages" ? { translate: (_locale, key) => ({ "navigation.myBooks": "내 가계부", "navigation.invitations": "받은 초대", "navigation.board": "게시판", "navigation.account": "계정 관리", "navigation.admin": "관리자" })[key] ?? key } : name === "@/i18n/config" ? {} : localRequire(name),
     ...globals,
   });
   return compiledModule.exports;
@@ -58,7 +58,7 @@ test("global header uses shared logout and includes a mobile navigation control"
   assert.match(source, /useLogout\(\)/);
   assert.match(source, /aria-controls="global-mobile-menu"/);
   assert.match(source, /md:hidden/);
-  assert.match(source, /getGlobalNavItems\(role\)/);
+  assert.match(source, /getGlobalNavItems\(role, locale\)/);
 });
 
 test("session section starts compact and reveals existing session actions when expanded", () => {

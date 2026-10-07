@@ -60,8 +60,8 @@ test("signup question options come from Backend and email can be skipped or veri
   assert.match(source, /purpose:\s*"SIGNUP"/);
   assert.match(source, /email\.trim\(\)\s*&&\s*!verificationToken/);
   assert.match(source, /emailVerificationToken:\s*verificationToken/);
-  assert.match(source, /이메일 없이 가입하려면/);
-  assert.match(source, /인증이 완료/);
+  assert.match(source, /signup\.noEmailTip/);
+  assert.match(source, /signup\.emailVerified/);
   assert.match(source, /autoComplete="off"/);
 });
 
@@ -74,7 +74,7 @@ test("signup rejects answer boundary whitespace without trimming valid input", (
   const source = text("auth/components/SignupForm.tsx");
   assert.match(source, /hasSecurityAnswerBoundaryWhitespace\(form\.securityAnswer\)/);
   assert.match(source, /securityAnswerError/);
-  assert.match(source, /securityAnswerWhitespaceMessage/);
+  assert.match(source, /signup\.invalidSecurityAnswer/);
   assert.doesNotMatch(source, /form\.securityAnswer\.trim\(\)/);
   assert.match(source, /signup\(\s*\{ \.\.\.form/);
 });
@@ -97,7 +97,7 @@ test("signup duplicate verified email gets a field error and focuses the email i
   assert.match(hook, /getApiErrorCode\(error\) === "EMAIL_ALREADY_IN_USE"/);
   assert.match(form, /document\.getElementById\("signup-email"\)\?\.focus\(\)/);
   assert.match(form, /aria-invalid=\{duplicateEmailError\}/);
-  assert.match(form, /이미 다른 계정에서 사용 중인 이메일입니다/);
+  assert.match(form, /signup\.duplicateEmail/);
   assert.match(form, /errorMessage && !duplicateEmailError/);
 });
 
@@ -110,7 +110,7 @@ test("shared API error parsing exposes the backend duplicate email code", () => 
 
 test("signup optional and verified email submission paths remain supported", () => {
   const form = text("auth/components/SignupForm.tsx");
-  assert.match(form, /이메일 없이 가입하려면 이 항목을 비워두세요/);
+  assert.match(form, /signup\.noEmailTip/);
   assert.match(form, /emailVerificationToken: verificationToken/);
   assert.match(text("auth/dto/req/SignUpReqDto.ts"), /emailVerificationToken\?:\s*string/);
 });
@@ -118,8 +118,8 @@ test("signup optional and verified email submission paths remain supported", () 
 test("signup only renders recovery codes from response and clears the one-time result", () => {
   const source = text("auth/components/SignupForm.tsx");
   assert.match(source, /setRecoveryCodes\(result\.recoveryCodes/);
-  assert.match(source, /지금 한 번만 표시됩니다/);
-  assert.match(source, /전체 복사/);
+  assert.match(source, /signup\.oneTime/);
+  assert.match(source, /signup\.copyAll/);
   assert.match(source, /setRecoveryCodes\(null\).*setForm\(blank\).*setVerificationToken\(""\)/);
   assert.doesNotMatch(source, /localStorage|sessionStorage|console\.log/);
 });

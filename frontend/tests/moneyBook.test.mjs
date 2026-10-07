@@ -25,7 +25,7 @@ function loadModule(relativePath, mocks = {}, globals = {}) {
   vm.runInNewContext(compiled, {
     module: compiledModule,
     exports: compiledModule.exports,
-    require: (name) => name in mocks ? mocks[name] : name === "@/common/format/money" ? { formatNumber: (value) => Number(value).toLocaleString("ko-KR"), formatMoney: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCurrency: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCount: (value, unit = String.fromCharCode(0xAC74)) => `${Number(value).toLocaleString("ko-KR")}${unit}` } : localRequire(name),
+    require: (name) => name in mocks ? mocks[name] : name === "@/i18n/messages" ? { translate: (_locale, key) => ({ "navigation.dashboard": "대시보드", "navigation.reports": "리포트", "navigation.book": "가계부", "navigation.calendar": "캘린더", "navigation.transactions": "거래내역", "navigation.transfers": "이체", "navigation.recurring": "정기거래", "navigation.budget": "예산", "navigation.categories": "카테고리", "navigation.accounts": "계좌 / 결제수단", "navigation.activity": "활동내역", "navigation.closing": "월 결산", "navigation.settings": "가계부 설정", "navigation.members": "멤버 관리", "navigation.manage": "관리" })[key] ?? key } : name === "@/i18n/useTranslation" ? { useTranslation: () => ({ locale: "ko", t: (key) => ({ "books.owner": "소유자", "books.administrator": "관리자", "books.backToList": "내 가계부 목록으로", "books.accessChecking": "가계부 접근 권한을 확인하는 중...", "books.accessMissing": "접근 가능한 가계부를 찾을 수 없습니다.", "books.accessDenied": "가계부 조회 권한이 없습니다.", "common.retry": "다시 시도", "navigation.book": "가계부", "navigation.dashboard": "대시보드", "navigation.openMenu": "가계부 메뉴 열기", "navigation.menu": "메뉴", "navigation.mobileMenu": "가계부 메뉴", "common.close": "닫기" })[key] ?? key }) } : name === "@/i18n/config" ? {} : name === "@/common/format/money" ? { formatNumber: (value) => Number(value).toLocaleString("ko-KR"), formatMoney: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCurrency: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCount: (value, unit = String.fromCharCode(0xAC74)) => `${Number(value).toLocaleString("ko-KR")}${unit}` } : localRequire(name),
     ...globals,
   });
   return compiledModule.exports;
@@ -256,6 +256,7 @@ test("admin permission forces create, read, update, and delete", () => {
 test("money book list presents loading, error, empty, and populated states", () => {
   const baseMocks = {
     react: React,
+    "@/i18n/useTranslation": { useTranslation: () => ({ locale: "ko", t: (key) => ({ "books.title": "가계부", "books.description": "참여 중인 가계부를 선택하세요.", "books.create": "새 가계부 만들기", "books.loading": "가계부를 불러오는 중...", "books.empty": "아직 참여 중인 가계부가 없습니다.", "books.emptyHint": "새 가계부를 만들어 시작해 보세요." })[key] ?? key }) },
     "next/link": { default: link },
     "../hooks/usePendingInvitations": { usePendingInvitations: () => ({ invitations: [] }) },
     "./MoneyBookCard": { default: ({ moneyBook }) => React.createElement("div", null, moneyBook.name) },

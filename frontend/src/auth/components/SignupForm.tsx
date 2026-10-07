@@ -7,12 +7,14 @@ import { useConfirmEmailVerificationMutation, useGetSecurityQuestionsQuery, useR
 import type { SignUpReqDto } from "../dto/req/SignUpReqDto";
 import { getApiErrorMessage } from "@/common/api/getApiErrorMessage";
 import { copyText } from "@/common/utils/copyText";
-import { hasSecurityAnswerBoundaryWhitespace, securityAnswerWhitespaceMessage } from "../securityAnswerValidation";
+import { hasSecurityAnswerBoundaryWhitespace } from "../securityAnswerValidation";
+import { useTranslation } from "@/i18n/useTranslation";
 
 const blank: SignUpReqDto = { loginId: "", password: "", passwordConfirm: "", nickname: "", securityQuestionCode: "", securityAnswer: "" };
 const inputClass = "mt-1 min-h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100";
 
 export default function SignupForm() {
+  const { t } = useTranslation();
   const [form, setForm] = useState<SignUpReqDto>(blank);
   const { signup, isLoading, errorMessage, reset } = useSignup();
   const questions = useGetSecurityQuestionsQuery();
@@ -36,19 +38,19 @@ export default function SignupForm() {
   async function sendCode() {
     setShowUnverifiedEmailError(false); setVerificationUid(null); setCode("");
     setVerificationError(""); setVerificationMessage(""); setVerificationToken("");
-    try { const result = await requestCode({ email, purpose: "SIGNUP" }).unwrap(); requestState.reset(); setVerificationUid(result.verificationUid); setVerificationMessage("인증번호를 전송했습니다. 10분 안에 인증을 완료해 주세요."); }
-    catch (error) { setVerificationError(getApiErrorMessage(error, "인증번호를 요청하지 못했습니다.")); requestState.reset(); }
+    try { const result = await requestCode({ email, purpose: "SIGNUP" }).unwrap(); requestState.reset(); setVerificationUid(result.verificationUid); setVerificationMessage(t("signup.codeSent")); }
+    catch (error) { setVerificationError(getApiErrorMessage(error, t("signup.requestFailed"))); requestState.reset(); }
   }
   async function verifyCode() {
     if (verificationUid === null) return;
     setVerificationError("");
-    try { const result = await confirmCode({ verificationUid, code }).unwrap(); confirmState.reset(); setCode(""); setVerificationToken(result.verificationToken); setVerificationMessage("이메일 인증이 완료되었습니다."); }
-    catch (error) { setVerificationError(getApiErrorMessage(error, "인증번호를 확인하지 못했습니다.")); confirmState.reset(); }
+    try { const result = await confirmCode({ verificationUid, code }).unwrap(); confirmState.reset(); setCode(""); setVerificationToken(result.verificationToken); setVerificationMessage(t("signup.emailVerified")); }
+    catch (error) { setVerificationError(getApiErrorMessage(error, t("signup.verifyFailed"))); confirmState.reset(); }
   }
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (hasSecurityAnswerBoundaryWhitespace(form.securityAnswer)) {
-      setSecurityAnswerError(securityAnswerWhitespaceMessage);
+      setSecurityAnswerError(t("signup.invalidSecurityAnswer"));
       document.getElementById("security-answer")?.focus();
       return;
     }
@@ -72,45 +74,45 @@ export default function SignupForm() {
   }
 
   if (done) return <section className="space-y-5 text-center" aria-labelledby="signup-done-title">
-    <h2 id="signup-done-title" className="text-xl font-semibold">회원가입이 완료되었습니다.</h2>
-    <p className="text-sm text-zinc-600">로그인 화면에서 새 계정으로 로그인해 주세요.</p>
-    <Link href="/login" className="inline-flex min-h-11 items-center rounded-lg bg-blue-600 px-5 font-medium text-white">로그인</Link>
+    <h2 id="signup-done-title" className="text-xl font-semibold">{t("signup.done")}</h2>
+    <p className="text-sm text-zinc-600">{t("signup.loginNext")}</p>
+    <Link href="/login" className="inline-flex min-h-11 items-center rounded-lg bg-blue-600 px-5 font-medium text-white">{t("auth.login")}</Link>
   </section>;
 
   if (recoveryCodes) return <section className="space-y-5" aria-labelledby="recovery-codes-title">
-    <h2 id="recovery-codes-title" className="text-xl font-semibold">계정 복구코드를 저장해주세요</h2>
-    {recoveryCodes.length ? <ul className="grid gap-2 rounded-lg bg-zinc-50 p-4 font-mono text-sm sm:grid-cols-2">{recoveryCodes.map((value) => <li key={value} className="break-all">{value}</li>)}</ul> : <p role="alert" className="text-sm text-red-700">복구코드를 표시할 수 없습니다. 계정 복구 설정을 확인해 주세요.</p>}
-    <button type="button" disabled={!recoveryCodes.length} onClick={async () => { const success = await copyText(recoveryCodes.join("\n")); setCopied(success); setCopyError(!success); }} className="min-h-11 w-full rounded-lg border px-4 font-medium">{copied ? "복사했습니다" : "전체 복사"}</button>
-    {copyError && <p role="alert" className="text-sm text-red-700">복사하지 못했습니다. 코드를 직접 선택해 복사해주세요.</p>}
-    <div className="space-y-1 text-sm text-zinc-600"><p>복구코드는 지금 한 번만 표시됩니다.</p><p>보안 질문 답변을 잊었거나 다른 복구 방법을 사용할 수 없을 때 필요합니다.</p><p>별도로 보관하지 않으면 기존 코드를 다시 확인할 수 없습니다.</p></div>
-    <button type="button" onClick={() => { setRecoveryCodes(null); setForm(blank); setVerificationToken(""); reset(); setDone(true); }} className="min-h-11 w-full rounded-lg bg-blue-600 px-4 font-medium text-white">복구코드를 저장했습니다</button>
+    <h2 id="recovery-codes-title" className="text-xl font-semibold">{t("signup.recoveryTitle")}</h2>
+    {recoveryCodes.length ? <ul className="grid gap-2 rounded-lg bg-zinc-50 p-4 font-mono text-sm sm:grid-cols-2">{recoveryCodes.map((value) => <li key={value} className="break-all">{value}</li>)}</ul> : <p role="alert" className="text-sm text-red-700">{t("signup.recoveryUnavailable")}</p>}
+    <button type="button" disabled={!recoveryCodes.length} onClick={async () => { const success = await copyText(recoveryCodes.join("\n")); setCopied(success); setCopyError(!success); }} className="min-h-11 w-full rounded-lg border px-4 font-medium">{copied ? t("signup.copied") : t("signup.copyAll")}</button>
+    {copyError && <p role="alert" className="text-sm text-red-700">{t("signup.copyFailed")}</p>}
+    <div className="space-y-1 text-sm text-zinc-600"><p>{t("signup.oneTime")}</p><p>{t("signup.recoveryHelp")}</p><p>{t("signup.storeCodes")}</p></div>
+    <button type="button" onClick={() => { setRecoveryCodes(null); setForm(blank); setVerificationToken(""); reset(); setDone(true); }} className="min-h-11 w-full rounded-lg bg-blue-600 px-4 font-medium text-white">{t("signup.stored")}</button>
   </section>;
 
   return <form onSubmit={handleSubmit} className="space-y-5">
     {(["loginId", "password", "passwordConfirm", "nickname"] as const).map((key) => {
-      const meta = { loginId: ["로그인 ID", "text", "username"], password: ["비밀번호", "password", "new-password"], passwordConfirm: ["비밀번호 확인", "password", "new-password"], nickname: ["닉네임", "text", "nickname"] }[key];
+      const meta = { loginId: [t("auth.loginId"), "text", "username"], password: [t("auth.password"), "password", "new-password"], passwordConfirm: [t("auth.passwordConfirm"), "password", "new-password"], nickname: [t("auth.nickname"), "text", "nickname"] }[key];
       return <div key={key}><label htmlFor={key} className="text-sm font-medium">{meta[0]} *</label><input id={key} name={key} type={meta[1]} autoComplete={meta[2]} required value={form[key]} onChange={(event) => updateField(key, event.target.value)} className={inputClass} /></div>;
     })}
     <fieldset className="space-y-3 rounded-lg border border-zinc-200 p-4">
-      <legend className="px-1 text-sm font-semibold">계정 복구 정보</legend>
-      <p className="text-sm text-zinc-600">보안 질문과 답변은 비밀번호를 분실했을 때 본인 확인에 사용됩니다. 입력한 답변을 정확하게 기억해주세요.</p>
-      {questions.isLoading ? <p role="status" className="text-sm">보안 질문을 불러오는 중...</p> : questions.isError ? <p role="alert" className="text-sm text-red-700">보안 질문을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p> : <>
-        <div><label htmlFor="security-question" className="text-sm font-medium">보안 질문 *</label><select id="security-question" required value={form.securityQuestionCode} onChange={(event) => updateField("securityQuestionCode", event.target.value)} className={inputClass}><option value="">질문을 선택하세요</option>{questions.data?.map((item) => <option key={item.code} value={item.code}>{item.question}</option>)}</select></div>
-        <div><label htmlFor="security-answer" className="text-sm font-medium">답변 *</label><input id="security-answer" name="securityAnswer" type="text" autoComplete="off" required maxLength={128} value={form.securityAnswer} aria-invalid={Boolean(securityAnswerError)} aria-describedby={securityAnswerError ? "security-answer-error" : undefined} onChange={(event) => { updateField("securityAnswer", event.target.value); setSecurityAnswerError(""); }} className={inputClass} />{securityAnswerError && <p id="security-answer-error" role="alert" className="mt-1 text-sm text-red-700">{securityAnswerError}</p>}</div>
+      <legend className="px-1 text-sm font-semibold">{t("signup.recoveryInfo")}</legend>
+      <p className="text-sm text-zinc-600">{t("signup.recoveryInfoHelp")}</p>
+      {questions.isLoading ? <p role="status" className="text-sm">{t("signup.questionLoading")}</p> : questions.isError ? <p role="alert" className="text-sm text-red-700">{t("signup.questionError")}</p> : <>
+        <div><label htmlFor="security-question" className="text-sm font-medium">{t("signup.securityQuestion")} *</label><select id="security-question" required value={form.securityQuestionCode} onChange={(event) => updateField("securityQuestionCode", event.target.value)} className={inputClass}><option value="">{t("signup.chooseQuestion")}</option>{questions.data?.map((item) => <option key={item.code} value={item.code}>{item.question}</option>)}</select></div>
+        <div><label htmlFor="security-answer" className="text-sm font-medium">{t("signup.answer")} *</label><input id="security-answer" name="securityAnswer" type="text" autoComplete="off" required maxLength={128} value={form.securityAnswer} aria-invalid={Boolean(securityAnswerError)} aria-describedby={securityAnswerError ? "security-answer-error" : undefined} onChange={(event) => { updateField("securityAnswer", event.target.value); setSecurityAnswerError(""); }} className={inputClass} />{securityAnswerError && <p id="security-answer-error" role="alert" className="mt-1 text-sm text-red-700">{securityAnswerError}</p>}</div>
       </>}
     </fieldset>
     <fieldset className="space-y-3 rounded-lg border border-zinc-200 p-4">
-      <legend className="px-1 text-sm font-semibold">이메일 (선택)</legend>
-      <p className="text-sm text-zinc-600">이메일 등록은 선택사항입니다. 인증된 이메일이 있으면 비밀번호 분실 시 이메일 인증을 통해 직접 재설정할 수 있습니다. 이메일을 등록하지 않아도 서비스 이용에는 문제가 없습니다.</p>
-      <label htmlFor="signup-email" className="text-sm font-medium">이메일 주소</label>
-      <div className="flex flex-col gap-2 sm:flex-row"><input id="signup-email" type="email" autoComplete="email" value={email} aria-invalid={duplicateEmailError} aria-describedby={duplicateEmailError ? "signup-email-duplicate-error" : undefined} onChange={(event) => { setEmail(event.target.value); setDuplicateEmailError(false); setVerificationToken(""); setVerificationUid(null); setCode(""); setVerificationMessage(""); setVerificationError(""); setShowUnverifiedEmailError(false); }} className={`${inputClass} mt-0 min-w-0 flex-1`} /><button type="button" disabled={!email || requestState.isLoading || Boolean(verificationToken)} onClick={() => void sendCode()} className="min-h-11 shrink-0 rounded-lg border px-3 text-sm font-medium disabled:opacity-50">{requestState.isLoading ? "요청 중..." : "인증번호 받기"}</button></div>
-      {duplicateEmailError && <p id="signup-email-duplicate-error" role="alert" className="text-sm text-red-700">이미 다른 계정에서 사용 중인 이메일입니다.</p>}
-      {verificationUid !== null && !verificationToken && <div><label htmlFor="signup-email-code" className="text-sm font-medium">인증번호</label><div className="flex flex-col gap-2 sm:flex-row"><input id="signup-email-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} className={`${inputClass} mt-0 min-w-0 flex-1`} /><button type="button" disabled={code.length !== 6 || confirmState.isLoading} onClick={() => void verifyCode()} className="min-h-11 shrink-0 rounded-lg border px-3 text-sm font-medium disabled:opacity-50">{confirmState.isLoading ? "확인 중..." : "인증하기"}</button></div></div>}
+      <legend className="px-1 text-sm font-semibold">{t("signup.optionalEmail")}</legend>
+      <p className="text-sm text-zinc-600">{t("signup.emailHelp")}</p>
+      <label htmlFor="signup-email" className="text-sm font-medium">{t("signup.emailAddress")}</label>
+      <div className="flex flex-col gap-2 sm:flex-row"><input id="signup-email" type="email" autoComplete="email" value={email} aria-invalid={duplicateEmailError} aria-describedby={duplicateEmailError ? "signup-email-duplicate-error" : undefined} onChange={(event) => { setEmail(event.target.value); setDuplicateEmailError(false); setVerificationToken(""); setVerificationUid(null); setCode(""); setVerificationMessage(""); setVerificationError(""); setShowUnverifiedEmailError(false); }} className={`${inputClass} mt-0 min-w-0 flex-1`} /><button type="button" disabled={!email || requestState.isLoading || Boolean(verificationToken)} onClick={() => void sendCode()} className="min-h-11 shrink-0 rounded-lg border px-3 text-sm font-medium disabled:opacity-50">{requestState.isLoading ? t("signup.requesting") : t("signup.requestCode")}</button></div>
+      {duplicateEmailError && <p id="signup-email-duplicate-error" role="alert" className="text-sm text-red-700">{t("signup.duplicateEmail")}</p>}
+      {verificationUid !== null && !verificationToken && <div><label htmlFor="signup-email-code" className="text-sm font-medium">{t("signup.verificationCode")}</label><div className="flex flex-col gap-2 sm:flex-row"><input id="signup-email-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} className={`${inputClass} mt-0 min-w-0 flex-1`} /><button type="button" disabled={code.length !== 6 || confirmState.isLoading} onClick={() => void verifyCode()} className="min-h-11 shrink-0 rounded-lg border px-3 text-sm font-medium disabled:opacity-50">{confirmState.isLoading ? t("signup.verifying") : t("signup.verify")}</button></div></div>}
       {verificationMessage && <p role="status" className="text-sm text-green-700">{verificationMessage}</p>}{verificationError && <p role="alert" className="text-sm text-red-700">{verificationError}</p>}
-      {!email ? <p className="text-xs text-zinc-500">이메일 없이 가입하려면 이 항목을 비워두세요.</p> : showUnverifiedEmailError && !verificationToken && <p role="alert" className="text-sm text-red-700">가입하려면 입력한 이메일의 인증을 완료해주세요.</p>}
+      {!email ? <p className="text-xs text-zinc-500">{t("signup.noEmailTip")}</p> : showUnverifiedEmailError && !verificationToken && <p role="alert" className="text-sm text-red-700">{t("signup.emailRequired")}</p>}
     </fieldset>
     {errorMessage && !duplicateEmailError && <p role="alert" className="text-sm text-red-600">{errorMessage}</p>}
-    <button type="submit" disabled={isLoading || questions.isLoading || questions.isError || Boolean(email && !verificationToken)} className="min-h-11 w-full rounded-lg bg-blue-600 px-4 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">{isLoading ? "가입 중..." : "회원가입"}</button>
-    <p className="text-center text-sm text-zinc-600">이미 계정이 있으신가요? <Link href="/login" className="font-medium text-blue-700 hover:underline">로그인</Link></p>
+    <button type="submit" disabled={isLoading || questions.isLoading || questions.isError || Boolean(email && !verificationToken)} className="min-h-11 w-full rounded-lg bg-blue-600 px-4 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">{isLoading ? t("auth.signingUp") : t("signup.signup")}</button>
+    <p className="text-center text-sm text-zinc-600">{t("signup.existingAccount")} <Link href="/login" className="font-medium text-blue-700 hover:underline">{t("auth.login")}</Link></p>
   </form>;
 }

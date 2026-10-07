@@ -156,6 +156,7 @@ test("category, account, and transaction lists expose empty states and permissio
 
   const TransactionList = loadModule("transaction/components/TransactionList.tsx", {
     react: React,
+    "@/i18n/useTranslation": { useTranslation: () => ({ locale: "ko", t: (key) => ({ "transactions.noMonthEntries": "이 달에 등록된 거래가 없습니다" }[key] ?? key) }) },
     "next/navigation": { useSearchParams: () => new URLSearchParams() },
     "@/moneybook/hooks/useMoneyBookPermission": { useMoneyBookPermission: () => ({ canCreate: false, canUpdate: false, canDelete: false }) },
     "../hooks/useTransactionSearch": { useTransactionSearch: () => ({ filters: { startDate: "2026-10-01", endDate: "2026-10-31", transactionType: "", categoryUid: "", accountUid: "", keyword: "", minAmount: "", maxAmount: "", page: 0, size: 20, sort: "DATE_DESC" }, update() {}, showMonthly() {}, result: undefined, isLoading: false, isError: false }) },

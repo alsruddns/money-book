@@ -134,7 +134,7 @@ test("release UX keeps navigation focus, drawer focus, and backup size feedback 
   assert.match(navigation, /aria-modal="true"/);
   assert.match(backup, /fileSizeError &&/);
   assert.match(signup, /copyText\(recoveryCodes\.join/);
-  assert.match(signup, /가입하려면 입력한 이메일의 인증을 완료해주세요/);
+  assert.match(signup, /signup\.emailRequired/);
   assert.match(clipboard, /catch \{/);
 });
 
@@ -143,7 +143,7 @@ test("transaction and report screens use shared date/percentage formatting", () 
   const transactionDetail = fs.readFileSync(path.join(testDirectory, "../src/transaction/components/TransactionDetailDialog.tsx"), "utf8");
   const ranking = fs.readFileSync(path.join(testDirectory, "../src/report/components/ExpenseRankingView.tsx"), "utf8");
   const report = fs.readFileSync(path.join(testDirectory, "../src/report/components/ReportView.tsx"), "utf8");
-  assert.match(transactionRow, /formatLocalDate\(transaction\.transactionDate\)/);
+  assert.match(transactionRow, /formatLocalDate\(transaction\.transactionDate, "-", locale\)/);
   assert.match(transactionDetail, /formatLocalDate\(transaction\.transactionDate\)/);
   assert.match(ranking, /formatLocalDate\(item\.transactionDate\)/);
   assert.match(report, /formatFractionPercent\(item\.ratio, 1\)/);

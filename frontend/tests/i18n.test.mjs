@@ -32,3 +32,15 @@ test("all app pages are nested under the locale segment and APIs remain outside 
   assert.match(middleware, /api\//);
   assert.match(middleware, /moneybook-locale/);
 });
+
+test("translation catalogs contain the same keys for every supported locale", () => {
+  const source = fs.readFileSync(path.join(sourceRoot, "i18n/messages.ts"), "utf8");
+  const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
+  const commonJsModule = { exports: {} };
+  vm.runInNewContext(compiled, { module: commonJsModule, exports: commonJsModule.exports });
+  const sets = commonJsModule.exports.translationKeySets();
+  const expected = JSON.stringify(sets.ko);
+  for (const locale of ["en", "ja", "zh"]) assert.equal(JSON.stringify(sets[locale]), expected, `${locale} catalog keys differ`);
+  assert.equal(commonJsModule.exports.translate("en", "navigation.myBooks"), "My books");
+  assert.match(commonJsModule.exports.translate("en", "missing.key"), /missing\.key/);
+});
