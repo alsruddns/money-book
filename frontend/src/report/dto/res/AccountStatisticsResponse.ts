@@ -1,0 +1,1 @@
+export interface AccountStatisticsResponse { accountUid: number; accountName: string; incomeAmount: number; expenseAmount: number; transferInAmount: number; transferOutAmount: number; netChange: number }

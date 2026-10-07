@@ -19,10 +19,24 @@ repositories {
 
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	// Prometheus scrape format support for Micrometer actuator metrics
+	runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	// Spring Boot Flyway auto-configuration and startup migration integration
+	implementation 'org.springframework.boot:spring-boot-starter-flyway'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
+	// SMTP client and JavaMailSender auto-configuration for environment-configured verification email
+	implementation 'org.springframework.boot:spring-boot-starter-mail'
+	// JWT signing and Bearer token verification with Spring Security
+	implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+	// Streaming XLSX exports with Apache POI SXSSF
+	implementation 'org.apache.poi:poi-ooxml:5.5.1'
+	// Database schema versioning and migration execution
+	implementation 'org.flywaydb:flyway-core'
+	// PostgreSQL dialect support for Flyway migrations
+	implementation 'org.flywaydb:flyway-database-postgresql'
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'org.postgresql:postgresql'
 	annotationProcessor 'org.projectlombok:lombok'
@@ -33,6 +47,8 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
 	testCompileOnly 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	// In-memory database and failure trigger for persistence integration tests
+	testImplementation 'com.h2database:h2'
 	testAnnotationProcessor 'org.projectlombok:lombok'
 }
 
