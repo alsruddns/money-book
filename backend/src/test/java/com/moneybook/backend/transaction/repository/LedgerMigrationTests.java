@@ -34,6 +34,7 @@ class LedgerMigrationTests {
                     .locations("classpath:db/migration")
                     .baselineOnMigrate(true)
                     .baselineVersion("20261001.2")
+                    .target("20261004.3")
                     .load()
                     .migrate();
             try (Statement statement = connection.createStatement();
