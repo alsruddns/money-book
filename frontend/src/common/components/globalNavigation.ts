@@ -15,12 +15,12 @@ export function getGlobalNavItems(role: GlobalSystemRole | null | undefined, loc
 }
 
 export function isGlobalHeaderHidden(pathname: string): boolean {
-  const normalized = pathname.replace(/^\/(ko|en|ja|zh)(?=\/|$)/, "") || "/";
+  const normalized = pathname.replace(/^\/(ko|en|ja|zh)\/money(?=\/|$)/, "") || "/";
   return normalized === "/" || normalized === "/login" || normalized === "/signup";
 }
 
 export function isGlobalNavItemActive(pathname: string, href: string): boolean {
-  pathname = pathname.replace(/^\/(ko|en|ja|zh)(?=\/|$)/, "") || "/";
+  pathname = pathname.replace(/^\/(ko|en|ja|zh)\/money(?=\/|$)/, "") || "/";
   if (href === "/books") return pathname === href || (pathname.startsWith("/books/") && pathname !== "/books/invitations");
   return pathname === href || pathname.startsWith(`${href}/`);
 }

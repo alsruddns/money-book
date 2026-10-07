@@ -11,7 +11,7 @@ function loadConfig() {
   const source = fs.readFileSync(path.join(sourceRoot, "i18n/config.ts"), "utf8");
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
   const commonJsModule = { exports: {} };
-  vm.runInNewContext(compiled, { module: commonJsModule, exports: commonJsModule.exports });
+  vm.runInNewContext(compiled, { module: commonJsModule, exports: commonJsModule.exports, require: (name) => name === "./dashboardMessages" ? { dashboardByLocale: Object.fromEntries(["ko", "en", "ja", "zh"].map((locale) => [locale, { title: locale }])) } : {} });
   return commonJsModule.exports;
 }
 
@@ -22,22 +22,22 @@ test("locale config validates supported languages and preserves path, query, and
   assert.equal(isLocale("fr"), false);
   assert.equal(getLocaleFromPathname("/ja/books/123/calendar"), "ja");
   assert.equal(withLocale("en", "/books/123?year=2026&month=10#today"), "/en/books/123?year=2026&month=10#today");
-  assert.equal(replaceLocale("/ko/board?page=2", "zh"), "/zh/board?page=2");
+  assert.equal(replaceLocale("/ko/money/board?page=2", "zh"), "/zh/money/board?page=2");
 });
 
 test("all app pages are nested under the locale segment and APIs remain outside it", () => {
   const middleware = fs.readFileSync(path.join(sourceRoot, "middleware.ts"), "utf8");
   assert.ok(fs.existsSync(path.join(sourceRoot, "app/[locale]")));
-  assert.match(fs.readFileSync(path.join(sourceRoot, "app/[locale]/layout.tsx"), "utf8"), /isLocale\(locale\)/);
+  assert.match(fs.readFileSync(path.join(sourceRoot, "app/[locale]/money/layout.tsx"), "utf8"), /isLocale\(locale\)/);
   assert.match(middleware, /api\//);
-  assert.match(middleware, /moneybook-locale/);
+  assert.match(middleware, /section !== "money"/);
 });
 
 test("translation catalogs contain the same keys for every supported locale", () => {
   const source = fs.readFileSync(path.join(sourceRoot, "i18n/messages.ts"), "utf8");
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
   const commonJsModule = { exports: {} };
-  vm.runInNewContext(compiled, { module: commonJsModule, exports: commonJsModule.exports });
+  vm.runInNewContext(compiled, { module: commonJsModule, exports: commonJsModule.exports, require: (name) => name === "./dashboardMessages" ? { dashboardByLocale: Object.fromEntries(["ko", "en", "ja", "zh"].map((locale) => [locale, { title: locale }])) } : {} });
   const sets = commonJsModule.exports.translationKeySets();
   const expected = JSON.stringify(sets.ko);
   for (const locale of ["en", "ja", "zh"]) assert.equal(JSON.stringify(sets[locale]), expected, `${locale} catalog keys differ`);

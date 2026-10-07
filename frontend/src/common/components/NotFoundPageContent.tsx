@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "./MoneyLink";
 import { useTranslation } from "@/i18n/useTranslation";
 
 export default function NotFoundPageContent() {

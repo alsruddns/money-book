@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import Link from "next/link";
+import Link from "../../common/components/MoneyLink";
 import { useSignup } from "../hooks/useSignup";
 import { useConfirmEmailVerificationMutation, useGetSecurityQuestionsQuery, useRequestEmailVerificationMutation } from "../controller/passwordRecoveryApi";
 import type { SignUpReqDto } from "../dto/req/SignUpReqDto";

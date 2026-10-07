@@ -1,5 +1,5 @@
 "use client";
-import Link from "next/link";
+import Link from "../../common/components/MoneyLink";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useAdminSession } from "../hooks/useAdminSession";

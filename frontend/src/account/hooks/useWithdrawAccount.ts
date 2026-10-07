@@ -1,7 +1,9 @@
 "use client";
 
+import { useMoneyRouter } from "../../common/components/useMoneyRouter";
+
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+
 import { useDispatch } from "react-redux";
 import { getApiErrorMessage } from "@/common/api/getApiErrorMessage";
 import { baseApi } from "@/common/api/baseApi";
@@ -23,7 +25,7 @@ function withdrawalError(error: unknown): string {
 }
 
 export function useWithdrawAccount() {
-  const router = useRouter();
+  const router = useMoneyRouter();
   const dispatch = useDispatch<AppDispatch>();
   const [withdrawMutation, { isLoading }] = useWithdrawAccountMutation();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);

@@ -39,8 +39,8 @@ test("API errors use safe status messages and explain 429 retry timing", () => {
 });
 
 test("forbidden and not-found pages provide a route back to MoneyBook selection", () => {
-  const forbidden = fs.readFileSync(path.join(testDirectory, "../src/app/forbidden/page.tsx"), "utf8");
-  const notFound = fs.readFileSync(path.join(testDirectory, "../src/app/not-found.tsx"), "utf8");
+  const forbidden = fs.readFileSync(path.join(testDirectory, "../src/app/[locale]/money/forbidden/page.tsx"), "utf8");
+  const notFound = fs.readFileSync(path.join(testDirectory, "../src/app/[locale]/money/not-found.tsx"), "utf8");
   const notFoundContent = fs.readFileSync(path.join(testDirectory, "../src/common/components/NotFoundPageContent.tsx"), "utf8");
   const api = fs.readFileSync(path.join(testDirectory, "../src/common/api/baseApi.ts"), "utf8");
   assert.match(forbidden, /<h1/);

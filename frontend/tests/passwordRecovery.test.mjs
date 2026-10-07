@@ -1,3 +1,4 @@
+import { resolveLocaleTestImport } from "./localeTestImports.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -13,7 +14,7 @@ function load(file, mocks = {}) {
   const source = fs.readFileSync(path.join(root, file), "utf8");
   const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   const mod = { exports: {} };
-  vm.runInNewContext(js, { module: mod, exports: mod.exports, require: (name) => name in mocks ? mocks[name] : require(name) });
+  vm.runInNewContext(js, { module: mod, exports: mod.exports, require: (name) => name in mocks ? mocks[name] : resolveLocaleTestImport(name, {}, require) });
   return mod.exports;
 }
 const plain = (value) => JSON.parse(JSON.stringify(value));
@@ -150,8 +151,8 @@ test("forgot password consumes the Backend verification grant and has password c
 });
 
 test("forgot password route exists and is mobile constrained", () => {
-  assert.ok(fs.existsSync(path.join(root, "app/forgot-password/page.tsx")));
-  assert.match(text("app/forgot-password/page.tsx"), /max-w-lg/);
+  assert.ok(fs.existsSync(path.join(root, "app/[locale]/money/forgot-password/page.tsx")));
+  assert.match(text("app/[locale]/money/forgot-password/page.tsx"), /max-w-lg/);
   assert.match(text("auth/components/ForgotPasswordForm.tsx"), /break-all|font-mono/);
 });
 
@@ -213,7 +214,7 @@ test("Admin reset endpoint matches Backend and temporary secret remains transien
 });
 
 test("forced change uses the actual account password endpoint and clears auth state", () => {
-  assert.ok(fs.existsSync(path.join(root, "app/change-required-password/page.tsx")));
+  assert.ok(fs.existsSync(path.join(root, "app/[locale]/money/change-required-password/page.tsx")));
   assert.match(text("auth/components/RequiredPasswordChangeForm.tsx"), /currentPassword/);
   assert.match(text("account/hooks/useUpdateAccountPassword.ts"), /clearLocalSession/);
   assert.match(text("auth/hooks/useAuthGuard.ts"), /passwordChangeRequired/);

@@ -1,7 +1,9 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useMoneyRouter } from "../../common/components/useMoneyRouter";
+
+import Link from "../../common/components/MoneyLink";
+import { useSearchParams } from "next/navigation";
 import { formatMoney } from "@/common/format/money";
 import { formatLocalDate } from "@/common/format/dateTime";
 import { useExpenseRanking } from "../hooks/useExpenseRanking";
@@ -18,7 +20,7 @@ function selectedPeriod(search: URLSearchParams) {
 }
 
 export default function ExpenseRankingView({ moneyBookUid }: { moneyBookUid: number }) {
-  const router = useRouter();
+  const router = useMoneyRouter();
   const search = useSearchParams();
   const { periodType, year, month } = selectedPeriod(new URLSearchParams(search.toString()));
   const data = useExpenseRanking(moneyBookUid, periodType, year, month);

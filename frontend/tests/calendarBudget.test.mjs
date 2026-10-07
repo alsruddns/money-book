@@ -1,3 +1,4 @@
+import { resolveLocaleTestImport } from "./localeTestImports.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -19,7 +20,7 @@ function loadModule(relativePath, mocks = {}, globals = {}) {
   const compiledModule = { exports: {} };
   vm.runInNewContext(compiled, {
     module: compiledModule, exports: compiledModule.exports,
-    require: (name) => name in mocks ? mocks[name] : name === "@/common/format/dateTime" ? loadModule("common/format/dateTime.ts") : name === "@/common/format/money" ? { formatNumber: (value) => Number(value).toLocaleString("ko-KR"), formatMoney: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCurrency: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCount: (value, unit = String.fromCharCode(0xAC74)) => `${Number(value).toLocaleString("ko-KR")}${unit}` } : localRequire(name), ...globals,
+    require: (name) => name in mocks ? mocks[name] : name === "@/common/format/dateTime" ? loadModule("common/format/dateTime.ts") : name === "@/common/format/money" ? { formatNumber: (value) => Number(value).toLocaleString("ko-KR"), formatMoney: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCurrency: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCount: (value, unit = String.fromCharCode(0xAC74)) => `${Number(value).toLocaleString("ko-KR")}${unit}` } : resolveLocaleTestImport(name, mocks, localRequire), ...globals,
   });
   return compiledModule.exports;
 }
@@ -109,7 +110,7 @@ test("calendar renders weekend, holiday, amounts, transfers, and empty dates", (
     transferOutAmount: 5000, transferCount: 1 }), day("2026-10-04", "SUNDAY")];
   const grid = loadModule("calendar/calendarGrid.ts");
   const View = loadModule("calendar/components/CalendarView.tsx", {
-    "@/common/format/money": { formatMoney, formatCount: (value, unit = String.fromCharCode(0xAC74)) => `${Number(value).toLocaleString("ko-KR")}${unit}` },
+    "@/common/format/money": { formatLocalizedAmount: (amount) => `${Number(amount).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatMoney, formatCount: (value, unit = String.fromCharCode(0xAC74)) => `${Number(value).toLocaleString("ko-KR")}${unit}` },
     "@/moneybook/hooks/useMoneyBookPermission": { useMoneyBookPermission: () => ({ canRead: true }) },
     "@/settings/hooks/useMoneyBookSetting": { useMoneyBookSetting: () => ({ setting: { weekStartDay: "SUNDAY" } }) },
     "@/transaction/hooks/useMonthNavigation": { useMonthNavigation: () => ({ year: 2026, month: 10, moveMonth: () => {}, goToToday: () => {} }) },
@@ -240,10 +241,10 @@ test("month navigation uses query values and returns to the browser month", () =
   const navigation = useMonthNavigation();
   assert.deepEqual([navigation.year, navigation.month], [2026, 12]);
   navigation.moveMonth(1);
-  assert.equal(pushes[0], "/books/7/calendar?year=2027&month=1");
+  assert.equal(pushes[0], "/ko/money/books/7/calendar?year=2027&month=1");
   navigation.goToToday();
   const today = new Date();
-  assert.equal(pushes[1], `/books/7/calendar?year=${today.getFullYear()}&month=${today.getMonth() + 1}`);
+  assert.equal(pushes[1], `/ko/money/books/7/calendar?year=${today.getFullYear()}&month=${today.getMonth() + 1}`);
 });
 
 test("budget overview shows total, expense, overage, rate, and category", () => {
@@ -277,7 +278,7 @@ test("budget view keeps setup control behind U permission", () => {
 
 test("dashboard shows monthly totals, budget summary, and quick links", () => {
   const Dashboard = loadModule("moneybook/components/MoneyBookDetail.tsx", {
-    "next/link": { default: link }, "@/common/format/money": { formatMoney, formatCount: (value) => `${value}건` },
+    "next/link": { default: link }, "@/common/format/money": { formatLocalizedAmount: (amount) => `${Number(amount).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatMoney, formatCount: (value) => `${value}건` },
     "@/common/format/percent": { formatPercentPoints: (value) => `${value}%`, formatFractionPercent: (value) => `${value * 100}%` },
     "@/transaction/components/MonthSelector": { default: () => React.createElement("span", null, "2026년 10월") },
     "@/dashboard/hooks/useMonthlyDashboard": { useMonthlyDashboard: () => ({
@@ -295,8 +296,8 @@ test("dashboard shows monthly totals, budget summary, and quick links", () => {
   for (const expected of ["300,000원", "125,000원", "175,000원", "100,000원", "25,000원 초과"]) assert.match(markup, new RegExp(expected));
   assert.match(markup, /34%/);
   assert.match(markup, /전체 지출 순위 보기/);
-  assert.match(markup, /href="\/books\/7\/reports\/expense-ranking\?periodType=MONTH&amp;year=2026&amp;month=10"/);
-  assert.match(markup, /href="\/books\/7\/calendar\?year=2026&amp;month=10"/);
-  assert.match(markup, /href="\/books\/7\/transactions\?year=2026&amp;month=10"/);
-  assert.match(markup, /href="\/books\/7\/budgets\?year=2026&amp;month=10"/);
+  assert.match(markup, /href="\/ko\/money\/books\/7\/reports\/expense-ranking\?periodType=MONTH&amp;year=2026&amp;month=10"/);
+  assert.match(markup, /href="\/ko\/money\/books\/7\/calendar\?year=2026&amp;month=10"/);
+  assert.match(markup, /href="\/ko\/money\/books\/7\/transactions\?year=2026&amp;month=10"/);
+  assert.match(markup, /href="\/ko\/money\/books\/7\/budgets\?year=2026&amp;month=10"/);
 });

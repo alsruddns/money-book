@@ -1,3 +1,4 @@
+import { resolveLocaleTestImport } from "./localeTestImports.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -20,7 +21,7 @@ function loadModule(relativePath, mocks = {}, globals = {}) {
   const compiledModule = { exports: {} };
   vm.runInNewContext(compiled, {
     module: compiledModule, exports: compiledModule.exports,
-    require: (name) => name in mocks ? mocks[name] : name === "@/i18n/messages" ? { translate: (_locale, key) => ({ "navigation.myBooks": "내 가계부", "navigation.invitations": "받은 초대", "navigation.board": "게시판", "navigation.account": "계정 관리", "navigation.admin": "관리자" })[key] ?? key } : name === "@/i18n/config" ? {} : localRequire(name),
+    require: (name) => name in mocks ? mocks[name] : name === "@/i18n/messages" ? { translate: (_locale, key) => ({ "navigation.myBooks": "내 가계부", "navigation.invitations": "받은 초대", "navigation.board": "게시판", "navigation.account": "계정 관리", "navigation.admin": "관리자" })[key] ?? key } : name === "@/i18n/config" ? {} : resolveLocaleTestImport(name, mocks, localRequire),
     ...globals,
   });
   return compiledModule.exports;
@@ -90,8 +91,8 @@ test("session section starts compact and reveals existing session actions when e
 
 test("root layout keeps global header mounted and account layout links back to books", () => {
   const root = fs.readFileSync(path.join(testDirectory, "../src/app/layout.tsx"), "utf8");
-  const account = fs.readFileSync(path.join(testDirectory, "../src/app/account/layout.tsx"), "utf8");
-  const books = fs.readFileSync(path.join(testDirectory, "../src/app/books/layout.tsx"), "utf8");
+  const account = fs.readFileSync(path.join(testDirectory, "../src/app/[locale]/money/account/layout.tsx"), "utf8");
+  const books = fs.readFileSync(path.join(testDirectory, "../src/app/[locale]/money/books/layout.tsx"), "utf8");
   assert.match(root, /<GlobalHeader\s*\/>/);
   assert.match(account, /href="\/books"/);
   assert.doesNotMatch(books, /<header/);

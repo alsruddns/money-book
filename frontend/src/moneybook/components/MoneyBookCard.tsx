@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "../../common/components/MoneyLink";
 import type { MoneyBookListResponse } from "../dto/res/MoneyBookListResponse";
 import PermissionBadges from "./PermissionBadges";
 

@@ -1,8 +1,10 @@
 "use client";
 
+import { useMoneyRouter } from "../../common/components/useMoneyRouter";
+
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import Link from "../../common/components/MoneyLink";
+import { usePathname } from "next/navigation";
 import DesktopAdRail from "@/common/components/advertisement/DesktopAdRail";
 import { getApiErrorMessage } from "@/common/api/getApiErrorMessage";
 import { useGetMoneyBookSettingQuery } from "@/settings/controller/moneyBookSettingApi";
@@ -108,7 +110,7 @@ export default function MoneyBookNavigation({ moneyBookUid, children }: { moneyB
   const permission = useMoneyBookPermission(moneyBookUid);
   const { moneyBook, isLoading, isError, errorMessage, canRead, isOwner, isAdmin } = permission;
   const pathname = usePathname();
-  const router = useRouter();
+  const router = useMoneyRouter();
   const access = useGetMoneyBookSettingQuery(moneyBookUid);
   const [isDrawerOpen, setDrawerOpen] = useState(false);
   const drawerRef = useRef<HTMLElement>(null);

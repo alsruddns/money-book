@@ -1,3 +1,4 @@
+import { resolveLocaleTestImport } from "./localeTestImports.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -41,7 +42,7 @@ function loadSource(relativePath, mocks = {}) {
   vm.runInNewContext(js, {
     module: mod,
     exports: mod.exports,
-    require: (name) => (name in mocks ? mocks[name] : require(name)),
+    require: (name) => (name in mocks ? mocks[name] : resolveLocaleTestImport(name, {}, require)),
     URL,
     URLSearchParams,
   });

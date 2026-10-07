@@ -9,12 +9,24 @@ export function isLocale(value: string | undefined): value is Locale {
   return supportedLocales.some((locale) => locale === value);
 }
 
-export function withLocale(locale: Locale, path: string): string {
+function splitSuffix(path: string) {
   const [pathnameAndQuery, hash] = path.split("#", 2);
   const [pathname, query] = pathnameAndQuery.split("?", 2);
-  const cleanPath = pathname.startsWith("/") ? pathname : `/${pathname}`;
-  const localizedPath = `/${locale}${cleanPath === "/" ? "" : cleanPath}`;
-  return `${localizedPath}${query ? `?${query}` : ""}${hash ? `#${hash}` : ""}`;
+  return { pathname, suffix: `${query ? `?${query}` : ""}${hash ? `#${hash}` : ""}` };
+}
+
+function moneyPath(path: string) {
+  const { pathname, suffix } = splitSuffix(path);
+  const segments = pathname.split("/").filter(Boolean);
+  if (isLocale(segments[0])) segments.shift();
+  if (segments[0] === "money") segments.shift();
+  const rest = segments.length ? `/${segments.join("/")}` : "";
+  return { rest, suffix };
+}
+
+export function withMoneyLocale(locale: Locale, path: string): string {
+  const { rest, suffix } = moneyPath(path.startsWith("/") ? path : `/${path}`);
+  return `/${locale}/money${rest}${suffix}`;
 }
 
 export function getLocaleFromPathname(pathname: string): Locale {
@@ -22,9 +34,18 @@ export function getLocaleFromPathname(pathname: string): Locale {
   return isLocale(segment) ? segment : defaultLocale;
 }
 
-export function replaceLocale(pathname: string, locale: Locale): string {
-  const segments = pathname.split("/");
-  if (isLocale(segments[1])) segments[1] = locale;
-  else segments.splice(1, 0, locale);
-  return segments.join("/") || `/${locale}`;
+export function replaceMoneyLocale(path: string, locale: Locale): string {
+  return withMoneyLocale(locale, path);
 }
+
+/** Retained for non-MoneyBook call sites; MoneyBook routes should use withMoneyLocale. */
+export function withLocale(locale: Locale, path: string): string {
+  const { pathname, suffix } = splitSuffix(path);
+  const clean = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  const segments = clean.split("/").filter(Boolean);
+  if (isLocale(segments[0])) segments[0] = locale;
+  else segments.unshift(locale);
+  return `/${segments.join("/")}${suffix}`;
+}
+
+export const replaceLocale = replaceMoneyLocale;

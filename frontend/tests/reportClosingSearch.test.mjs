@@ -1,3 +1,4 @@
+import { resolveLocaleTestImport } from "./localeTestImports.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -14,7 +15,7 @@ function load(relative, mocks = {}) {
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   const mod = { exports: {} };
   vm.runInNewContext(code, { module: mod, exports: mod.exports, URLSearchParams,
-    require: (name) => name in mocks ? mocks[name] : name === "@/i18n/messages" ? { translate: (_locale, key) => key } : name === "@/i18n/useTranslation" ? { useTranslation: () => ({ locale: "ko", t: (key) => key }) } : name === "react/jsx-runtime" ? { jsx: () => null, jsxs: () => null, Fragment: "fragment" } : localRequire(name) });
+    require: (name) => name in mocks ? mocks[name] : name === "@/i18n/messages" ? { translate: (_locale, key) => key } : name === "@/i18n/useTranslation" ? { useTranslation: () => ({ locale: "ko", t: (key) => key }) } : name === "react/jsx-runtime" ? { jsx: () => null, jsxs: () => null, Fragment: "fragment" } : resolveLocaleTestImport(name, mocks, localRequire) });
   return mod.exports;
 }
 const plain = (value) => JSON.parse(JSON.stringify(value));

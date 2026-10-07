@@ -1,12 +1,14 @@
 "use client";
 
+import { useMoneyRouter } from "../../common/components/useMoneyRouter";
+
 import { useEffect, useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useUpdateAccountPassword } from "@/account/hooks/useUpdateAccountPassword";
 
 export default function RequiredPasswordChangeForm() {
-  const router = useRouter();
+  const router = useMoneyRouter();
   const auth = useCurrentUser();
   const password = useUpdateAccountPassword();
   const [currentPassword, setCurrentPassword] = useState("");

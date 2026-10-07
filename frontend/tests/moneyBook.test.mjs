@@ -1,3 +1,4 @@
+import { resolveLocaleTestImport } from "./localeTestImports.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -25,7 +26,7 @@ function loadModule(relativePath, mocks = {}, globals = {}) {
   vm.runInNewContext(compiled, {
     module: compiledModule,
     exports: compiledModule.exports,
-    require: (name) => name in mocks ? mocks[name] : name === "@/i18n/messages" ? { translate: (_locale, key) => ({ "navigation.dashboard": "대시보드", "navigation.reports": "리포트", "navigation.book": "가계부", "navigation.calendar": "캘린더", "navigation.transactions": "거래내역", "navigation.transfers": "이체", "navigation.recurring": "정기거래", "navigation.budget": "예산", "navigation.categories": "카테고리", "navigation.accounts": "계좌 / 결제수단", "navigation.activity": "활동내역", "navigation.closing": "월 결산", "navigation.settings": "가계부 설정", "navigation.members": "멤버 관리", "navigation.manage": "관리" })[key] ?? key } : name === "@/i18n/useTranslation" ? { useTranslation: () => ({ locale: "ko", t: (key) => ({ "books.owner": "소유자", "books.administrator": "관리자", "books.backToList": "내 가계부 목록으로", "books.accessChecking": "가계부 접근 권한을 확인하는 중...", "books.accessMissing": "접근 가능한 가계부를 찾을 수 없습니다.", "books.accessDenied": "가계부 조회 권한이 없습니다.", "common.retry": "다시 시도", "navigation.book": "가계부", "navigation.dashboard": "대시보드", "navigation.openMenu": "가계부 메뉴 열기", "navigation.menu": "메뉴", "navigation.mobileMenu": "가계부 메뉴", "common.close": "닫기" })[key] ?? key }) } : name === "@/i18n/config" ? {} : name === "@/common/format/money" ? { formatNumber: (value) => Number(value).toLocaleString("ko-KR"), formatMoney: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCurrency: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCount: (value, unit = String.fromCharCode(0xAC74)) => `${Number(value).toLocaleString("ko-KR")}${unit}` } : localRequire(name),
+    require: (name) => name in mocks ? mocks[name] : name === "@/i18n/messages" ? { translate: (_locale, key) => ({ "navigation.dashboard": "대시보드", "navigation.reports": "리포트", "navigation.book": "가계부", "navigation.calendar": "캘린더", "navigation.transactions": "거래내역", "navigation.transfers": "이체", "navigation.recurring": "정기거래", "navigation.budget": "예산", "navigation.categories": "카테고리", "navigation.accounts": "계좌 / 결제수단", "navigation.activity": "활동내역", "navigation.closing": "월 결산", "navigation.settings": "가계부 설정", "navigation.members": "멤버 관리", "navigation.manage": "관리" })[key] ?? key } : name === "@/i18n/useTranslation" ? { useTranslation: () => ({ locale: "ko", t: (key) => ({ "books.owner": "소유자", "books.administrator": "관리자", "books.backToList": "내 가계부 목록으로", "books.accessChecking": "가계부 접근 권한을 확인하는 중...", "books.accessMissing": "접근 가능한 가계부를 찾을 수 없습니다.", "books.accessDenied": "가계부 조회 권한이 없습니다.", "common.retry": "다시 시도", "navigation.book": "가계부", "navigation.dashboard": "대시보드", "navigation.openMenu": "가계부 메뉴 열기", "navigation.menu": "메뉴", "navigation.mobileMenu": "가계부 메뉴", "common.close": "닫기" })[key] ?? key }) } : name === "@/i18n/config" ? {} : name === "@/common/format/money" ? { formatNumber: (value) => Number(value).toLocaleString("ko-KR"), formatMoney: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCurrency: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCount: (value, unit = String.fromCharCode(0xAC74)) => `${Number(value).toLocaleString("ko-KR")}${unit}` } : resolveLocaleTestImport(name, mocks, localRequire),
     ...globals,
   });
   return compiledModule.exports;
@@ -136,7 +137,7 @@ test("money book layout keeps shared navigation and content shell", () => {
     "../hooks/useMoneyBookPermission": { useMoneyBookPermission: () => ({ moneyBook: { moneyBookUid: 7, name: "Book", isOwner: true, isAdmin: true }, isLoading: false, isError: false, canRead: true, isOwner: true, isAdmin: true }) },
   });
   const markup = renderToStaticMarkup(React.createElement(Navigation, { moneyBookUid: 7 }, React.createElement("p", null, "body")));
-  assert.match(markup, /href="\/books\/7\/categories" aria-current="page"/);
+  assert.match(markup, /href="\/ko\/money\/books\/7\/categories" aria-current="page"/);
   assert.match(markup, /리포트/);
   assert.doesNotMatch(markup, /aria-label="가계부 기능"[^]*분석/);
   assert.match(markup, /body/);
@@ -167,11 +168,11 @@ test("MoneyBook access guard redirects forbidden and missing resources without t
 
   const permission = { moneyBook: null, isLoading: false, isError: false, canRead: false, isOwner: false, isAdmin: false };
   const forbidden = renderAccessState({ isLoading: false, isError: true, error: { status: 403 } }, permission);
-  assert.deepEqual(forbidden.routes, ["/forbidden"]);
+  assert.deepEqual(forbidden.routes, ["/ko/money/forbidden"]);
   assert.match(forbidden.markup, /접근 권한을 확인하는 중/);
 
   const missing = renderAccessState({ isLoading: false, isError: true, error: { status: 404 } }, permission);
-  assert.deepEqual(missing.routes, ["/not-found"]);
+  assert.deepEqual(missing.routes, ["/ko/money/not-found"]);
 
   const authorized = renderAccessState(
     { isLoading: false, isFetching: true, isError: false, currentData: { moneyBookUid: 7 } },

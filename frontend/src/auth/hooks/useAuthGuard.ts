@@ -1,12 +1,14 @@
 "use client";
 
+import { useMoneyRouter } from "../../common/components/useMoneyRouter";
+
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+
 import { useCurrentUser } from "./useCurrentUser";
 import { usePathname } from "next/navigation";
 
 export function useAuthGuard() {
-  const router = useRouter();
+  const router = useMoneyRouter();
   const pathname = usePathname();
   const { isLoading, isAuthenticated, currentUser } = useCurrentUser();
 

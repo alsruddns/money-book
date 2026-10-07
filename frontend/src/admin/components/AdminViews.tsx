@@ -1,5 +1,5 @@
 ﻿"use client";
-import Link from "next/link";
+import Link from "../../common/components/MoneyLink";
 import { useParams } from "next/navigation";
 import { getActivityTypeLabel, getTargetTypeLabel, activityTypes, targetTypes, formatActivityTime } from "@/activity/activityLabels";
 import { useAdminActivities, useAdminAuditLogs, useAdminMoneyBook, useAdminMoneyBookMembers, useAdminMoneyBooks, useAdminOverview, useAdminUser, useAdminUserActivities, useAdminUsers, useAdminUserMutations, useRevokeAdminUserSessions } from "../hooks/useAdminQueries";

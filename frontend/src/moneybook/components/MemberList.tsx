@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import Link from "../../common/components/MoneyLink";
 import { useMoneyBookDetail } from "../hooks/useMoneyBookDetail";
 import { useMoneyBookMembers } from "../hooks/useMoneyBookMembers";
 import InviteMemberDialog from "./InviteMemberDialog";

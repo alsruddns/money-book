@@ -1,3 +1,4 @@
+import { dashboardByLocale } from "./dashboardMessages";
 import type { Locale } from "./config";
 
 export const messages = {
@@ -41,14 +42,15 @@ const signupErrorsByLocale = {
   zh: { requestFailed: "无法请求验证码。", verifyFailed: "无法验证验证码。" },
 } as const;
 
+
 export function translate(locale: Locale, key: string): string {
-  const catalog = { ...messages[locale], reports: reportsByLocale[locale], signup: { ...signupByLocale[locale], ...signupErrorsByLocale[locale] }, transactions: transactionMessages[locale], calendar: calendarMessages[locale] };
+  const catalog = { ...messages[locale], reports: reportsByLocale[locale], signup: { ...signupByLocale[locale], ...signupErrorsByLocale[locale] }, transactions: transactionMessages[locale], calendar: calendarMessages[locale], dashboard: dashboardByLocale[locale] };
   const value: unknown = key.split(".").reduce<unknown>((current, part) => current && typeof current === "object" ? (current as Record<string, unknown>)[part] : undefined, catalog);
   return typeof value === "string" ? value : `⟦${key}⟧`;
 }
 
 export function getMessages(locale: Locale) {
-  return { ...messages[locale], reports: reportsByLocale[locale], signup: { ...signupByLocale[locale], ...signupErrorsByLocale[locale] }, transactions: transactionMessages[locale], calendar: calendarMessages[locale] };
+  return { ...messages[locale], reports: reportsByLocale[locale], signup: { ...signupByLocale[locale], ...signupErrorsByLocale[locale] }, transactions: transactionMessages[locale], calendar: calendarMessages[locale], dashboard: dashboardByLocale[locale] };
 }
 
 function collectKeys(value: Record<string, unknown>, prefix = ""): string[] {

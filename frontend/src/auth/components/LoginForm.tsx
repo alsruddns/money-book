@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import Link from "next/link";
+import Link from "../../common/components/MoneyLink";
 import { useLogin } from "../hooks/useLogin";
 import { useTranslation } from "@/i18n/useTranslation";
 
