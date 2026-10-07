@@ -21,7 +21,7 @@ function loadSeo() {
 test("MoneyBook uses the locale-first /money landing route", () => {
   const middleware = fs.readFileSync(path.join(root, "middleware.ts"), "utf8");
   const localized = fs.readFileSync(path.join(root, "app/[locale]/money/page.tsx"), "utf8");
-  assert.match(middleware, /defaultLocale/);
+  assert.match(middleware, /!isLocale\(locale\)/);
   assert.match(middleware, /section !== "money"/);
   assert.match(localized, /Free Shared Household Budget/);
   assert.match(localized, /Manage your household finances together/);
