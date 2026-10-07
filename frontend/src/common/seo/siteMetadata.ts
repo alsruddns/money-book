@@ -2,7 +2,7 @@ import type { Metadata, MetadataRoute } from "next";
 
 export const SITE_NAME = "MoneyBook";
 export const SITE_ORIGIN = "https://www.woori.today";
-export const SITE_BASE_PATH = "/money";
+export const SITE_BASE_PATH = "";
 export const SITE_TITLE = "MoneyBook | 가족과 함께 쓰는 공유 가계부";
 export const SITE_DESCRIPTION =
   "가족과 함께 수입과 지출을 기록하고, 캘린더·예산·월간 분석으로 생활비를 관리하는 공유 가계부입니다.";
@@ -59,7 +59,7 @@ export function createPublicMetadata(
       title,
       description,
       siteName: SITE_NAME,
-      locale: "ko_KR",
+    locale: "ko_KR",
       ...(canonical ? { url: canonical } : {}),
       ...(socialImage ? { images: [{ url: socialImage, width: 1200, height: 630, alt: `${SITE_NAME} 공유 가계부` }] } : {}),
     },
@@ -74,9 +74,9 @@ export function privatePageMetadata(): Metadata {
   return { robots: { index: false, follow: false, googleBot: { index: false, follow: false } } };
 }
 
-export function buildWebApplicationJsonLd(env: SiteEnvironment = process.env) {
+export function buildWebApplicationJsonLd(env: SiteEnvironment = process.env, locale = "ko") {
   const siteUrl = getSiteUrl(env);
-  const canonical = siteUrl ? new URL(SITE_BASE_PATH, siteUrl).toString() : undefined;
+  const canonical = siteUrl ? new URL(`${SITE_BASE_PATH}/${locale}`, siteUrl).toString() : undefined;
   return {
     "@context": "https://schema.org",
     "@type": "WebApplication",
@@ -84,6 +84,7 @@ export function buildWebApplicationJsonLd(env: SiteEnvironment = process.env) {
     description: SITE_DESCRIPTION,
     applicationCategory: "FinanceApplication",
     operatingSystem: "Web",
+    inLanguage: locale === "zh" ? "zh-CN" : locale,
     ...(canonical ? { url: canonical } : {}),
   };
 }
@@ -92,9 +93,9 @@ export function buildPublicSitemap(env: SiteEnvironment = process.env): Metadata
   const siteUrl = getSiteUrl(env);
   if (!siteUrl) return [];
 
-  return ["/", "/privacy", "/terms"].map((pathname) => ({
-    url: new URL(`${SITE_BASE_PATH}${pathname === "/" ? "" : pathname}`, siteUrl).toString(),
-  }));
+  return (["ko", "en", "ja", "zh"] as const).flatMap((locale) => ["", "/privacy", "/terms"].map((path) => ({
+    url: new URL(`/${locale}${path}`, siteUrl).toString(),
+  })));
 }
 
 export function buildRobots(env: SiteEnvironment = process.env): MetadataRoute.Robots {
@@ -104,7 +105,7 @@ export function buildRobots(env: SiteEnvironment = process.env): MetadataRoute.R
       userAgent: "*",
       allow: "/",
       // Let crawlers read noindex metadata on member pages; only API endpoints are blocked.
-      disallow: ["/api/"],
+      disallow: ["/api/", "/ko/books/", "/en/books/", "/ja/books/", "/zh/books/", "/ko/account", "/en/account", "/ja/account", "/zh/account", "/ko/admin/", "/en/admin/", "/ja/admin/", "/zh/admin/"],
     },
     ...(siteUrl ? { sitemap: new URL(`${SITE_BASE_PATH}/sitemap.xml`, siteUrl).toString() } : {}),
   };

@@ -17,20 +17,20 @@ function loadSeo() {
   return mod.exports;
 }
 
-test("public root renders a server-readable landing page with one H1 and working CTAs", () => {
+test("root redirects to the Korean locale and localized landing page is server rendered", () => {
   const page = fs.readFileSync(path.join(root, "app/page.tsx"), "utf8");
+  const localized = fs.readFileSync(path.join(root, "app/[locale]/page.tsx"), "utf8");
   const controls = fs.readFileSync(path.join(root, "landing/components/LandingActions.tsx"), "utf8");
-  assert.doesNotMatch(page, /redirect\(/);
-  assert.doesNotMatch(page, /^\s*"use client"/);
-  assert.equal((page.match(/<h1\b/g) ?? []).length, 1);
-  assert.match(page, /공유 가계부/);
-  assert.match(page, /캘린더/);
-  assert.match(page, /예산/);
+  assert.match(page, /redirect\(`\/\$\{defaultLocale\}`\)/);
+  assert.match(localized, /공유 가계부/);
+  assert.match(localized, /캘린더/);
+  assert.match(localized, /예산/);
+  assert.match(localized, /Manage your household finances together/);
   assert.match(controls, /href="\/signup"/);
   assert.match(controls, /href="\/login"/);
   assert.match(controls, /href="\/books"/);
-  assert.match(page, /href="\/privacy"/);
-  assert.match(page, /href="\/terms"/);
+  assert.match(localized, /href="\/privacy"/);
+  assert.match(localized, /href="\/terms"/);
 });
 
 test("landing CTA changes to the personal MoneyBook link for an authenticated user", () => {
@@ -71,43 +71,52 @@ test("public metadata provides canonical, Open Graph, Twitter and optional verif
     NAVER_SITE_VERIFICATION: "naver-token",
   });
   assert.equal(metadata.metadataBase.toString(), "https://money.example/");
-  assert.equal(metadata.alternates.canonical, "https://money.example/money/privacy");
+  assert.equal(metadata.alternates.canonical, "https://money.example/privacy");
   assert.equal(metadata.openGraph.type, "website");
-  assert.equal(metadata.openGraph.url, "https://money.example/money/privacy");
+  assert.equal(metadata.openGraph.url, "https://money.example/privacy");
   assert.equal(metadata.openGraph.locale, "ko_KR");
-  assert.equal(metadata.openGraph.images[0].url, "https://money.example/money/moneybook-og.png");
+  assert.equal(metadata.openGraph.images[0].url, "https://money.example/moneybook-og.png");
   assert.equal(metadata.twitter.card, "summary_large_image");
-  assert.equal(metadata.twitter.images[0], "https://money.example/money/moneybook-og.png");
+  assert.equal(metadata.twitter.images[0], "https://money.example/moneybook-og.png");
   assert.deepEqual(JSON.parse(JSON.stringify(metadata.verification)), {
     google: "google-token",
     other: { "naver-site-verification": "naver-token" },
   });
 });
 
-test("production defaults to the configured public domain and basePath", () => {
+test("production defaults to the configured public domain and locale paths", () => {
   const seo = loadSeo();
   const env = { NODE_ENV: "production" };
   const metadata = seo.createPublicMetadata("/", "MoneyBook", "설명", env);
   assert.equal(metadata.metadataBase.toString(), "https://www.woori.today/");
-  assert.equal(metadata.alternates.canonical, "https://www.woori.today/money");
-  assert.equal(metadata.openGraph.url, "https://www.woori.today/money");
+  assert.equal(metadata.alternates.canonical, "https://www.woori.today/");
+  assert.equal(metadata.openGraph.url, "https://www.woori.today/");
   const sitemapUrls = JSON.parse(JSON.stringify(seo.buildPublicSitemap(env).map((item) => item.url)));
-  assert.ok(sitemapUrls.every((url) => new URL(url).pathname === "/money" || new URL(url).pathname.startsWith("/money/")));
+  assert.ok(sitemapUrls.every((url) => /^\/(ko|en|ja|zh)(\/|$)/.test(new URL(url).pathname)));
   assert.ok(sitemapUrls.every((url) => url !== "https://money.example/"));
   const privatePaths = ["/login", "/signup", "/account", "/admin", "/board", "/books"];
   assert.ok(sitemapUrls.every((url) => privatePaths.every((path) => !new URL(url).pathname.startsWith(`/money${path}`))));
   assert.deepEqual(sitemapUrls, [
-    "https://www.woori.today/money",
-    "https://www.woori.today/money/privacy",
-    "https://www.woori.today/money/terms",
+    "https://www.woori.today/ko",
+    "https://www.woori.today/ko/privacy",
+    "https://www.woori.today/ko/terms",
+    "https://www.woori.today/en",
+    "https://www.woori.today/en/privacy",
+    "https://www.woori.today/en/terms",
+    "https://www.woori.today/ja",
+    "https://www.woori.today/ja/privacy",
+    "https://www.woori.today/ja/terms",
+    "https://www.woori.today/zh",
+    "https://www.woori.today/zh/privacy",
+    "https://www.woori.today/zh/terms",
   ]);
-  assert.equal(seo.buildWebApplicationJsonLd(env).url, "https://www.woori.today/money");
+  assert.equal(seo.buildWebApplicationJsonLd(env).url, "https://www.woori.today/ko");
 });
 
 test("local development uses localhost only as a development canonical base", () => {
   const seo = loadSeo();
   assert.equal(seo.getSiteUrl({ NODE_ENV: "development" }).toString(), "http://localhost:3000/");
-  assert.equal(seo.createPublicMetadata("/terms", "이용 안내", "설명", { NODE_ENV: "development" }).alternates.canonical, "http://localhost:3000/money/terms");
+  assert.equal(seo.createPublicMetadata("/terms", "이용 안내", "설명", { NODE_ENV: "development" }).alternates.canonical, "http://localhost:3000/terms");
 });
 
 test("robots blocks private routes and sitemap includes only public pages", () => {
@@ -115,12 +124,22 @@ test("robots blocks private routes and sitemap includes only public pages", () =
   const env = { NODE_ENV: "production", SITE_URL: "https://money.example" };
   const robots = seo.buildRobots(env);
   const disallow = robots.rules.disallow;
-  assert.deepEqual(Array.from(disallow), ["/api/"]);
-  assert.equal(robots.sitemap, "https://money.example/money/sitemap.xml");
+  assert.equal(disallow[0], "/api/");
+  assert.ok(disallow.includes("/en/admin/"));
+  assert.equal(robots.sitemap, "https://money.example/sitemap.xml");
   assert.deepEqual(JSON.parse(JSON.stringify(seo.buildPublicSitemap(env).map((item) => item.url))), [
-    "https://money.example/money",
-    "https://money.example/money/privacy",
-    "https://money.example/money/terms",
+    "https://money.example/ko",
+    "https://money.example/ko/privacy",
+    "https://money.example/ko/terms",
+    "https://money.example/en",
+    "https://money.example/en/privacy",
+    "https://money.example/en/terms",
+    "https://money.example/ja",
+    "https://money.example/ja/privacy",
+    "https://money.example/ja/terms",
+    "https://money.example/zh",
+    "https://money.example/zh/privacy",
+    "https://money.example/zh/terms",
   ]);
 });
 
@@ -138,10 +157,10 @@ test("private page metadata is noindex and each private route applies the shared
 
 test("privacy and terms routes have real content, metadata and navigation back home", () => {
   for (const route of ["privacy", "terms"]) {
-    const page = fs.readFileSync(path.join(root, `app/${route}/page.tsx`), "utf8");
-    assert.match(page, /createPublicMetadata/);
+    const page = fs.readFileSync(path.join(root, `app/[locale]/${route}/page.tsx`), "utf8");
+    assert.match(page, /createLocalizedMetadata/);
     assert.match(page, /<h1\b/);
-    assert.match(page, /href="\/"/);
+    assert.match(page, /href=\{`\/\$\{raw\}`\}/);
     assert.doesNotMatch(page, /href="#"/);
   }
 });
@@ -152,7 +171,8 @@ test("JSON-LD is a minimal WebApplication schema without invented prices or revi
   assert.equal(app["@type"], "WebApplication");
   assert.equal(app.name, "MoneyBook");
   assert.equal(app.operatingSystem, "Web");
-  assert.equal(app.url, "https://money.example/money");
+    assert.equal(app.url, "https://money.example/ko");
+    assert.equal(app.inLanguage, "ko");
   assert.equal(app.offers, undefined);
   assert.equal(app.aggregateRating, undefined);
 });
