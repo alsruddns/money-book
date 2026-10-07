@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useSelector } from "react-redux";
@@ -28,7 +29,9 @@ export default function GlobalHeader() {
   const linkClass = (href: string) => `min-h-11 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${isGlobalNavItemActive(pathname, href) ? "bg-blue-50 text-blue-800" : "text-zinc-700 hover:bg-zinc-100 hover:text-blue-700 active:bg-zinc-200"}`;
   return <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white/95 text-zinc-900 backdrop-blur">
     <div className="mx-auto flex min-h-16 w-full max-w-screen-2xl items-center justify-between gap-4 px-4 sm:px-6">
-      <Link href="/books" className="shrink-0 text-lg font-semibold">가계부</Link>
+      <Link href="/" aria-label="woori.today 홈" className="shrink-0">
+        <Image src="/images/brand/woori-logo.png" alt="woori.today" width={1319} height={233} sizes="(max-width: 640px) 130px, 160px" className="h-auto w-[130px] sm:w-[160px]" />
+      </Link>
       <nav aria-label="전역 메뉴" aria-busy={roleLoading} className="hidden items-center gap-1 md:flex">
         {roleLoading ? <div aria-hidden="true" className="flex gap-2 px-2"><span className="h-9 w-24 animate-pulse rounded-lg bg-zinc-100" /><span className="h-9 w-24 animate-pulse rounded-lg bg-zinc-100" /><span className="h-9 w-20 animate-pulse rounded-lg bg-zinc-100" /><span className="h-9 w-20 animate-pulse rounded-lg bg-zinc-100" /></div> : navLinks.map((item) => <Link key={item.href} href={item.href} aria-current={isGlobalNavItemActive(pathname, item.href) ? "page" : undefined} className={linkClass(item.href)}>{item.label}</Link>)}
         <button type="button" disabled={logout.isLoading} onClick={() => void logout.logout()} className="min-h-11 cursor-pointer rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-blue-700 active:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:cursor-not-allowed disabled:opacity-50">
