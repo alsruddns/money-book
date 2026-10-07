@@ -101,6 +101,12 @@ test("closing endpoints use the implemented month-closings path and invalidate o
   assert.deepEqual(plain(closingApi.cancelMonthClosing.invalidatesTags(undefined, { status: 403 }, key)), []);
 });
 
+test("money book API 404 states do not redirect a basePath page to the Next not-found route", () => {
+  const source = fs.readFileSync(path.join(sourceRoot, "common/api/baseApi.ts"), "utf8");
+  assert.match(source, /startsWith\("money-books\/"\)\) return;/);
+  assert.match(source, /Money book resources use 404 to represent valid empty states/);
+});
+
 test("MoneyBook sidebar exposes report and monthly closing routes with read access", () => {
   const source = fs.readFileSync(path.join(sourceRoot, "moneybook/components/MoneyBookNavigation.tsx"), "utf8");
   const { getMoneyBookMenu } = load("moneybook/components/MoneyBookNavigation.tsx", {

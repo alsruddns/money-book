@@ -1,6 +1,8 @@
 import type { Metadata, MetadataRoute } from "next";
 
 export const SITE_NAME = "MoneyBook";
+export const SITE_ORIGIN = "https://www.woori.today";
+export const SITE_BASE_PATH = "/money";
 export const SITE_TITLE = "MoneyBook | 가족과 함께 쓰는 공유 가계부";
 export const SITE_DESCRIPTION =
   "가족과 함께 수입과 지출을 기록하고, 캘린더·예산·월간 분석으로 생활비를 관리하는 공유 가계부입니다.";
@@ -12,11 +14,11 @@ type SiteEnvironment = {
   NAVER_SITE_VERIFICATION?: string;
 };
 
-/** Production SEO URLs are omitted until the real public domain is configured. */
+/** Builds canonical URLs from the public origin and the deployed Next.js base path. */
 export function getSiteUrl(env: SiteEnvironment = process.env): URL | undefined {
   const configuredUrl = env.SITE_URL?.trim();
   if (!configuredUrl) {
-    return env.NODE_ENV === "production" ? undefined : new URL("http://localhost:3000");
+    return env.NODE_ENV === "production" ? new URL(SITE_ORIGIN) : new URL("http://localhost:3000");
   }
 
   const siteUrl = new URL(configuredUrl);
@@ -40,7 +42,8 @@ export function createPublicMetadata(
   env: SiteEnvironment = process.env,
 ): Metadata {
   const siteUrl = getSiteUrl(env);
-  const canonical = siteUrl ? new URL(pathname, siteUrl).toString() : undefined;
+  const canonical = siteUrl ? new URL(`${SITE_BASE_PATH}${pathname === "/" ? "" : pathname}`, siteUrl).toString() : undefined;
+  const socialImage = siteUrl ? new URL(`${SITE_BASE_PATH}/moneybook-og.png`, siteUrl).toString() : undefined;
   const googleVerification = env.GOOGLE_SITE_VERIFICATION?.trim();
   const naverVerification = env.NAVER_SITE_VERIFICATION?.trim();
 
@@ -58,8 +61,9 @@ export function createPublicMetadata(
       siteName: SITE_NAME,
       locale: "ko_KR",
       ...(canonical ? { url: canonical } : {}),
+      ...(socialImage ? { images: [{ url: socialImage, width: 1200, height: 630, alt: `${SITE_NAME} 공유 가계부` }] } : {}),
     },
-    twitter: { card: "summary", title, description },
+    twitter: { card: "summary_large_image", title, description, ...(socialImage ? { images: [socialImage] } : {}) },
     ...(googleVerification || naverVerification
       ? { verification: { ...(googleVerification ? { google: googleVerification } : {}), ...(naverVerification ? { other: { "naver-site-verification": naverVerification } } : {}) } }
       : {}),
@@ -72,6 +76,7 @@ export function privatePageMetadata(): Metadata {
 
 export function buildWebApplicationJsonLd(env: SiteEnvironment = process.env) {
   const siteUrl = getSiteUrl(env);
+  const canonical = siteUrl ? new URL(SITE_BASE_PATH, siteUrl).toString() : undefined;
   return {
     "@context": "https://schema.org",
     "@type": "WebApplication",
@@ -79,7 +84,7 @@ export function buildWebApplicationJsonLd(env: SiteEnvironment = process.env) {
     description: SITE_DESCRIPTION,
     applicationCategory: "FinanceApplication",
     operatingSystem: "Web",
-    ...(siteUrl ? { url: siteUrl.toString() } : {}),
+    ...(canonical ? { url: canonical } : {}),
   };
 }
 
@@ -88,7 +93,7 @@ export function buildPublicSitemap(env: SiteEnvironment = process.env): Metadata
   if (!siteUrl) return [];
 
   return ["/", "/privacy", "/terms"].map((pathname) => ({
-    url: new URL(pathname, siteUrl).toString(),
+    url: new URL(`${SITE_BASE_PATH}${pathname === "/" ? "" : pathname}`, siteUrl).toString(),
   }));
 }
 
@@ -98,8 +103,9 @@ export function buildRobots(env: SiteEnvironment = process.env): MetadataRoute.R
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/api/", "/login", "/signup", "/books", "/account", "/admin"],
+      // Let crawlers read noindex metadata on member pages; only API endpoints are blocked.
+      disallow: ["/api/"],
     },
-    ...(siteUrl ? { sitemap: new URL("/sitemap.xml", siteUrl).toString() } : {}),
+    ...(siteUrl ? { sitemap: new URL(`${SITE_BASE_PATH}/sitemap.xml`, siteUrl).toString() } : {}),
   };
 }

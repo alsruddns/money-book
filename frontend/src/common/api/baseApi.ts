@@ -96,7 +96,8 @@ function redirectAccessErrorRead(error: FetchBaseQueryError | undefined, args: s
   if ((error?.status !== 403 && error?.status !== 404)
       || method.toUpperCase() !== "GET" || typeof window === "undefined") return;
   const url = typeof args === "string" ? args : args.url;
-  if (window.location.pathname.startsWith("/books/") && url.replace(/^\/+/, "").startsWith("money-books/")) return;
+  // Money book resources use 404 to represent valid empty states, including an unclosed month.
+  if (url.replace(/^\/+/, "").startsWith("money-books/")) return;
   if (error.status === 404) {
     if (window.location.pathname !== "/not-found") {
       window.location.assign(new URL("/not-found", window.location.origin).toString());
