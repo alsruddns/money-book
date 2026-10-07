@@ -30,7 +30,7 @@ export default function GlobalHeader() {
   return <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white/95 text-zinc-900 backdrop-blur">
     <div className="mx-auto flex min-h-16 w-full max-w-screen-2xl items-center justify-between gap-4 px-4 sm:px-6">
       <Link href="/" aria-label="woori.today 홈" className="shrink-0">
-        <Image src="/images/brand/woori-logo.png" alt="woori.today" width={1319} height={233} sizes="(max-width: 640px) 130px, 160px" className="h-auto w-[130px] sm:w-[160px]" />
+        <Image src="/images/brand/woori-logo.png" alt="woori.today" width={419} height={99} sizes="(max-width: 640px) 136px, 160px" className="h-auto w-[136px] sm:w-[160px]" />
       </Link>
       <nav aria-label="전역 메뉴" aria-busy={roleLoading} className="hidden items-center gap-1 md:flex">
         {roleLoading ? <div aria-hidden="true" className="flex gap-2 px-2"><span className="h-9 w-24 animate-pulse rounded-lg bg-zinc-100" /><span className="h-9 w-24 animate-pulse rounded-lg bg-zinc-100" /><span className="h-9 w-20 animate-pulse rounded-lg bg-zinc-100" /><span className="h-9 w-20 animate-pulse rounded-lg bg-zinc-100" /></div> : navLinks.map((item) => <Link key={item.href} href={item.href} aria-current={isGlobalNavItemActive(pathname, item.href) ? "page" : undefined} className={linkClass(item.href)}>{item.label}</Link>)}
