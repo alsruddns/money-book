@@ -80,6 +80,11 @@ jobs:
         with:
           context: ./frontend
           push: true
+          build-args: |
+            BACKEND_API_URL=http://backend:8080
+            SITE_URL=https://www.woori.today
+            GOOGLE_SITE_VERIFICATION=${{ vars.GOOGLE_SITE_VERIFICATION }}
+            NAVER_SITE_VERIFICATION=${{ vars.NAVER_SITE_VERIFICATION }}
           tags: |
             ghcr.io/alsruddns/money-book-frontend:latest
             ghcr.io/alsruddns/money-book-frontend:${{ github.sha }}
@@ -96,22 +101,28 @@ jobs:
           script: |
             set -eu
             cd /opt/services/compose
-            if ! docker compose --env-file .env.moneybook ps --status running postgres --quiet | grep -q .; then
-              docker compose --env-file .env.moneybook up -d postgres
-            fi
             docker compose --env-file .env.moneybook pull "$SERVICE"
             docker compose --env-file .env.moneybook up -d "$SERVICE"
-            if [ -z "$(docker compose --env-file .env.moneybook ps --status running "$SERVICE" --quiet)" ]; then
-              echo "Service $SERVICE is not running after deployment" >&2
+            container_id="$(docker compose --env-file .env.moneybook ps -q "$SERVICE")"
+            if [ -z "$container_id" ]; then
+              echo "Service $SERVICE has no container after deployment" >&2
               exit 1
             fi
+            attempt=0
+            until [ "$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' "$container_id")" = healthy ]; do
+              attempt=$((attempt + 1))
+              if [ "$attempt" -ge 60 ]; then
+                echo "Service $SERVICE did not become healthy" >&2
+                docker inspect --format '{{json .State}}' "$container_id" >&2
+                exit 1
+              fi
+              sleep 5
+            done
 
   backend:
     name: Build and deploy backend
-    needs: [changes, frontend]
-    if: >-
-      always() && needs.changes.outputs.backend == 'true' &&
-      (needs.frontend.result == 'success' || needs.frontend.result == 'skipped')
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -145,12 +156,36 @@ jobs:
           script: |
             set -eu
             cd /opt/services/compose
-            if ! docker compose --env-file .env.moneybook ps --status running postgres --quiet | grep -q .; then
-              docker compose --env-file .env.moneybook up -d postgres
-            fi
-            docker compose --env-file .env.moneybook pull "$SERVICE"
-            docker compose --env-file .env.moneybook up -d "$SERVICE"
-            if [ -z "$(docker compose --env-file .env.moneybook ps --status running "$SERVICE" --quiet)" ]; then
-              echo "Service $SERVICE is not running after deployment" >&2
+            docker compose --env-file .env.moneybook up -d postgres
+            postgres_id="$(docker compose --env-file .env.moneybook ps -q postgres)"
+            if [ -z "$postgres_id" ]; then
+              echo "Postgres has no container after startup" >&2
               exit 1
             fi
+            attempt=0
+            until [ "$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' "$postgres_id")" = healthy ]; do
+              attempt=$((attempt + 1))
+              if [ "$attempt" -ge 60 ]; then
+                echo "Postgres did not become healthy" >&2
+                docker inspect --format '{{json .State}}' "$postgres_id" >&2
+                exit 1
+              fi
+              sleep 5
+            done
+            docker compose --env-file .env.moneybook pull "$SERVICE"
+            docker compose --env-file .env.moneybook up -d "$SERVICE"
+            container_id="$(docker compose --env-file .env.moneybook ps -q "$SERVICE")"
+            if [ -z "$container_id" ]; then
+              echo "Service $SERVICE has no container after deployment" >&2
+              exit 1
+            fi
+            attempt=0
+            until [ "$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' "$container_id")" = healthy ]; do
+              attempt=$((attempt + 1))
+              if [ "$attempt" -ge 60 ]; then
+                echo "Service $SERVICE did not become healthy" >&2
+                docker inspect --format '{{json .State}}' "$container_id" >&2
+                exit 1
+              fi
+              sleep 5
+            done
