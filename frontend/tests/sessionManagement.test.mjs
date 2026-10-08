@@ -165,7 +165,8 @@ test("password change and refresh use rotation cleanup without decoding or expos
   assert.match(passwordHook, /reason=password-changed/);
   assert.match(baseQuery, /"refreshToken" in data/);
   assert.match(baseQuery, /tokenStorage\.setTokens\(updated\)/);
-  assert.match(baseQuery, /let refreshPromise: Promise<boolean> \| null = null/);
+  assert.match(baseQuery, /coordinateRefresh\(async \(\) =>/);
+  assert.match(fs.readFileSync(path.join(root, "auth/session/refreshSession.ts"), "utf8"), /pendingRefresh/);
   assert.doesNotMatch(baseQuery, /atob\(|jwtDecode|decodeJwt/);
   assert.doesNotMatch(passwordHook, /localStorage|sessionStorage|console\.(log|error)/);
 });

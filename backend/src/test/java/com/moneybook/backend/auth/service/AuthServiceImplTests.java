@@ -17,6 +17,7 @@ import com.moneybook.backend.security.ratelimit.RateLimiter;
 import com.moneybook.backend.security.ratelimit.RateLimitExceededException;
 import com.moneybook.backend.common.exception.BusinessException;
 import com.moneybook.backend.common.exception.ErrorCode;
+import com.moneybook.backend.config.SessionSecurityProperties;
 import com.moneybook.backend.entity.User;
 import com.moneybook.backend.entity.UserAuth;
 import com.moneybook.backend.entity.RefreshTokenSession;
@@ -35,6 +36,11 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
 import java.util.Optional;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -62,9 +68,28 @@ class AuthServiceImplTests {
     private final PasswordRecoveryRepository recoveryCodes=mock(PasswordRecoveryRepository.class);
     private final EmailVerificationRepository emailVerifications=mock(EmailVerificationRepository.class);
     private final RecoverySecretGenerator secrets=new RecoverySecretGenerator();
-    private final AuthServiceImpl service = new AuthServiceImpl(
-            userRepository, userAuthRepository, passwordEncoder, jwtTokenProvider, refreshSessions,
-            rateLimiter, rateLimitProperties,secrets,recoveryCodes,emailVerifications);
+    private final AuthServiceImpl service = createService(Clock.systemUTC());
+
+    private AuthServiceImpl createService(Clock clock) {
+        return new AuthServiceImpl(userRepository, userAuthRepository, passwordEncoder, jwtTokenProvider,
+                refreshSessions, rateLimiter, rateLimitProperties, secrets, recoveryCodes,
+                emailVerifications, new SessionSecurityProperties(6), clock);
+    }
+
+    private void prepareRefreshSession(RefreshTokenSession session, String presentedToken, String storedHash) {
+        when(jwtTokenProvider.getRefreshTokenClaims(presentedToken)).thenReturn(
+                new JwtTokenProvider.RefreshClaims(session.getUserUid(), session.getSessionKey(),
+                        Instant.now().plus(Duration.ofDays(1)), Instant.now().minus(Duration.ofHours(1))));
+        when(refreshSessions.findBySessionKeyForUpdate(session.getSessionKey())).thenReturn(Optional.of(session));
+        when(jwtTokenProvider.hashRefreshToken(presentedToken)).thenReturn(storedHash);
+        User user = mock(User.class);
+        when(userRepository.findById(session.getUserUid())).thenReturn(Optional.of(user));
+        when(user.getStatus()).thenReturn(UserStatus.ACTIVE);
+        when(jwtTokenProvider.createRefreshToken(session.getUserUid(), session.getSessionKey(),
+                session.getExpiresAt().toInstant(ZoneOffset.UTC))).thenReturn("rotated-refresh-token");
+        when(jwtTokenProvider.hashRefreshToken("rotated-refresh-token")).thenReturn("rotated-hash");
+        when(jwtTokenProvider.createAccessToken(session.getUserUid(), session.getSessionKey())).thenReturn("new-access-token");
+    }
 
     @BeforeEach
     void allowLoginRateLimitByDefault() {
@@ -147,7 +172,10 @@ class AuthServiceImplTests {
         assertEquals("닉네임", response.nickname());
         assertEquals("signed-access-token", response.accessToken());
         assertEquals("signed-refresh-token", response.refreshToken());
-        verify(refreshSessions).save(any());
+        ArgumentCaptor<RefreshTokenSession> created = ArgumentCaptor.forClass(RefreshTokenSession.class);
+        verify(refreshSessions).save(created.capture());
+        assertTrue(Duration.between(Instant.now(), created.getValue().getLastUsedAt()
+                .toInstant(ZoneOffset.UTC)).abs().compareTo(Duration.ofSeconds(2)) < 0);
     }
 
     @Test
@@ -206,6 +234,83 @@ class AuthServiceImplTests {
         assertEquals("new-access-token", response.accessToken());
         assertEquals("new-refresh-token", response.refreshToken());
         assertEquals("new-hash", session.getRefreshTokenHash());
+    }
+
+    @Test
+    void refreshWithinIdleTimeoutRotatesTokenAndUpdatesLastUsedAtUsingUtcInstant() {
+        Instant now = Instant.parse("2026-10-08T00:00:00Z");
+        LocalDateTime lastUsed = LocalDateTime.ofInstant(now.minus(Duration.ofHours(6)).plus(Duration.ofMinutes(1)), ZoneOffset.UTC);
+        LocalDateTime absoluteExpiry = LocalDateTime.ofInstant(now.plus(Duration.ofDays(14)), ZoneOffset.UTC);
+        RefreshTokenSession session = RefreshTokenSession.create(42L, "session-key", "old-hash", null, null,
+                lastUsed, absoluteExpiry);
+        prepareRefreshSession(session, "refresh-token", "old-hash");
+        AuthServiceImpl fixedClockService = createService(Clock.fixed(now, ZoneOffset.ofHours(9)));
+
+        RefreshResponse response = fixedClockService.refresh(new RefreshRequest("refresh-token"));
+
+        assertEquals("new-access-token", response.accessToken());
+        assertEquals("rotated-refresh-token", response.refreshToken());
+        assertEquals(LocalDateTime.ofInstant(now, ZoneOffset.UTC), session.getLastUsedAt());
+        assertEquals(absoluteExpiry, session.getExpiresAt(), "rotation must preserve the 14-day absolute expiry");
+    }
+
+    @Test
+    void refreshAtSixHourIdleBoundaryRevokesSessionAndReturnsGenericInvalidRefresh() {
+        Instant now = Instant.parse("2026-10-08T00:00:00Z");
+        RefreshTokenSession session = RefreshTokenSession.create(42L, "session-key", "stored-hash", null, null,
+                LocalDateTime.ofInstant(now.minus(Duration.ofHours(6)), ZoneOffset.UTC),
+                LocalDateTime.ofInstant(now.plus(Duration.ofDays(14)), ZoneOffset.UTC));
+        prepareRefreshSession(session, "refresh-token", "stored-hash");
+        AuthServiceImpl fixedClockService = createService(Clock.fixed(now, ZoneOffset.ofHours(-7)));
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> fixedClockService.refresh(new RefreshRequest("refresh-token")));
+
+        assertEquals(ErrorCode.INVALID_REFRESH_TOKEN, exception.getErrorCode());
+        assertEquals("IDLE_TIMEOUT", session.getRevokeReason());
+        assertEquals(LocalDateTime.ofInstant(now, ZoneOffset.UTC), session.getRevokedAt());
+        verify(jwtTokenProvider, never()).createRefreshToken(any(), anyString(), any());
+        verify(jwtTokenProvider, never()).createAccessToken(any(), anyString());
+    }
+
+    @Test
+    void refreshAfterSixHourIdleTimeoutRevokesSession() {
+        Instant now = Instant.parse("2026-10-08T00:00:00Z");
+        RefreshTokenSession session = RefreshTokenSession.create(42L, "session-key", "stored-hash", null, null,
+                LocalDateTime.ofInstant(now.minus(Duration.ofHours(6)).minusNanos(1), ZoneOffset.UTC),
+                LocalDateTime.ofInstant(now.plus(Duration.ofDays(14)), ZoneOffset.UTC));
+        prepareRefreshSession(session, "refresh-token", "stored-hash");
+        AuthServiceImpl fixedClockService = createService(Clock.fixed(now, ZoneOffset.UTC));
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> fixedClockService.refresh(new RefreshRequest("refresh-token")));
+
+        assertEquals(ErrorCode.INVALID_REFRESH_TOKEN, exception.getErrorCode());
+        assertEquals("IDLE_TIMEOUT", session.getRevokeReason());
+    }
+
+    @Test
+    void absoluteExpiryAndRevokedSessionsRemainInvalidRegardlessOfIdleUse() {
+        Instant now = Instant.parse("2026-10-08T00:00:00Z");
+        RefreshTokenSession expired = RefreshTokenSession.create(42L, "expired", "hash", null, null,
+                LocalDateTime.ofInstant(now, ZoneOffset.UTC), LocalDateTime.ofInstant(now, ZoneOffset.UTC));
+        RefreshTokenSession revoked = RefreshTokenSession.create(42L, "revoked", "hash", null, null,
+                LocalDateTime.ofInstant(now, ZoneOffset.UTC), LocalDateTime.ofInstant(now.plus(Duration.ofDays(14)), ZoneOffset.UTC));
+        revoked.revoke(LocalDateTime.ofInstant(now.minusSeconds(1), ZoneOffset.UTC), "USER_LOGOUT");
+        AuthServiceImpl fixedClockService = createService(Clock.fixed(now, ZoneOffset.UTC));
+        when(jwtTokenProvider.getRefreshTokenClaims("expired-token")).thenReturn(
+                new JwtTokenProvider.RefreshClaims(42L, "expired", now.plusSeconds(60), now.minusSeconds(60)));
+        when(jwtTokenProvider.getRefreshTokenClaims("revoked-token")).thenReturn(
+                new JwtTokenProvider.RefreshClaims(42L, "revoked", now.plusSeconds(60), now.minusSeconds(60)));
+        when(refreshSessions.findBySessionKeyForUpdate("expired")).thenReturn(Optional.of(expired));
+        when(refreshSessions.findBySessionKeyForUpdate("revoked")).thenReturn(Optional.of(revoked));
+
+        assertEquals(ErrorCode.INVALID_REFRESH_TOKEN, assertThrows(BusinessException.class,
+                () -> fixedClockService.refresh(new RefreshRequest("expired-token"))).getErrorCode());
+        assertEquals(ErrorCode.INVALID_REFRESH_TOKEN, assertThrows(BusinessException.class,
+                () -> fixedClockService.refresh(new RefreshRequest("revoked-token"))).getErrorCode());
+        assertEquals("USER_LOGOUT", revoked.getRevokeReason());
+        assertEquals(Duration.ofHours(6), new SessionSecurityProperties(6).idleTimeout());
     }
 
     @Test

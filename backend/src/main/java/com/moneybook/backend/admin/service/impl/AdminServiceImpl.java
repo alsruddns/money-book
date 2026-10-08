@@ -162,7 +162,7 @@ public class AdminServiceImpl implements AdminService {
                 && target.getSystemRole() == SystemRole.SUPER_ADMIN) {
             throw new BusinessException(ErrorCode.SYSTEM_ADMIN_TARGET_FORBIDDEN);
         }
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         var sessions = refreshSessions.findActiveByUserUidForUpdate(uid, now);
         sessions.forEach(session -> session.revoke(now, "ADMIN_REVOKED"));
         auditRecorder.record(actor, AdminAuditActionType.USER_SESSIONS_REVOKED, AdminAuditTargetType.USER,

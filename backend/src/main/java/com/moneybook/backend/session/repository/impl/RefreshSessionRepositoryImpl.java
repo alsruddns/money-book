@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,7 +23,7 @@ public class RefreshSessionRepositoryImpl implements RefreshSessionRepository {
         return jpaRepository.findByRefreshSessionUidAndUserUid(uid, userUid);
     }
     @Override public List<RefreshTokenSession> findActiveByUserUid(Long userUid) {
-        return jpaRepository.findActiveByUserUid(userUid, LocalDateTime.now());
+        return jpaRepository.findActiveByUserUid(userUid, LocalDateTime.now(ZoneOffset.UTC));
     }
     @Override public List<RefreshTokenSession> findUnrevokedByUserUid(Long userUid) {
         return jpaRepository.findUnrevokedByUserUidForUpdate(userUid);

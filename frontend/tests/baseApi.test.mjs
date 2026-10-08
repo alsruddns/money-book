@@ -19,6 +19,7 @@ function createHarness(initialTokens, handleRequest) {
   const calls = [];
   const actions = [];
   const redirects = [];
+  let pendingRefresh = null;
   let baseUrl;
   const storage = {
     getTokens: () => tokens,
@@ -54,6 +55,10 @@ function createHarness(initialTokens, handleRequest) {
     if (name === "@/auth/session/clearLocalSession") return {
       clearLocalSession: (dispatch, resetCache) => { storage.clearTokens(); dispatch({ type: "auth/clearAuth" }); resetCache?.(); },
     };
+    if (name === "@/auth/session/refreshSession") return { coordinateRefresh: (refresh) => {
+      if (!pendingRefresh) pendingRefresh = refresh().finally(() => { pendingRefresh = null; });
+      return pendingRefresh;
+    } };
     throw new Error(`Unexpected import: ${name}`);
   };
   vm.runInNewContext(compiled, {
