@@ -1,3 +1,4 @@
+import { resolveLocaleTestImport } from "./localeTestImports.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -15,7 +16,7 @@ function load(file, mocks = {}, globals = {}) {
   const source = fs.readFileSync(path.join(root, file), "utf8");
   const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   const mod = { exports: {} };
-  vm.runInNewContext(js, { module: mod, exports: mod.exports, require: (name) => name in mocks ? mocks[name] : name === "@/common/format/dateTime" ? load("common/format/dateTime.ts") : name === "@/common/format/money" ? { formatNumber: (value) => Number(value).toLocaleString("ko-KR"), formatMoney: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCurrency: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCount: (value, unit = String.fromCharCode(0xAC74)) => `${Number(value).toLocaleString("ko-KR")}${unit}` } : localRequire(name), ...globals });
+  vm.runInNewContext(js, { module: mod, exports: mod.exports, require: (name) => name in mocks ? mocks[name] : name === "@/common/format/dateTime" ? load("common/format/dateTime.ts") : name === "@/common/format/money" ? { formatNumber: (value) => Number(value).toLocaleString("ko-KR"), formatMoney: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCurrency: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCount: (value, unit = String.fromCharCode(0xAC74)) => `${Number(value).toLocaleString("ko-KR")}${unit}` } : resolveLocaleTestImport(name, mocks, localRequire), ...globals });
   return mod.exports;
 }
 const plain = (value) => JSON.parse(JSON.stringify(value));
@@ -125,7 +126,7 @@ test("current-device logout posts server revoke, then clears local auth/cache ev
     await useLogout().logout();
     assert.deepEqual(h.calls, ["request", "clear-tokens"]);
     assert.deepEqual(plain(h.dispatches), [{ type: "CLEAR_AUTH" }, { type: "RESET_API" }]);
-    assert.deepEqual(h.routes, [fail ? "/login?reason=logout-incomplete" : "/login?reason=logged-out"]);
+    assert.deepEqual(h.routes, [fail ? "/ko/money/login?reason=logout-incomplete" : "/ko/money/login?reason=logged-out"]);
     assert.match(h.prompts[0], /이 기기에서 로그아웃/);
   }
 });
@@ -144,7 +145,7 @@ test("logout-all requires confirmation and only clears auth after successful Bac
     assert.equal(await hook.logoutAll(), !fail);
     assert.match(h.prompts[0], /현재 기기를 포함한 모든 로그인 세션/);
     assert.deepEqual(h.calls, fail ? ["request"] : ["request", "clear-tokens"]);
-    assert.deepEqual(h.routes, fail ? [] : ["/login?reason=sessions-ended"]);
+    assert.deepEqual(h.routes, fail ? [] : ["/ko/money/login?reason=sessions-ended"]);
     if (fail) assert.equal(errorMessage, "logout all failed");
   }
   const h = loadLogoutHarness({ confirms: false });

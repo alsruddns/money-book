@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import Link from "next/link";
+import Link from "../../common/components/MoneyLink";
 import { getApiErrorMessage } from "@/common/api/getApiErrorMessage";
 import { useConfirmEmailVerificationMutation, useGetSecurityQuestionsQuery, useRequestPasswordResetEmailMutation, useResetPasswordByEmailMutation, useResetPasswordByQuestionMutation, useResetPasswordByRecoveryCodeMutation } from "../controller/passwordRecoveryApi";
 

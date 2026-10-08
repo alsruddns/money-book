@@ -1,3 +1,4 @@
+import { resolveLocaleTestImport } from "./localeTestImports.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -16,7 +17,7 @@ function loadModule(relativePath, mocks = {}) {
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   const compiledModule = { exports: {} };
   vm.runInNewContext(compiled, { module: compiledModule, exports: compiledModule.exports,
-    URLSearchParams, require: (name) => name in mocks ? mocks[name] : name === "@/common/format/dateTime" ? loadModule("common/format/dateTime.ts") : localRequire(name) });
+    URLSearchParams, require: (name) => name in mocks ? mocks[name] : name === "@/common/format/dateTime" ? loadModule("common/format/dateTime.ts") : resolveLocaleTestImport(name, mocks, localRequire) });
   return compiledModule.exports;
 }
 const apiBuilder = { query: (definition) => definition, mutation: (definition) => definition };

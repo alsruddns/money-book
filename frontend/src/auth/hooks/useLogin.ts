@@ -1,7 +1,9 @@
 "use client";
 
+import { useMoneyRouter } from "../../common/components/useMoneyRouter";
+
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+
 import { useDispatch } from "react-redux";
 import { useLoginMutation } from "../controller/authApi";
 import type { LoginRequest } from "../dto/req/LoginRequest";
@@ -12,7 +14,7 @@ import type { AppDispatch } from "@/store/store";
 import { baseApi } from "@/common/api/baseApi";
 
 export function useLogin() {
-  const router = useRouter();
+  const router = useMoneyRouter();
   const dispatch = useDispatch<AppDispatch>();
   const [loginMutation, { isLoading }] = useLoginMutation();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);

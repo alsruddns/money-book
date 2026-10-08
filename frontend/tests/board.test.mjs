@@ -15,9 +15,9 @@ test("global navigation places the shared board between invitations and account"
 
 test("money book navigation keeps report tabs and removes the duplicate analysis section", async () => {
   const source = await read("../src/moneybook/components/MoneyBookNavigation.tsx");
-  assert.match(source, /label: "리포트", href: root/);
+  assert.match(source, /label: label\("reports"\), href: root/);
   assert.doesNotMatch(source, /label: "분석", items/);
-  assert.match(source, /월간 분석/);
+  assert.match(source, /reports\.monthly/);
   assert.match(source, /ml-5/);
   assert.match(source, /isMoneyBookRouteActive/);
   assert.match(source, /permission\.isOwner \|\| permission\.isAdmin/);

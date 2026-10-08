@@ -92,6 +92,14 @@ class BoardIntegrationTests {
     }
 
     @Test
+    void postSearchSupportsMissingAndCaseInsensitiveKeywordsAcrossTitleAndContent() {
+        board.createPost(categoryUid, "Coffee TITLE", "Daily COFFEE notes", false, auth(userUid));
+        assertEquals(1, board.posts(categoryUid, null, 0, 20, auth(userUid)).getTotalElements());
+        assertEquals(1, board.posts(categoryUid, "cOfFeE", 0, 20, auth(userUid)).getTotalElements());
+        assertEquals(1, board.posts(categoryUid, "NOTES", 0, 20, auth(userUid)).getTotalElements());
+    }
+
+    @Test
     void superAdminCanReadSecretPostAndSystemAdminAndOtherUsersCannot() {
         Long postUid = board.createPost(categoryUid, "secret", "body", true, auth(userUid)).getPostUid();
         assertEquals("secret", board.getPost(postUid, auth(userUid)).getTitle());

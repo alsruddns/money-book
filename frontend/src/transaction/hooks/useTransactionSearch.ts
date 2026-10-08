@@ -1,13 +1,15 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useMoneyRouter } from "../../common/components/useMoneyRouter";
+
+import { usePathname, useSearchParams } from "next/navigation";
 import { getApiErrorMessage } from "@/common/api/getApiErrorMessage";
 import { useSearchTransactionsQuery } from "../controller/transactionApi";
 import { buildTransactionSearchParams, filtersToSearchQuery, parseTransactionFilters, type TransactionFilters } from "../search";
 
 export function useTransactionSearch(moneyBookUid: number, year: number, month: number, enabled: boolean) {
   const params = useSearchParams();
-  const router = useRouter();
+  const router = useMoneyRouter();
   const pathname = usePathname();
   const filters = parseTransactionFilters(new URLSearchParams(params.toString()), year, month);
   const result = useSearchTransactionsQuery(filtersToSearchQuery(moneyBookUid, filters), { skip: !enabled });

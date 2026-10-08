@@ -1,11 +1,13 @@
 "use client";
+
+import { useMoneyRouter } from "../../common/components/useMoneyRouter";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+
 import { startDownload } from "@/common/download/fileDownload";
 import { useExportMoneyBookBackupMutation, useRestoreMoneyBookBackupMutation, useValidateMoneyBookBackupMutation } from "../controller/moneyBookBackupApi";
 
 export function useMoneyBookBackup(moneyBookUid: number) {
-  const router = useRouter();
+  const router = useMoneyRouter();
   const [exportBackup, backupState] = useExportMoneyBookBackupMutation();
   const [validate, validateState] = useValidateMoneyBookBackupMutation();
   const [restore, restoreState] = useRestoreMoneyBookBackupMutation();

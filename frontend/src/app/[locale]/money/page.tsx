@@ -1,7 +1,24 @@
-import Link from "next/link";
+import Link from "../../../common/components/MoneyLink";
 import { buildWebApplicationJsonLd, SITE_DESCRIPTION, SITE_NAME } from "@/common/seo/siteMetadata";
 import LandingActions, { LandingHeader } from "@/landing/components/LandingActions";
+import { createLocalizedMetadata } from "@/common/seo/localizedMetadata";
+import { isLocale, type Locale } from "@/i18n/config";
+import { notFound } from "next/navigation";
 
+const localizedLanding: Record<Exclude<Locale, "ko">, { title: string; intro: string; login: string; signup: string; features: string; privacy: string; terms: string }> = {
+  en: { title: "Manage your household finances together", intro: "Track income and expenses, plan budgets, and understand everyday spending in one shared household book.", login: "Log in", signup: "Get started", features: "A clearer view of your money", privacy: "Privacy", terms: "Terms" },
+  ja: { title: "家族のお金の流れを一緒に管理", intro: "収入と支出を記録し、予算を立て、日々の家計を共有して管理できます。", login: "ログイン", signup: "はじめる", features: "家計をわかりやすく", privacy: "プライバシー", terms: "利用規約" },
+  zh: { title: "与家人一起管理家庭收支", intro: "记录收入和支出、制定预算，并共同了解日常开销。", login: "登录", signup: "开始使用", features: "清晰掌握家庭财务", privacy: "隐私政策", terms: "使用条款" },
+};
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale: raw } = await params;
+  if (!isLocale(raw)) return {};
+  const locale = raw;
+  const titles: Record<Locale, string> = { ko: "무료 공유 가계부", en: "Free Shared Household Budget", ja: "無料共有家計簿", zh: "免费共享家庭记账" };
+  const descriptions: Record<Locale, string> = { ko: SITE_DESCRIPTION, en: "Track household income, expenses, budgets, and everyday spending together.", ja: "家族と収入・支出や予算を共有して管理する家計簿です。", zh: "与家人共同记录收支、制定预算并管理家庭财务。" };
+  return createLocalizedMetadata(locale, `/${locale}/money`, titles[locale], descriptions[locale]);
+}
 const features = [
   { number: "01", title: "수입과 지출을 한곳에", description: "카테고리와 계좌를 선택해 거래를 기록하고 월별 내역에서 살펴보세요." },
   { number: "02", title: "함께 쓰는 가계부", description: "가족이나 함께 사는 사람을 초대하고 멤버별 조회·추가·수정·삭제 권한을 설정할 수 있습니다." },
@@ -11,8 +28,14 @@ const features = [
   { number: "06", title: "내보내기와 로그인 기기 관리", description: "거래를 파일로 내보내고 로그인 세션을 확인해 사용 중인 기기를 관리합니다." },
 ];
 
-export default function HomePage() {
-  const jsonLd = JSON.stringify(buildWebApplicationJsonLd()).replace(/</g, "\\u003c");
+export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale: raw } = await params;
+  if (!isLocale(raw)) notFound();
+  const jsonLd = JSON.stringify(buildWebApplicationJsonLd(process.env, raw)).replace(/</g, "\\u003c");
+  if (raw !== "ko") {
+    const content = localizedLanding[raw];
+    return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} /><LandingHeader /><main className="flex-1 text-zinc-900"><section className="bg-gradient-to-br from-blue-50 via-white to-emerald-50 px-5 py-24"><div className="mx-auto max-w-5xl"><p className="font-semibold text-blue-800">MoneyBook</p><h1 className="mt-5 max-w-3xl text-4xl font-bold tracking-tight sm:text-6xl">{content.title}</h1><p className="mt-6 max-w-2xl text-lg leading-8 text-zinc-600">{content.intro}</p><div className="mt-8 flex gap-3"><Link className="rounded-lg bg-blue-700 px-5 py-3 font-semibold text-white" href={`/${raw}/signup`}>{content.signup}</Link><Link className="rounded-lg border border-zinc-300 bg-white px-5 py-3 font-semibold" href={`/${raw}/login`}>{content.login}</Link></div></div></section><section className="mx-auto max-w-5xl px-5 py-16"><h2 className="text-3xl font-bold">{content.features}</h2><p className="mt-4 max-w-2xl leading-7 text-zinc-600">{content.intro}</p></section></main><footer className="flex justify-center gap-6 border-t p-6"><Link href={`/${raw}/privacy`}>{content.privacy}</Link><Link href={`/${raw}/terms`}>{content.terms}</Link></footer></>;
+  }
 
   return <>
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />

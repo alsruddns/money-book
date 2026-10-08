@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import Link from "next/link";
+import Link from "../../common/components/MoneyLink";
 import DialogShell from "@/common/components/DialogShell";
 import type { TransactionType } from "../dto/TransactionType";
 import type { TransactionResponse } from "../dto/res/TransactionResponse";

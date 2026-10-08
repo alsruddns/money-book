@@ -1,10 +1,12 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useMoneyRouter } from "../../common/components/useMoneyRouter";
+
+import { usePathname, useSearchParams } from "next/navigation";
 import { parseSelectedMonth, shiftMonth } from "../month";
 
 export function useMonthNavigation(minYear = 1, maxYear = 9999) {
-  const router = useRouter();
+  const router = useMoneyRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const selectedMonth = parseSelectedMonth(searchParams.get("year"), searchParams.get("month"), new Date(), minYear, maxYear);

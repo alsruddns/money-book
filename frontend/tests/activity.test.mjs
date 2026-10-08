@@ -1,3 +1,4 @@
+import { resolveLocaleTestImport } from "./localeTestImports.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -7,7 +8,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 const require = createRequire(import.meta.url); const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "../src");
-function load(file, mocks = {}) { const source = fs.readFileSync(path.join(root,file),"utf8"); const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX}}).outputText; const mod={exports:{}}; vm.runInNewContext(js,{module:mod,exports:mod.exports,require:(name)=>name in mocks?mocks[name]:name==="@/common/format/money"?{formatCount:(v,u=String.fromCharCode(0xAC74))=>`${Number(v).toLocaleString("ko-KR")}${u}`} : require(name),URLSearchParams}); return mod.exports; }
+function load(file, mocks = {}) { const source = fs.readFileSync(path.join(root,file),"utf8"); const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX}}).outputText; const mod={exports:{}}; vm.runInNewContext(js,{module:mod,exports:mod.exports,require:(name)=>name in mocks?mocks[name]:name==="@/common/format/money"?{formatCount:(v,u=String.fromCharCode(0xAC74))=>`${Number(v).toLocaleString("ko-KR")}${u}`} : resolveLocaleTestImport(name, mocks, require),URLSearchParams}); return mod.exports; }
 const plain=(x)=>JSON.parse(JSON.stringify(x)); const builder={query:(x)=>x,mutation:(x)=>x}; const baseApi={injectEndpoints:({endpoints})=>endpoints(builder)};
 
 test("activity API matches controller query contract and exposes paged response fields",()=>{
@@ -62,6 +63,6 @@ test("activity URL hook parses filters, uses page/size defaults, resets page on 
     "@/common/api/getApiErrorMessage":{getApiErrorMessage:()=>"err"},"../controller/activityApi":{useGetMoneyBookActivitiesQuery:apiHook},"../activityLabels":{activityTypes:["TRANSACTION_CREATED"],targetTypes:["TRANSACTION"]},
   });
   const view=useMoneyBookActivities(8,true); assert.equal(view.filters.page,3); assert.equal(view.filters.size,50); assert.equal(view.filters.activityType,"TRANSACTION_CREATED");
-  view.update("targetType","TRANSACTION"); assert.equal(calls[0],"/books/8/activities?startDate=2026-10-01&activityType=TRANSACTION_CREATED&size=50&targetType=TRANSACTION");
-  view.reset(); assert.equal(calls[1],"/books/8/activities");
+  view.update("targetType","TRANSACTION"); assert.equal(calls[0],"/ko/money/books/8/activities?startDate=2026-10-01&activityType=TRANSACTION_CREATED&size=50&targetType=TRANSACTION");
+  view.reset(); assert.equal(calls[1],"/ko/money/books/8/activities");
 });

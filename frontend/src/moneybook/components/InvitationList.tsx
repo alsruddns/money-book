@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "../../common/components/MoneyLink";
 import { usePendingInvitations } from "../hooks/usePendingInvitations";
 import InvitationCard from "./InvitationCard";
 

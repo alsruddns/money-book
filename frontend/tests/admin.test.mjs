@@ -1,3 +1,4 @@
+import { resolveLocaleTestImport } from "./localeTestImports.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -13,7 +14,7 @@ function load(file, mocks = {}) {
   const source = fs.readFileSync(path.join(root, file), "utf8");
   const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
   const mod = { exports: {} };
-  vm.runInNewContext(js, { module: mod, exports: mod.exports, require: (name) => name in mocks ? mocks[name] : require(name) });
+  vm.runInNewContext(js, { module: mod, exports: mod.exports, require: (name) => name in mocks ? mocks[name] : resolveLocaleTestImport(name, {}, require) });
   return mod.exports;
 }
 const plain = (value) => JSON.parse(JSON.stringify(value));
@@ -80,6 +81,6 @@ test("Admin frontend enforces distinct system roles, protects self and Super Adm
 
 test("All requested Admin routes exist separately from MoneyBook pages", () => {
   for (const route of ["admin/page.tsx", "admin/users/page.tsx", "admin/users/[userUid]/page.tsx", "admin/money-books/page.tsx", "admin/money-books/[moneyBookUid]/page.tsx", "admin/activities/page.tsx", "admin/audit-logs/page.tsx", "admin/layout.tsx"]) {
-    assert.ok(fs.existsSync(path.join(root, "app", route)), `missing route ${route}`);
+    assert.ok(fs.existsSync(path.join(root, "app", "[locale]", "money", route)), `missing route ${route}`);
   }
 });

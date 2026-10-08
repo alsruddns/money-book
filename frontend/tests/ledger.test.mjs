@@ -1,3 +1,4 @@
+import { resolveLocaleTestImport } from "./localeTestImports.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -19,7 +20,7 @@ function loadModule(relativePath, mocks = {}, globals = {}) {
   const compiledModule = { exports: {} };
   vm.runInNewContext(compiled, {
     module: compiledModule, exports: compiledModule.exports,
-    require: (name) => name in mocks ? mocks[name] : name === "@/common/format/money" ? { formatNumber: (value) => Number(value).toLocaleString("ko-KR"), formatMoney: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCurrency: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCount: (value, unit = String.fromCharCode(0xAC74)) => `${Number(value).toLocaleString("ko-KR")}${unit}` } : localRequire(name),
+    require: (name) => name in mocks ? mocks[name] : name === "@/common/format/money" ? { formatNumber: (value) => Number(value).toLocaleString("ko-KR"), formatMoney: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCurrency: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCount: (value, unit = String.fromCharCode(0xAC74)) => `${Number(value).toLocaleString("ko-KR")}${unit}` } : resolveLocaleTestImport(name, mocks, localRequire),
     ...globals,
   });
   return compiledModule.exports;
@@ -156,6 +157,7 @@ test("category, account, and transaction lists expose empty states and permissio
 
   const TransactionList = loadModule("transaction/components/TransactionList.tsx", {
     react: React,
+    "@/i18n/useTranslation": { useTranslation: () => ({ locale: "ko", t: (key) => ({ "transactions.noMonthEntries": "이 달에 등록된 거래가 없습니다" }[key] ?? key) }) },
     "next/navigation": { useSearchParams: () => new URLSearchParams() },
     "@/moneybook/hooks/useMoneyBookPermission": { useMoneyBookPermission: () => ({ canCreate: false, canUpdate: false, canDelete: false }) },
     "../hooks/useTransactionSearch": { useTransactionSearch: () => ({ filters: { startDate: "2026-10-01", endDate: "2026-10-31", transactionType: "", categoryUid: "", accountUid: "", keyword: "", minAmount: "", maxAmount: "", page: 0, size: 20, sort: "DATE_DESC" }, update() {}, showMonthly() {}, result: undefined, isLoading: false, isError: false }) },
