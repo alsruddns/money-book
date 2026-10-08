@@ -12,6 +12,7 @@ import com.moneybook.backend.auth.service.AuthService;
 import com.moneybook.backend.auth.token.JwtTokenProvider;
 import com.moneybook.backend.common.exception.BusinessException;
 import com.moneybook.backend.common.exception.ErrorCode;
+import com.moneybook.backend.config.SessionSecurityProperties;
 import com.moneybook.backend.entity.User;
 import com.moneybook.backend.entity.UserAuth;
 import com.moneybook.backend.entity.RefreshTokenSession;
@@ -40,6 +41,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Locale;
 import java.time.Duration;
+import java.time.Clock;
 import com.moneybook.backend.entity.PasswordRecoveryCode;
 import com.moneybook.backend.recovery.RecoverySecretGenerator;
 import com.moneybook.backend.recovery.EmailAddressNormalizer;
@@ -64,6 +66,8 @@ public class AuthServiceImpl implements AuthService {
     private final RecoverySecretGenerator recoverySecrets;
     private final PasswordRecoveryRepository recoveryCodes;
     private final EmailVerificationRepository emailVerifications;
+    private final SessionSecurityProperties sessionSecurityProperties;
+    private final Clock clock;
 
     /** Creates the user and LOCAL credentials atomically; a duplicate login ID rolls both inserts back. */
     @Override
@@ -147,7 +151,7 @@ public class AuthServiceImpl implements AuthService {
         var expiresAt = jwtTokenProvider.newSessionExpiration();
         String refreshToken = jwtTokenProvider.createRefreshToken(user.getUserUid(), sessionKey, expiresAt);
         String accessToken = jwtTokenProvider.createAccessToken(user.getUserUid(), sessionKey);
-        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        LocalDateTime now = LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC);
         refreshSessions.save(RefreshTokenSession.create(user.getUserUid(), sessionKey,
                 jwtTokenProvider.hashRefreshToken(refreshToken), userAgent, ipAddress,
                 now, LocalDateTime.ofInstant(expiresAt, ZoneOffset.UTC)));
@@ -162,8 +166,12 @@ public class AuthServiceImpl implements AuthService {
         JwtTokenProvider.RefreshClaims claims = jwtTokenProvider.getRefreshTokenClaims(request.refreshToken());
         RefreshTokenSession session = refreshSessions.findBySessionKeyForUpdate(claims.sessionKey())
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN));
-        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        LocalDateTime now = LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC);
         if (!session.getUserUid().equals(claims.userUid()) || !session.isActiveAt(now)) {
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+        if (session.isIdleAt(now, sessionSecurityProperties.idleTimeout())) {
+            session.revoke(now, "IDLE_TIMEOUT");
             throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
         String presentedHash = jwtTokenProvider.hashRefreshToken(request.refreshToken());
@@ -201,7 +209,7 @@ public class AuthServiceImpl implements AuthService {
         if (!session.getUserUid().equals(userUid)) {
             throw new BusinessException(ErrorCode.SESSION_ACCESS_DENIED);
         }
-        session.revoke(LocalDateTime.now(ZoneOffset.UTC), "USER_LOGOUT");
+        session.revoke(LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC), "USER_LOGOUT");
     }
 
     /** Reads the verified JWT principal and returns the active user's current persisted profile. */
