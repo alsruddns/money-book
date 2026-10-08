@@ -12,6 +12,7 @@ import { tokenStorage } from "../storage/tokenStorage";
 import { getApiErrorMessage } from "@/common/api/getApiErrorMessage";
 import type { AppDispatch } from "@/store/store";
 import { baseApi } from "@/common/api/baseApi";
+import { writeLastActivityAt } from "../session/idleSession";
 
 export function useLogin() {
   const router = useMoneyRouter();
@@ -29,6 +30,7 @@ export function useLogin() {
         refreshToken: response.refreshToken,
       };
       tokenStorage.setTokens(tokens);
+      writeLastActivityAt(Date.now());
       dispatch(setTokens(tokens));
       dispatch(baseApi.util.resetApiState());
       router.push(response.passwordChangeRequired ? "/change-required-password" : "/books");

@@ -41,16 +41,22 @@ const signupErrorsByLocale = {
   ja: { requestFailed: "確認コードをリクエストできませんでした。", verifyFailed: "確認コードを確認できませんでした。" },
   zh: { requestFailed: "无法请求验证码。", verifyFailed: "无法验证验证码。" },
 } as const;
+const idleSessionByLocale = {
+  ko: { warningTitle: "자동 로그아웃 예정", warning: "장시간 사용하지 않아 곧 로그아웃됩니다. 계속 사용하시겠습니까?", continue: "계속 사용", logout: "로그아웃", logoutReason: "장시간 사용하지 않아 자동 로그아웃되었습니다.", sessionExpired: "로그인 세션이 만료되었습니다. 다시 로그인해주세요." },
+  en: { warningTitle: "Session about to expire", warning: "You have been inactive for a while and will be logged out soon. Would you like to continue?", continue: "Continue session", logout: "Log out", logoutReason: "You were logged out after being inactive for too long.", sessionExpired: "Your login session expired. Please log in again." },
+  ja: { warningTitle: "まもなくログアウトします", warning: "長時間操作がなかったため、まもなくログアウトします。引き続き利用しますか？", continue: "利用を続ける", logout: "ログアウト", logoutReason: "長時間操作がなかったため、自動的にログアウトしました。", sessionExpired: "ログインセッションの有効期限が切れました。もう一度ログインしてください。" },
+  zh: { warningTitle: "即将自动退出", warning: "您已长时间未操作，即将自动退出。要继续使用吗？", continue: "继续使用", logout: "退出登录", logoutReason: "由于长时间未操作，您已自动退出登录。", sessionExpired: "登录会话已过期，请重新登录。" },
+} as const;
 
 
 export function translate(locale: Locale, key: string): string {
-  const catalog = { ...messages[locale], reports: reportsByLocale[locale], signup: { ...signupByLocale[locale], ...signupErrorsByLocale[locale] }, transactions: transactionMessages[locale], calendar: calendarMessages[locale], dashboard: dashboardByLocale[locale] };
+  const catalog = { ...messages[locale], reports: reportsByLocale[locale], signup: { ...signupByLocale[locale], ...signupErrorsByLocale[locale] }, idleSession: idleSessionByLocale[locale], transactions: transactionMessages[locale], calendar: calendarMessages[locale], dashboard: dashboardByLocale[locale] };
   const value: unknown = key.split(".").reduce<unknown>((current, part) => current && typeof current === "object" ? (current as Record<string, unknown>)[part] : undefined, catalog);
   return typeof value === "string" ? value : `⟦${key}⟧`;
 }
 
 export function getMessages(locale: Locale) {
-  return { ...messages[locale], reports: reportsByLocale[locale], signup: { ...signupByLocale[locale], ...signupErrorsByLocale[locale] }, transactions: transactionMessages[locale], calendar: calendarMessages[locale], dashboard: dashboardByLocale[locale] };
+  return { ...messages[locale], reports: reportsByLocale[locale], signup: { ...signupByLocale[locale], ...signupErrorsByLocale[locale] }, idleSession: idleSessionByLocale[locale], transactions: transactionMessages[locale], calendar: calendarMessages[locale], dashboard: dashboardByLocale[locale] };
 }
 
 function collectKeys(value: Record<string, unknown>, prefix = ""): string[] {

@@ -1,9 +1,10 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import { tokenStorage } from "@/auth/storage/tokenStorage";
-import { setTokens } from "@/auth/store/authSlice";
 import { clearLocalSession } from "@/auth/session/clearLocalSession";
 import { getLocaleFromPathname, withMoneyLocale } from "@/i18n/config";
+import { coordinateRefresh } from "@/auth/session/refreshSession";
+import { setTokens } from "@/auth/store/authSlice";
 
 function isPublicAuthRequest(url: string): boolean {
   const path = url.replace(/^\//, "");
@@ -21,8 +22,6 @@ const rawBaseQuery = fetchBaseQuery({
     return headers;
   },
 });
-
-let refreshPromise: Promise<boolean> | null = null;
 
 function clearStoredAuth(dispatch: Parameters<BaseQueryFn>[1]["dispatch"]) {
   clearLocalSession(dispatch, () => dispatch(baseApi.util.resetApiState()));
@@ -51,40 +50,40 @@ export const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, Fetch
       return addRetryAfter(retryResult);
     }
 
-    if (!refreshPromise) {
+    const refreshed = await coordinateRefresh(async () => {
       const refreshToken = tokens.refreshToken;
-      refreshPromise = (async () => {
-        const refreshResult = await rawBaseQuery(
-          { url: "auth/refresh", method: "POST", body: { refreshToken } },
-          api,
-          extraOptions,
-        );
-        const data = refreshResult.data;
-        if (
-          !refreshResult.error && typeof data === "object" && data !== null &&
-          "accessToken" in data && typeof data.accessToken === "string" && data.accessToken &&
-          "refreshToken" in data && typeof data.refreshToken === "string" && data.refreshToken
-        ) {
-          const current = tokenStorage.getTokens();
-          if (current?.refreshToken !== refreshToken) return false;
-          const updated = { accessToken: data.accessToken, refreshToken: data.refreshToken };
-          tokenStorage.setTokens(updated);
-          if (tokenStorage.getTokens()?.refreshToken === updated.refreshToken) {
-            api.dispatch(setTokens(updated));
-            return true;
-          }
-        }
-        if (tokenStorage.getTokens()?.refreshToken === refreshToken) {
-          clearStoredAuth(api.dispatch);
-        }
-        return false;
-      })().finally(() => {
-        refreshPromise = null;
-      });
+      const refreshResult = await rawBaseQuery(
+        { url: "auth/refresh", method: "POST", body: { refreshToken } }, api, extraOptions,
+      );
+      const data = refreshResult.data;
+      if (!refreshResult.error && typeof data === "object" && data !== null
+        && "accessToken" in data && typeof data.accessToken === "string" && data.accessToken
+        && "refreshToken" in data && typeof data.refreshToken === "string" && data.refreshToken) {
+        const current = tokenStorage.getTokens();
+        if (current?.refreshToken !== refreshToken) return false;
+        const updated = { accessToken: data.accessToken, refreshToken: data.refreshToken };
+        tokenStorage.setTokens(updated);
+        api.dispatch(setTokens(updated));
+        return true;
+      }
+      return false;
+    });
+    if (!refreshed) {
+      const latest = tokenStorage.getTokens();
+      if (latest && latest.refreshToken !== tokens.refreshToken) {
+        const retryResult = await rawBaseQuery(args, api, extraOptions);
+        if (retryResult.error?.status === 401) clearStoredAuth(api.dispatch);
+        redirectAccessErrorRead(retryResult.error, args);
+        return addRetryAfter(retryResult);
+      }
+      clearStoredAuth(api.dispatch);
+      if (typeof window !== "undefined") {
+        const locale = getLocaleFromPathname(window.location.pathname);
+        const login = withMoneyLocale(locale, "/login?reason=session-expired");
+        if (window.location.pathname !== login) window.location.assign(new URL(login, window.location.origin).toString());
+      }
+      return result;
     }
-
-    const refreshed = await refreshPromise;
-    if (!refreshed) return result;
 
     const retryResult = await rawBaseQuery(args, api, extraOptions);
     if (retryResult.error?.status === 401) clearStoredAuth(api.dispatch);
