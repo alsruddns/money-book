@@ -93,10 +93,17 @@ class BoardIntegrationTests {
 
     @Test
     void postSearchSupportsMissingAndCaseInsensitiveKeywordsAcrossTitleAndContent() {
-        board.createPost(categoryUid, "Coffee TITLE", "Daily COFFEE notes", false, auth(userUid));
+        String uniqueTitle = "UniqueTitle" + System.nanoTime();
+        String uniqueContent = "UniqueContent" + System.nanoTime();
+        board.createPost(categoryUid, "Coffee " + uniqueTitle, "Daily COFFEE " + uniqueContent,
+                false, auth(userUid));
         assertEquals(1, board.posts(categoryUid, null, 0, 20, auth(userUid)).getTotalElements());
+        assertEquals(1, board.posts(categoryUid, "", 0, 20, auth(userUid)).getTotalElements());
+        assertEquals(1, board.posts(categoryUid, "   ", 0, 20, auth(userUid)).getTotalElements());
         assertEquals(1, board.posts(categoryUid, "cOfFeE", 0, 20, auth(userUid)).getTotalElements());
-        assertEquals(1, board.posts(categoryUid, "NOTES", 0, 20, auth(userUid)).getTotalElements());
+        assertEquals(1, board.posts(categoryUid, uniqueContent.toUpperCase(), 0, 20, auth(userUid)).getTotalElements());
+        assertEquals(1, board.posts(null, uniqueTitle.toUpperCase(), 0, 20, auth(userUid)).getTotalElements());
+        assertEquals(1, board.posts(categoryUid, "  " + uniqueContent + "  ", 0, 20, auth(userUid)).getTotalElements());
     }
 
     @Test
@@ -104,6 +111,9 @@ class BoardIntegrationTests {
         Long postUid = board.createPost(categoryUid, "secret", "body", true, auth(userUid)).getPostUid();
         assertEquals("secret", board.getPost(postUid, auth(userUid)).getTitle());
         assertEquals("secret", board.getPost(postUid, auth(superAdminUid)).getTitle());
+        assertEquals(1, board.posts(null, "secret", 0, 20, auth(superAdminUid)).getTotalElements());
+        assertEquals(1, board.posts(null, "secret", 0, 20, auth(userUid)).getTotalElements());
+        assertEquals(0, board.posts(null, "secret", 0, 20, auth(otherUid)).getTotalElements());
         assertThrows(BusinessException.class, () -> board.getPost(postUid, auth(systemAdminUid)));
         assertThrows(BusinessException.class, () -> board.getPost(postUid, auth(otherUid)));
     }
@@ -233,6 +243,23 @@ class BoardIntegrationTests {
         assertEquals(0, page.getContent().getFirst().commentCount());
         assertFalse(objectMapper.writeValueAsString(page).contains("민경운"));
         assertTrue(queryCount <= 6, "20개 게시글 작성자/댓글 집계가 고정된 query 수로 조회되어야 함: " + queryCount);
+    }
+
+    @Test
+    void postSearchKeepsPageTotalsAndContentBoundaries() {
+        for (int i = 0; i < 3; i++) {
+            board.createPost(categoryUid, "page " + i, "pagination", false, auth(userUid));
+        }
+
+        var firstPage = board.posts(categoryUid, null, 0, 2, auth(userUid));
+        var secondPage = board.posts(categoryUid, null, 1, 2, auth(userUid));
+
+        assertEquals(3, firstPage.getTotalElements());
+        assertEquals(2, firstPage.getTotalPages());
+        assertEquals(2, firstPage.getContent().size());
+        assertEquals(1, secondPage.getContent().size());
+        assertNotEquals(firstPage.getContent().getFirst().getPostUid(),
+                secondPage.getContent().getFirst().getPostUid());
     }
 
     private JwtAuthenticationToken auth(Long uid) {
