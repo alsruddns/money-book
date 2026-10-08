@@ -152,6 +152,7 @@ jobs:
           push: false
           build-args: |
             BACKEND_API_URL=http://backend:8080
+            NEXT_PUBLIC_GA_ID=G-ZJSJW06SCX
             SITE_URL=https://example.invalid
           cache-from: |
             type=gha,scope=frontend-main

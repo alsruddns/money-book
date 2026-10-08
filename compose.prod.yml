@@ -60,6 +60,7 @@ services:
       args:
         # Next config evaluates rewrites at build time. Production ingress sends /api directly to Backend.
         BACKEND_API_URL: ${BACKEND_API_URL:-http://backend:8080}
+        NEXT_PUBLIC_GA_ID: ${NEXT_PUBLIC_GA_ID:-G-ZJSJW06SCX}
         SITE_URL: ${SITE_URL:-https://www.woori.today}
         GOOGLE_SITE_VERIFICATION: ${GOOGLE_SITE_VERIFICATION:-}
         NAVER_SITE_VERIFICATION: ${NAVER_SITE_VERIFICATION:-}
