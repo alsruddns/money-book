@@ -1,4 +1,5 @@
-﻿import test from "node:test";
+import { resolveLocaleTestImport } from "./localeTestImports.mjs";
+import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -24,7 +25,7 @@ function loadModule(relativePath, mocks = {}, globals = {}) {
   const compiledModule = { exports: {} };
   vm.runInNewContext(compiled, {
     module: compiledModule, exports: compiledModule.exports,
-    require: (name) => name in mocks ? mocks[name] : name === "./AccountSecuritySection" ? { default: () => null } : name === "@/common/format/dateTime" ? loadModule("common/format/dateTime.ts") : name === "@/common/format/money" ? { formatNumber: (value) => Number(value).toLocaleString("ko-KR"), formatMoney: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCurrency: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCount: (value, unit = String.fromCharCode(0xAC74)) => `${Number(value).toLocaleString("ko-KR")}${unit}` } : localRequire(name),
+    require: (name) => name in mocks ? mocks[name] : name === "./AccountSecuritySection" ? { default: () => null } : name === "@/common/format/dateTime" ? loadModule("common/format/dateTime.ts") : name === "@/common/format/money" ? { formatNumber: (value) => Number(value).toLocaleString("ko-KR"), formatMoney: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCurrency: (value) => `${Number(value).toLocaleString("ko-KR")}${String.fromCharCode(0xC6D0)}`, formatCount: (value, unit = String.fromCharCode(0xAC74)) => `${Number(value).toLocaleString("ko-KR")}${unit}` } : resolveLocaleTestImport(name, mocks, localRequire),
     ...globals,
   });
   return compiledModule.exports;
@@ -127,7 +128,7 @@ test("password hook sends the backend DTO, returns backend errors and never logs
   assert.deepEqual(plain(calls), [request]);
   assert.deepEqual(plain(dispatched), [{ type: "CLEAR_AUTH" }, { type: "RESET_API" }]);
   assert.deepEqual(cleanupEvents, ["clear"]);
-  assert.deepEqual(routes, ["/login?reason=password-changed"]);
+  assert.deepEqual(routes, ["/ko/money/login?reason=password-changed"]);
   assert.equal(await hook.updatePassword({ ...request, currentPassword: "wrong" }), false);
   assert.equal(hookError, "현재 비밀번호가 올바르지 않습니다.");
   const source = fs.readFileSync(path.join(testDirectory, "../src/account/hooks/useUpdateAccountPassword.ts"), "utf8");
@@ -197,7 +198,7 @@ test("withdrawal keeps auth on failure and clears tokens, auth and API cache onl
   assert.equal(await hook.withdraw("pass"), true);
   assert.deepEqual(tokenEvents.filter(([event]) => event === "clear"), [["clear"]]);
   assert.deepEqual(plain(dispatched), [{ type: "CLEAR_AUTH" }, { type: "RESET_API" }]);
-  assert.deepEqual(routes, ["/login"]);
+  assert.deepEqual(routes, ["/ko/money/login"]);
   const source = fs.readFileSync(path.join(testDirectory, "../src/account/hooks/useWithdrawAccount.ts"), "utf8");
   assert.doesNotMatch(source, /console\.(log|error)|sessionStorage|localStorage/);
 });
@@ -225,13 +226,13 @@ test("account screen shows read-only role/status/provider labels and account loa
 });
 
 test("account route uses the existing role-neutral AuthGuard and links from books and admin navigation", () => {
-  const { default: Layout } = loadModule("app/account/layout.tsx", {
+  const { default: Layout } = loadModule("app/[locale]/money/account/layout.tsx", {
     "@/auth/components/AuthGuard": { default: ({ children }) => React.createElement("div", { "data-guard": "auth" }, children) },
     "@/common/seo/siteMetadata": { privatePageMetadata: () => ({ robots: { index: false, follow: false } }) },
   });
   assert.match(renderToStaticMarkup(React.createElement(Layout, null, React.createElement("p", null, "계정"))), /data-guard="auth"/);
   const adminShell = fs.readFileSync(path.join(testDirectory, "../src/admin/components/AdminShell.tsx"), "utf8");
-  const accountLayout = fs.readFileSync(path.join(testDirectory, "../src/app/account/layout.tsx"), "utf8");
+  const accountLayout = fs.readFileSync(path.join(testDirectory, "../src/app/[locale]/money/account/layout.tsx"), "utf8");
   const globalHeader = fs.readFileSync(path.join(testDirectory, "../src/common/components/GlobalHeader.tsx"), "utf8");
   assert.match(accountLayout, /href="\/books"/);
   assert.match(globalHeader, /useLogout/);

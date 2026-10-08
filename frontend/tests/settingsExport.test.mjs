@@ -1,3 +1,4 @@
+import { resolveLocaleTestImport } from "./localeTestImports.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -13,7 +14,7 @@ function load(relativePath, mocks = {}, globals = {}) {
   const source = fs.readFileSync(path.join(sourceRoot, relativePath), "utf8");
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   const mod = { exports: {} };
-  vm.runInNewContext(compiled, { module: mod, exports: mod.exports, require: (name) => name in mocks ? mocks[name] : localRequire(name), URLSearchParams, FormData: TestFormData, ...globals });
+  vm.runInNewContext(compiled, { module: mod, exports: mod.exports, require: (name) => name in mocks ? mocks[name] : resolveLocaleTestImport(name, mocks, localRequire), URLSearchParams, FormData: TestFormData, ...globals });
   return mod.exports;
 }
 const plain = (value) => JSON.parse(JSON.stringify(value));

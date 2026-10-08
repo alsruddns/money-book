@@ -1,5 +1,5 @@
 import AuthGuard from "@/auth/components/AuthGuard";
-import Link from "next/link";
+import Link from "../../../../common/components/MoneyLink";
 import { privatePageMetadata } from "@/common/seo/siteMetadata";
 import type { Metadata } from "next";
 

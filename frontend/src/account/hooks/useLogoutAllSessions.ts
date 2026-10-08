@@ -1,7 +1,9 @@
 "use client";
 
+import { useMoneyRouter } from "../../common/components/useMoneyRouter";
+
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+
 import { useDispatch } from "react-redux";
 import { getApiErrorMessage } from "@/common/api/getApiErrorMessage";
 import { baseApi } from "@/common/api/baseApi";
@@ -10,7 +12,7 @@ import type { AppDispatch } from "@/store/store";
 import { useLogoutAllAccountSessionsMutation } from "../controller/accountApi";
 
 export function useLogoutAllSessions() {
-  const router = useRouter();
+  const router = useMoneyRouter();
   const dispatch = useDispatch<AppDispatch>();
   const [logoutAllMutation, { isLoading }] = useLogoutAllAccountSessionsMutation();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);

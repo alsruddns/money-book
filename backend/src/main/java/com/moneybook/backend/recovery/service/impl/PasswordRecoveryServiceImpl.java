@@ -55,7 +55,12 @@ public class PasswordRecoveryServiceImpl implements PasswordRecoveryService {
         latest.ifPresent(v->{v.invalidate(now);verifications.save(v);});
         String code=secrets.newNumericCode();
         EmailVerification row=verifications.save(new EmailVerification(uid,normalized,purpose,secrets.sha256(code),now.plusMinutes(10),now.plusSeconds(60)));
-        emailSender.sendVerificationCode(normalized,code,purpose);
+        try {
+            emailSender.sendVerificationCode(normalized,code,purpose);
+        } catch (RuntimeException exception) {
+            log.warn("Email verification delivery failed cause={}", exception.getClass().getSimpleName());
+            throw new BusinessException(ErrorCode.EMAIL_DELIVERY_FAILED);
+        }
         return new EmailVerificationResponse(row.getEmailVerificationUid(),"인증번호를 전송했습니다.");
     }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "../../common/components/MoneyLink";
 import { useCurrentUser } from "@/auth/hooks/useCurrentUser";
 
 export function LandingHeader() {

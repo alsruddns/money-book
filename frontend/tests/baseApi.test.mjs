@@ -50,6 +50,7 @@ function createHarness(initialTokens, handleRequest) {
         setTokens: (payload) => ({ type: "auth/setTokens", payload }),
       };
     }
+    if (name === "@/i18n/config") return { getLocaleFromPathname: (pathname) => pathname.split("/")[1] || "ko", withMoneyLocale: (locale, path) => `/${locale}/money${path}` };
     if (name === "@/auth/session/clearLocalSession") return {
       clearLocalSession: (dispatch, resetCache) => { storage.clearTokens(); dispatch({ type: "auth/clearAuth" }); resetCache?.(); },
     };
@@ -60,7 +61,7 @@ function createHarness(initialTokens, handleRequest) {
     exports: compiledModule.exports,
     require: requireMock,
     Headers,
-    window: { location: { pathname: "/books/5", origin: "http://localhost:3000", assign: (path) => redirects.push(path) } },
+    window: { location: { pathname: "/en/money/books/5", origin: "http://localhost:3000", assign: (path) => redirects.push(path) } },
     URL,
   });
   const api = { dispatch: (action) => actions.push(action) };
@@ -190,11 +191,11 @@ test("GET 403 and 404 responses navigate to their common access pages", async ()
   const harness = createHarness(null, () => ({ error: { status: 403, data: { code: "FORBIDDEN" } } }));
   const result = await harness.query("account/me");
   assert.equal(result.error.status, 403);
-  assert.deepEqual(harness.redirects, ["http://localhost:3000/forbidden"]);
+  assert.deepEqual(harness.redirects, ["http://localhost:3000/en/money/forbidden"]);
 
   const missing = createHarness(null, () => ({ error: { status: 404, data: { code: "NOT_FOUND" } } }));
   await missing.query("account/me");
-  assert.deepEqual(missing.redirects, ["http://localhost:3000/not-found"]);
+  assert.deepEqual(missing.redirects, ["http://localhost:3000/en/money/not-found"]);
 });
 
 test("password change required GET responses route to the forced password screen", async () => {
@@ -202,7 +203,7 @@ test("password change required GET responses route to the forced password screen
     error: { status: 403, data: { code: "PASSWORD_CHANGE_REQUIRED" } },
   }));
   await harness.query("money-books");
-  assert.deepEqual(harness.redirects, ["http://localhost:3000/change-required-password"]);
+  assert.deepEqual(harness.redirects, ["http://localhost:3000/en/money/change-required-password"]);
 });
 
 test("MoneyBook access failures stay with the shared layout guard for replace navigation", async () => {

@@ -1,3 +1,4 @@
+import { resolveLocaleTestImport } from "./localeTestImports.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -14,7 +15,7 @@ function load(relative, mocks = {}) {
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   const mod = { exports: {} };
   vm.runInNewContext(code, { module: mod, exports: mod.exports, URLSearchParams,
-    require: (name) => name in mocks ? mocks[name] : name === "react/jsx-runtime" ? { jsx: () => null, jsxs: () => null, Fragment: "fragment" } : localRequire(name) });
+    require: (name) => name in mocks ? mocks[name] : name === "@/i18n/messages" ? { translate: (_locale, key) => key } : name === "@/i18n/useTranslation" ? { useTranslation: () => ({ locale: "ko", t: (key) => key }) } : name === "react/jsx-runtime" ? { jsx: () => null, jsxs: () => null, Fragment: "fragment" } : resolveLocaleTestImport(name, mocks, localRequire) });
   return mod.exports;
 }
 const plain = (value) => JSON.parse(JSON.stringify(value));
@@ -99,6 +100,12 @@ test("closing endpoints use the implemented month-closings path and invalidate o
   const tags = [{ type: "Closing", id: 11 }, { type: "Closing", id: "11-2026-10" }, { type: "Report", id: 11 }, { type: "MoneyBookActivity", id: 11 }];
   assert.deepEqual(plain(closingApi.closeMonth.invalidatesTags({}, undefined, key)), tags);
   assert.deepEqual(plain(closingApi.cancelMonthClosing.invalidatesTags(undefined, { status: 403 }, key)), []);
+});
+
+test("money book API 404 states do not redirect a basePath page to the Next not-found route", () => {
+  const source = fs.readFileSync(path.join(sourceRoot, "common/api/baseApi.ts"), "utf8");
+  assert.match(source, /startsWith\("money-books\/"\)\) return;/);
+  assert.match(source, /Money book resources use 404 to represent valid empty states/);
 });
 
 test("MoneyBook sidebar exposes report and monthly closing routes with read access", () => {

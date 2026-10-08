@@ -1,11 +1,13 @@
 "use client";
+
+import { useMoneyRouter } from "../../common/components/useMoneyRouter";
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+
 import { useCurrentUser } from "@/auth/hooks/useCurrentUser";
 import { useGetAdminMeQuery } from "../controller/adminApi";
 
 export function useAdminSession() {
-  const router = useRouter();
+  const router = useMoneyRouter();
   const auth = useCurrentUser();
   const admin = useGetAdminMeQuery(undefined, { skip: auth.isLoading || !auth.isAuthenticated || auth.currentUser?.passwordChangeRequired === true, refetchOnMountOrArgChange: true });
   const role = admin.data?.systemRole;

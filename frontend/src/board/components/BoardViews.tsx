@@ -1,6 +1,8 @@
 "use client";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+
+import { useMoneyRouter } from "../../common/components/useMoneyRouter";
+import Link from "../../common/components/MoneyLink";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { getApiErrorMessage } from "@/common/api/getApiErrorMessage";
 import DialogShell from "@/common/components/DialogShell";
@@ -15,7 +17,7 @@ function message(error: unknown) { const status = (error as {status?: number})?.
 function date(value: string) { return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium" }).format(new Date(value)); }
 
 export function BoardListView() {
-  const params = useSearchParams(); const router = useRouter(); const role = useRole();
+  const params = useSearchParams(); const router = useMoneyRouter(); const role = useRole();
   const [selectedPostUid, setSelectedPostUid] = useState<number | null>(null);
   const [keyword, setKeyword] = useState(params.get("keyword") ?? "");
   const query = { categoryUid: params.get("categoryUid") ?? undefined, keyword: params.get("keyword") ?? undefined, page: Math.max(0, Number(params.get("page") ?? 0)) };
@@ -39,7 +41,7 @@ export function BoardListView() {
 }
 
 export function PostFormView({ uid }: { uid?: number }) {
-  const router = useRouter(); const role = useRole(); const categories = useGetBoardCategoriesQuery(); const existing = useGetBoardPostQuery(uid!, { skip: !uid });
+  const router = useMoneyRouter(); const role = useRole(); const categories = useGetBoardCategoriesQuery(); const existing = useGetBoardPostQuery(uid!, { skip: !uid });
   const [create, creating] = useCreateBoardPostMutation(); const [update, updating] = useUpdateBoardPostMutation(); const [setPostNotice] = useSetBoardNoticeMutation();
   const post = existing.data; const [categoryUid, setCategory] = useState(""); const [title, setTitle] = useState(""); const [content, setContent] = useState(""); const [secret, setSecret] = useState(false); const [notice, setNotice] = useState(false); const [error, setError] = useState("");
   const [initialized, setInitialized] = useState(false); if (post && !initialized) { setCategory(String(post.categoryUid)); setTitle(post.title); setContent(post.content ?? ""); setSecret(post.secret); setInitialized(true); }
@@ -59,7 +61,7 @@ function Comments({ uid }: { uid: number }) {
 
 export function PostDetailView({ uid, onClose, onDeleted }: { uid: number; onClose?: () => void; onDeleted?: () => void }) {
   const [deleteError, setDeleteError] = useState("");
-  const role = useRole(); const router = useRouter(); const query = useGetBoardPostQuery(uid); const [remove] = useDeleteBoardPostMutation(); const [notice] = useSetBoardNoticeMutation(); const post = query.data;
+  const role = useRole(); const router = useMoneyRouter(); const query = useGetBoardPostQuery(uid); const [remove] = useDeleteBoardPostMutation(); const [notice] = useSetBoardNoticeMutation(); const post = query.data;
   if (query.isLoading) return <div role="status" className="h-64 animate-pulse rounded-xl bg-white" />;
   if (query.isError) return <p role="alert" className="rounded-xl border bg-white p-8">{(query.error as {status?:number}).status === 403 ? "이 비밀글을 확인할 권한이 없습니다." : (query.error as {status?:number}).status === 404 ? "게시글을 찾을 수 없습니다." : message(query.error)}</p>;
   if (!post) return null;

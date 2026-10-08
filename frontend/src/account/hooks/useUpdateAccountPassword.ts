@@ -1,7 +1,9 @@
 "use client";
 
+import { useMoneyRouter } from "../../common/components/useMoneyRouter";
+
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+
 import { useDispatch } from "react-redux";
 import { getApiErrorMessage } from "@/common/api/getApiErrorMessage";
 import { baseApi } from "@/common/api/baseApi";
@@ -12,7 +14,7 @@ import { validatePasswordUpdate } from "../accountValidation";
 import { useUpdateAccountPasswordMutation } from "../controller/accountApi";
 
 export function useUpdateAccountPassword() {
-  const router = useRouter();
+  const router = useMoneyRouter();
   const dispatch = useDispatch<AppDispatch>();
   const [trigger, { isLoading, reset }] = useUpdateAccountPasswordMutation();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);

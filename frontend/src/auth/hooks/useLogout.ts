@@ -1,6 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useMoneyRouter } from "../../common/components/useMoneyRouter";
+
+
 import { useDispatch } from "react-redux";
 import { baseApi } from "@/common/api/baseApi";
 import { clearLocalSession } from "@/auth/session/clearLocalSession";
@@ -8,7 +10,7 @@ import type { AppDispatch } from "@/store/store";
 import { useLogoutMutation } from "../controller/authApi";
 
 export function useLogout() {
-  const router = useRouter();
+  const router = useMoneyRouter();
   const dispatch = useDispatch<AppDispatch>();
   const [logoutMutation, { isLoading }] = useLogoutMutation();
 

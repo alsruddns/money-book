@@ -88,6 +88,7 @@ public enum ErrorCode {
     BOARD_CATEGORY_IN_USE(HttpStatus.CONFLICT, "게시글에서 사용 중인 카테고리는 삭제할 수 없습니다."),
     PASSWORD_RECOVERY_FAILED(HttpStatus.BAD_REQUEST, "입력한 계정 또는 복구 정보가 일치하지 않습니다."),
     EMAIL_VERIFICATION_FAILED(HttpStatus.BAD_REQUEST, "이메일 인증을 완료할 수 없습니다."),
+    EMAIL_DELIVERY_FAILED(HttpStatus.SERVICE_UNAVAILABLE, "이메일을 전송할 수 없습니다. 잠시 후 다시 시도해 주세요."),
     EMAIL_ALREADY_IN_USE(HttpStatus.CONFLICT, "이미 다른 계정에서 사용 중인 이메일입니다."),
     PASSWORD_CHANGE_REQUIRED(HttpStatus.FORBIDDEN, "계속하려면 먼저 임시 비밀번호를 변경해야 합니다."),
     SECURITY_QUESTION_REQUIRED(HttpStatus.BAD_REQUEST, "보안 질문과 답변을 입력해야 합니다."),

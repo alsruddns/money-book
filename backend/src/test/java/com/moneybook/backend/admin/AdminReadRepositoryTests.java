@@ -89,7 +89,7 @@ class AdminReadRepositoryTests {
     }
 
     @Test void overviewCountsStatusesGrowthMembershipActivityAndSessions() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(java.time.ZoneId.of("Asia/Seoul"));
         User owner = users.save(User.create("active-owner", null));
         owner.changeSystemRole(SystemRole.SYSTEM_ADMIN);
         User blocked = users.save(User.create("blocked", null));

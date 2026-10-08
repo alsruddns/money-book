@@ -1,11 +1,13 @@
 "use client";
 
+import { useMoneyRouter } from "../../common/components/useMoneyRouter";
+
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+
 import { useCurrentUser } from "./useCurrentUser";
 
 export function useRedirectIfAuthenticated() {
-  const router = useRouter();
+  const router = useMoneyRouter();
   const { isLoading, isAuthenticated, currentUser } = useCurrentUser();
 
   useEffect(() => {

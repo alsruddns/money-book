@@ -1,11 +1,13 @@
 "use client";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+
+import { useMoneyRouter } from "../../common/components/useMoneyRouter";
+import { usePathname, useSearchParams } from "next/navigation";
 import { getApiErrorMessage } from "@/common/api/getApiErrorMessage";
 import { useGetMoneyBookActivitiesQuery } from "../controller/activityApi";
 import { activityTypes, targetTypes } from "../activityLabels";
 
 export function useMoneyBookActivities(moneyBookUid: number, enabled: boolean) {
-  const params = useSearchParams(); const router = useRouter(); const pathname = usePathname();
+  const params = useSearchParams(); const router = useMoneyRouter(); const pathname = usePathname();
   const startDate = params.get("startDate") ?? ""; const endDate = params.get("endDate") ?? "";
   const actorRaw = params.get("actorUserUid") ?? ""; const typeRaw = params.get("activityType") ?? ""; const targetRaw = params.get("targetType") ?? "";
   const pageRaw = Number(params.get("page") ?? 0); const sizeRaw = Number(params.get("size") ?? 20);

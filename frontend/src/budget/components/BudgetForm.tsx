@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import Link from "next/link";
+import Link from "../../common/components/MoneyLink";
 import { useCategoryList } from "@/category/hooks/useCategoryList";
 import type { MonthlyBudgetResponse } from "../dto/res/MonthlyBudgetResponse";
 import { useSaveBudget } from "../hooks/useSaveBudget";

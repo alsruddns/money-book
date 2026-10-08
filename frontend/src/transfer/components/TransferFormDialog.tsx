@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import Link from "next/link";
+import Link from "../../common/components/MoneyLink";
 import DialogShell from "@/common/components/DialogShell";
 import { useAccountList } from "@/account/hooks/useAccountList";
 import { todayLocalDate } from "@/transaction/transactionForm";

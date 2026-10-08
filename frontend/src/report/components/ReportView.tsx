@@ -1,6 +1,8 @@
 "use client";
-import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+
+import { useMoneyRouter } from "../../common/components/useMoneyRouter";
+import Link from "../../common/components/MoneyLink";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { formatCount, formatMoney } from "@/common/format/money";
 import { formatPercent, formatFractionPercent } from "@/common/format/percent";
@@ -19,7 +21,7 @@ export default function ReportView({ moneyBookUid }: { moneyBookUid: number }) {
   const pathname = usePathname();
   const yearly = pathname.endsWith("/yearly");
   const monthNav = useMonthNavigation();
-  const router = useRouter();
+  const router = useMoneyRouter();
   const query = useSearchParams();
   const parsedYear = Number(query.get("year"));
   const year = yearly && Number.isInteger(parsedYear) && parsedYear >= 1 && parsedYear <= 9998 ? parsedYear : monthNav.year;

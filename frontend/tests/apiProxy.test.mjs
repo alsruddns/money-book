@@ -1,3 +1,4 @@
+import { resolveLocaleTestImport } from "./localeTestImports.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -41,7 +42,7 @@ function loadSource(relativePath, mocks = {}) {
   vm.runInNewContext(js, {
     module: mod,
     exports: mod.exports,
-    require: (name) => (name in mocks ? mocks[name] : require(name)),
+    require: (name) => (name in mocks ? mocks[name] : resolveLocaleTestImport(name, {}, require)),
     URL,
     URLSearchParams,
   });
@@ -51,6 +52,7 @@ function loadSource(relativePath, mocks = {}) {
 test("Next proxy always maps same-origin /api paths to backend /api paths", async () => {
   const local = await loadConfig({ NODE_ENV: "development" }).rewrites();
   assert.deepEqual(JSON.parse(JSON.stringify(local)), [
+    { source: "/money-sitemap.xml", destination: "/sitemap.xml" },
     {
       source: "/api/:path*",
       destination: "http://localhost:8080/api/:path*",
@@ -62,6 +64,7 @@ test("Next proxy always maps same-origin /api paths to backend /api paths", asyn
     BACKEND_API_URL: "https://api.example.test",
   }).rewrites();
   assert.deepEqual(JSON.parse(JSON.stringify(production)), [
+    { source: "/money-sitemap.xml", destination: "/sitemap.xml" },
     {
       source: "/api/:path*",
       destination: "https://api.example.test/api/:path*",

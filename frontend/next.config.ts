@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  basePath: "/money",
   output: "standalone",
   poweredByHeader: false,
   devIndicators: false,
@@ -35,9 +34,33 @@ const nextConfig: NextConfig = {
 
     return [
       {
+        source: "/money-sitemap.xml",
+        destination: "/sitemap.xml",
+      },
+      {
         source: "/api/:path*",
         destination: `${parsedUrl.origin}/api/:path*`,
         basePath: false,
+      },
+    ];
+  },
+
+  async redirects() {
+    return [
+      {
+        source: "/money/sitemap.xml",
+        destination: "/money-sitemap.xml",
+        permanent: true,
+      },
+      {
+        source: "/money",
+        destination: "/ko/money",
+        permanent: true,
+      },
+      {
+        source: "/money/:path*",
+        destination: "/ko/money/:path*",
+        permanent: true,
       },
     ];
   },
