@@ -10,6 +10,32 @@ const localizedLanding: Record<Exclude<Locale, "ko">, { title: string; intro: st
   ja: { title: "家族のお金の流れを一緒に管理", intro: "収入と支出を記録し、予算を立て、日々の家計を共有して管理できます。", login: "ログイン", signup: "はじめる", features: "家計をわかりやすく", privacy: "プライバシー", terms: "利用規約" },
   zh: { title: "与家人一起管理家庭收支", intro: "记录收入和支出、制定预算，并共同了解日常开销。", login: "登录", signup: "开始使用", features: "清晰掌握家庭财务", privacy: "隐私政策", terms: "使用条款" },
 };
+const localizedFeatures: Record<Exclude<Locale, "ko">, { title: string; description: string }[]> = {
+  en: [
+    { title: "Income and expenses in one place", description: "Record transactions by category and account, then review them month by month." },
+    { title: "A household book you share", description: "Invite family or household members and set their view, create, update, and delete permissions." },
+    { title: "Everyday spending on a calendar", description: "Review income and expenses by date and manage transactions from the calendar." },
+    { title: "Budgets and monthly insights", description: "See monthly budgets, category spending, recent trends, and expense rankings." },
+    { title: "Recurring entries and transfers", description: "Manage recurring transactions and record transfers between accounts." },
+    { title: "Exports and session controls", description: "Export transactions and review or end active login sessions." },
+  ],
+  ja: [
+    { title: "収入と支出をまとめて管理", description: "カテゴリや口座を選んで取引を記録し、月ごとに確認できます。" },
+    { title: "家族と共有する家計簿", description: "家族や同居人を招待し、閲覧・作成・更新・削除の権限を設定できます。" },
+    { title: "カレンダーで見る日々の支出", description: "日付ごとの収入と支出を確認し、カレンダーから取引を管理できます。" },
+    { title: "予算と月ごとの分析", description: "月の予算、カテゴリ別支出、最近の傾向、支出ランキングを確認できます。" },
+    { title: "定期取引と口座間振替", description: "定期的な取引を管理し、口座間の振替を記録できます。" },
+    { title: "データ出力とセッション管理", description: "取引データを出力し、ログイン中のセッションを確認・終了できます。" },
+  ],
+  zh: [
+    { title: "集中记录收入与支出", description: "按类别和账户记录交易，并按月查看明细。" },
+    { title: "与家人共享账本", description: "邀请家人或共同居住者，并设置查看、新增、修改和删除权限。" },
+    { title: "用日历查看日常开销", description: "按日期查看收入和支出，并直接在日历中管理交易。" },
+    { title: "预算与月度分析", description: "查看月度预算、分类支出、近期趋势和支出排名。" },
+    { title: "周期交易与账户转账", description: "管理周期性交易，并记录账户之间的转账。" },
+    { title: "数据导出与会话管理", description: "导出交易记录，并查看或结束当前登录会话。" },
+  ],
+};
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   const { locale: raw } = await params;
@@ -34,7 +60,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const jsonLd = JSON.stringify(buildWebApplicationJsonLd(process.env, raw)).replace(/</g, "\\u003c");
   if (raw !== "ko") {
     const content = localizedLanding[raw];
-    return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} /><LandingHeader /><main className="flex-1 text-zinc-900"><section className="bg-gradient-to-br from-blue-50 via-white to-emerald-50 px-5 py-24"><div className="mx-auto max-w-5xl"><p className="font-semibold text-blue-800">MoneyBook</p><h1 className="mt-5 max-w-3xl text-4xl font-bold tracking-tight sm:text-6xl">{content.title}</h1><p className="mt-6 max-w-2xl text-lg leading-8 text-zinc-600">{content.intro}</p><div className="mt-8 flex gap-3"><Link className="rounded-lg bg-blue-700 px-5 py-3 font-semibold text-white" href={`/${raw}/signup`}>{content.signup}</Link><Link className="rounded-lg border border-zinc-300 bg-white px-5 py-3 font-semibold" href={`/${raw}/login`}>{content.login}</Link></div></div></section><section className="mx-auto max-w-5xl px-5 py-16"><h2 className="text-3xl font-bold">{content.features}</h2><p className="mt-4 max-w-2xl leading-7 text-zinc-600">{content.intro}</p></section></main><footer className="flex justify-center gap-6 border-t p-6"><Link href={`/${raw}/privacy`}>{content.privacy}</Link><Link href={`/${raw}/terms`}>{content.terms}</Link></footer></>;
+    return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} /><LandingHeader /><main className="flex-1 text-zinc-900"><section className="bg-gradient-to-br from-blue-50 via-white to-emerald-50 px-5 py-24"><div className="mx-auto max-w-5xl"><p className="font-semibold text-blue-800">MoneyBook</p><h1 className="mt-5 max-w-3xl text-4xl font-bold tracking-tight sm:text-6xl">{content.title}</h1><p className="mt-6 max-w-2xl text-lg leading-8 text-zinc-600">{content.intro}</p><div className="mt-8 flex gap-3"><Link className="rounded-lg bg-blue-700 px-5 py-3 font-semibold text-white" href={`/${raw}/signup`}>{content.signup}</Link><Link className="rounded-lg border border-zinc-300 bg-white px-5 py-3 font-semibold" href={`/${raw}/login`}>{content.login}</Link></div></div></section><section id="features" className="mx-auto max-w-5xl px-5 py-16"><h2 className="text-3xl font-bold">{content.features}</h2><p className="mt-4 max-w-2xl leading-7 text-zinc-600">{content.intro}</p><div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{localizedFeatures[raw].map((feature) => <article key={feature.title} className="rounded-2xl border border-zinc-200 bg-white p-5"><h3 className="font-semibold">{feature.title}</h3><p className="mt-2 leading-6 text-zinc-600">{feature.description}</p></article>)}</div></section></main><footer className="flex justify-center gap-6 border-t p-6"><Link href={`/${raw}/privacy`}>{content.privacy}</Link><Link href={`/${raw}/terms`}>{content.terms}</Link></footer></>;
   }
 
   return <>

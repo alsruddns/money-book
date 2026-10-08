@@ -9,8 +9,9 @@ export const SITE_DESCRIPTION = "가족과 함께 수입과 지출을 기록하�
 type SiteEnvironment = { NODE_ENV?: string; SITE_URL?: string; GOOGLE_SITE_VERIFICATION?: string; NAVER_SITE_VERIFICATION?: string };
 
 export function getSiteUrl(env: SiteEnvironment = process.env): URL | undefined {
+  if (env.NODE_ENV === "production") return new URL(SITE_ORIGIN);
   const configuredUrl = env.SITE_URL?.trim();
-  if (!configuredUrl) return env.NODE_ENV === "production" ? new URL(SITE_ORIGIN) : new URL("http://localhost:3000");
+  if (!configuredUrl) return new URL("http://localhost:3000");
   const siteUrl = new URL(configuredUrl);
   if (!["http:", "https:"].includes(siteUrl.protocol) || siteUrl.pathname !== "/" || siteUrl.search || siteUrl.hash || siteUrl.username || siteUrl.password) {
     throw new Error("SITE_URL must be an HTTP(S) origin without a path, credentials, query, or fragment.");
@@ -54,7 +55,7 @@ export function buildPublicSitemap(env: SiteEnvironment = process.env): Metadata
   if (!siteUrl) return [];
   const locales = ["ko", "en", "ja", "zh"] as const;
   return ["", "/privacy", "/terms"].flatMap((suffix) => {
-    const languages = { ko: `${SITE_ORIGIN}/ko/money${suffix}`, en: `${SITE_ORIGIN}/en/money${suffix}`, ja: `${SITE_ORIGIN}/ja/money${suffix}`, "zh-CN": `${SITE_ORIGIN}/zh/money${suffix}`, "x-default": `${SITE_ORIGIN}/ko/money${suffix}` };
+    const languages = { ko: `${SITE_ORIGIN}/ko/money${suffix}`, en: `${SITE_ORIGIN}/en/money${suffix}`, ja: `${SITE_ORIGIN}/ja/money${suffix}`, zh: `${SITE_ORIGIN}/zh/money${suffix}`, "x-default": `${SITE_ORIGIN}/ko/money${suffix}` };
     return locales.map((locale) => ({ url: new URL(`/${locale}/money${suffix}`, siteUrl).toString(), alternates: { languages } }));
   });
 }

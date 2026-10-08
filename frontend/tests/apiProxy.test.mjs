@@ -52,6 +52,7 @@ function loadSource(relativePath, mocks = {}) {
 test("Next proxy always maps same-origin /api paths to backend /api paths", async () => {
   const local = await loadConfig({ NODE_ENV: "development" }).rewrites();
   assert.deepEqual(JSON.parse(JSON.stringify(local)), [
+    { source: "/money-sitemap.xml", destination: "/sitemap.xml" },
     {
       source: "/api/:path*",
       destination: "http://localhost:8080/api/:path*",
@@ -63,6 +64,7 @@ test("Next proxy always maps same-origin /api paths to backend /api paths", asyn
     BACKEND_API_URL: "https://api.example.test",
   }).rewrites();
   assert.deepEqual(JSON.parse(JSON.stringify(production)), [
+    { source: "/money-sitemap.xml", destination: "/sitemap.xml" },
     {
       source: "/api/:path*",
       destination: "https://api.example.test/api/:path*",
