@@ -59,7 +59,7 @@ test("landing CTA changes to the personal MoneyBook link for an authenticated us
 test("public metadata provides canonical, Open Graph, Twitter and optional verification values", () => {
   const seo = loadSeo();
   const metadata = seo.createPublicMetadata("/privacy", "개인정보 처리 안내", "설명", {
-    NODE_ENV: "production",
+    NODE_ENV: "test",
     SITE_URL: "https://money.example",
     GOOGLE_SITE_VERIFICATION: "google-token",
     NAVER_SITE_VERIFICATION: "naver-token",
@@ -91,7 +91,11 @@ test("production defaults to the configured public domain and locale paths", () 
   const privatePaths = ["/login", "/signup", "/account", "/admin", "/board", "/books"];
   assert.ok(sitemapUrls.every((url) => privatePaths.every((path) => !new URL(url).pathname.startsWith(`/money${path}`))));
   assert.deepEqual(sitemapUrls, ["", "/privacy", "/terms"].flatMap((suffix) => ["ko", "en", "ja", "zh"].map((locale) => `https://www.woori.today/${locale}/money${suffix}`)));
+  const sitemap = seo.buildPublicSitemap(env);
+  assert.deepEqual(Object.keys(sitemap[0].alternates.languages), ["ko", "en", "ja", "zh", "x-default"]);
+  assert.ok(sitemap.every((entry) => !/localhost|woori\.today\/(?:money(?:\/|$)|[^/]+\/money\/sitemap)/.test(entry.url)));
   assert.equal(seo.buildWebApplicationJsonLd(env).url, "https://www.woori.today/ko/money");
+  assert.equal(seo.getSiteUrl({ NODE_ENV: "production", SITE_URL: "https://woori.today" }).toString(), "https://www.woori.today/");
 });
 
 test("local development uses localhost only as a development canonical base", () => {
@@ -102,13 +106,22 @@ test("local development uses localhost only as a development canonical base", ()
 
 test("robots blocks private routes and sitemap includes only public pages", () => {
   const seo = loadSeo();
-  const env = { NODE_ENV: "production", SITE_URL: "https://money.example" };
+  const env = { NODE_ENV: "test", SITE_URL: "https://www.woori.today" };
   const robots = seo.buildRobots(env);
   const disallow = robots.rules.disallow;
   assert.equal(disallow[0], "/api/");
   assert.ok(disallow.includes("/en/money/admin/"));
-  assert.equal(robots.sitemap, "https://money.example/money-sitemap.xml");
-  assert.deepEqual(JSON.parse(JSON.stringify(seo.buildPublicSitemap(env).map((item) => item.url))), ["", "/privacy", "/terms"].flatMap((suffix) => ["ko", "en", "ja", "zh"].map((locale) => `https://money.example/${locale}/money${suffix}`)));
+  assert.equal(robots.sitemap, "https://www.woori.today/money-sitemap.xml");
+  assert.deepEqual(JSON.parse(JSON.stringify(seo.buildPublicSitemap(env).map((item) => item.url))), ["", "/privacy", "/terms"].flatMap((suffix) => ["ko", "en", "ja", "zh"].map((locale) => `https://www.woori.today/${locale}/money${suffix}`)));
+});
+
+test("Next routes keep the API unprefixed, redirect legacy MoneyBook URLs, and alias the submitted sitemap", () => {
+  const config = fs.readFileSync(path.join(path.dirname(root), "next.config.ts"), "utf8");
+  assert.match(config, /source: "\/money\/sitemap\.xml"[\s\S]*?destination: "\/money-sitemap\.xml"[\s\S]*?permanent: true/);
+  assert.match(config, /source: "\/money"[\s\S]*?destination: "\/ko\/money"[\s\S]*?permanent: true/);
+  assert.match(config, /source: "\/money\/:path\*"[\s\S]*?destination: "\/ko\/money\/:path\*"[\s\S]*?permanent: true/);
+  assert.match(config, /source: "\/money-sitemap\.xml"[\s\S]*?destination: "\/sitemap\.xml"/);
+  assert.match(config, /source: "\/api\/:path\*"[\s\S]*?destination: `\$\{parsedUrl\.origin\}\/api\/:path\*`/);
 });
 
 test("private page metadata is noindex and each private route applies the shared policy", () => {
@@ -139,7 +152,7 @@ test("JSON-LD is a minimal WebApplication schema without invented prices or revi
   assert.equal(app["@type"], "WebApplication");
   assert.equal(app.name, "\uBB34\uB8CC \uACF5\uC720 \uAC00\uACC4\uBD80");
   assert.equal(app.operatingSystem, "Web");
-    assert.equal(app.url, "https://money.example/ko/money");
+    assert.equal(app.url, "https://www.woori.today/ko/money");
     assert.equal(app.inLanguage, "ko");
   assert.equal(app.offers, undefined);
   assert.equal(app.aggregateRating, undefined);

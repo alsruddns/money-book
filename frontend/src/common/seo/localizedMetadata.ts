@@ -13,7 +13,7 @@ export function createLocalizedMetadata(locale: Locale, pathname: string, title:
     ko: `${SITE_ORIGIN}/ko/money${suffix}`,
     en: `${SITE_ORIGIN}/en/money${suffix}`,
     ja: `${SITE_ORIGIN}/ja/money${suffix}`,
-    "zh-CN": `${SITE_ORIGIN}/zh/money${suffix}`,
+    zh: `${SITE_ORIGIN}/zh/money${suffix}`,
     "x-default": `${SITE_ORIGIN}/ko/money${suffix}`,
   };
   return {
