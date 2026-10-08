@@ -74,8 +74,16 @@ test("public metadata provides canonical, Open Graph, Twitter and optional verif
   assert.equal(metadata.twitter.images[0], "https://money.example/_assets/money/moneybook-og.png");
   assert.deepEqual(JSON.parse(JSON.stringify(metadata.verification)), {
     google: "google-token",
-    other: { "naver-site-verification": "naver-token" },
+    other: {
+      "naver-site-verification": "naver-token",
+      "google-adsense-account": "ca-pub-8033378933696766",
+    },
   });
+});
+
+test("public metadata always includes the AdSense site verification value", () => {
+  const metadata = loadSeo().createPublicMetadata("/", "MoneyBook", "설명", { NODE_ENV: "production" });
+  assert.equal(metadata.verification.other["google-adsense-account"], "ca-pub-8033378933696766");
 });
 
 test("production defaults to the configured public domain and locale paths", () => {

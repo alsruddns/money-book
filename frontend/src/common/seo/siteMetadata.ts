@@ -5,6 +5,7 @@ export const SITE_ORIGIN = "https://www.woori.today";
 export const SITE_BASE_PATH = "";
 export const SITE_TITLE = "무료 공유 가계부";
 export const SITE_DESCRIPTION = "가족과 함께 수입과 지출을 기록하고 예산과 소비 흐름을 관리하는 무료 공유 가계부입니다.";
+export const GOOGLE_ADSENSE_ACCOUNT = "ca-pub-8033378933696766";
 
 type SiteEnvironment = { NODE_ENV?: string; SITE_URL?: string; GOOGLE_SITE_VERIFICATION?: string; NAVER_SITE_VERIFICATION?: string };
 
@@ -31,7 +32,13 @@ export function createPublicMetadata(pathname: string, title: string, descriptio
     robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large" } },
     openGraph: { type: "website", title, description, siteName: SITE_NAME, locale: "ko_KR", ...(canonical ? { url: canonical } : {}), ...(socialImage ? { images: [{ url: socialImage, width: 1200, height: 630, alt: `${SITE_NAME} shared household budget` }] } : {}) },
     twitter: { card: "summary_large_image", title, description, ...(socialImage ? { images: [socialImage] } : {}) },
-    ...(googleVerification || naverVerification ? { verification: { ...(googleVerification ? { google: googleVerification } : {}), ...(naverVerification ? { other: { "naver-site-verification": naverVerification } } : {}) } } : {}),
+    verification: {
+      ...(googleVerification ? { google: googleVerification } : {}),
+      other: {
+        ...(naverVerification ? { "naver-site-verification": naverVerification } : {}),
+        "google-adsense-account": GOOGLE_ADSENSE_ACCOUNT,
+      },
+    },
   };
 }
 
