@@ -50,7 +50,10 @@ function loadSource(relativePath, mocks = {}) {
 }
 
 test("Next proxy always maps same-origin /api paths to backend /api paths", async () => {
-  const local = await loadConfig({ NODE_ENV: "development" }).rewrites();
+  const config = loadConfig({ NODE_ENV: "development" });
+  assert.equal(config.assetPrefix, "/_assets/money");
+  assert.equal(config.images.path, "/_assets/money/_next/image");
+  const local = await config.rewrites();
   assert.deepEqual(JSON.parse(JSON.stringify(local)), [
     { source: "/money-sitemap.xml", destination: "/sitemap.xml" },
     {

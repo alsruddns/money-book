@@ -22,7 +22,7 @@ export function getSiteUrl(env: SiteEnvironment = process.env): URL | undefined 
 export function createPublicMetadata(pathname: string, title: string, description: string, env: SiteEnvironment = process.env): Metadata {
   const siteUrl = getSiteUrl(env);
   const canonical = siteUrl ? new URL(`${SITE_BASE_PATH}${pathname === "/" ? "" : pathname}`, siteUrl).toString() : undefined;
-  const socialImage = siteUrl ? new URL(`${SITE_BASE_PATH}/moneybook-og.png`, siteUrl).toString() : undefined;
+  const socialImage = siteUrl ? new URL("/_assets/money/moneybook-og.png", siteUrl).toString() : undefined;
   const googleVerification = env.GOOGLE_SITE_VERIFICATION?.trim();
   const naverVerification = env.NAVER_SITE_VERIFICATION?.trim();
   return {
