@@ -4,6 +4,7 @@ import com.moneybook.backend.common.exception.BusinessException;
 import com.moneybook.backend.common.exception.ErrorCode;
 import com.moneybook.backend.enums.JwtTokenType;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwsHeader;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.Clock;
 import java.util.UUID;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -32,10 +34,18 @@ public class JwtTokenProvider {
     private final JwtDecoder refreshDecoder;
     private final Duration accessTokenExpiration;
     private final Duration refreshTokenExpiration;
+    private final Clock clock;
 
     public JwtTokenProvider(JwtEncoder jwtEncoder, SecretKey jwtSecretKey,
+                            Duration accessTokenExpiration, Duration refreshTokenExpiration) {
+        this(jwtEncoder, jwtSecretKey, accessTokenExpiration, refreshTokenExpiration, Clock.systemUTC());
+    }
+
+    @Autowired
+    public JwtTokenProvider(JwtEncoder jwtEncoder, SecretKey jwtSecretKey,
                             @Value("${jwt.access-token-expiration}") Duration accessTokenExpiration,
-                            @Value("${jwt.refresh-token-expiration}") Duration refreshTokenExpiration) {
+                            @Value("${jwt.refresh-token-expiration}") Duration refreshTokenExpiration,
+                            Clock sessionClock) {
         requirePositive(accessTokenExpiration, "Access");
         requirePositive(refreshTokenExpiration, "Refresh");
         this.jwtEncoder = jwtEncoder;
@@ -43,6 +53,7 @@ public class JwtTokenProvider {
                 .macAlgorithm(MacAlgorithm.HS256).build();
         this.accessTokenExpiration = accessTokenExpiration;
         this.refreshTokenExpiration = refreshTokenExpiration;
+        this.clock = sessionClock;
     }
 
     /** Signs a short lived Access Token with the user's stable UID as its subject. */
@@ -52,7 +63,7 @@ public class JwtTokenProvider {
 
     /** Signs an Access Token associated with the current refresh session. */
     public String createAccessToken(Long userUid, String sessionKey) {
-        return createToken(userUid, JwtTokenType.ACCESS, sessionKey, Instant.now().plus(accessTokenExpiration));
+        return createToken(userUid, JwtTokenType.ACCESS, sessionKey, clock.instant().plus(accessTokenExpiration));
     }
 
     /** Signs a Refresh Token that cannot be used as a Bearer token for general APIs. */
@@ -110,17 +121,17 @@ public class JwtTokenProvider {
     }
 
     public Instant newSessionExpiration() {
-        return Instant.now().plus(refreshTokenExpiration).truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
+        return clock.instant().plus(refreshTokenExpiration).truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
     }
 
     public record RefreshClaims(Long userUid, String sessionKey, Instant expiresAt, Instant issuedAt) { }
 
     private String createToken(Long userUid, JwtTokenType type, Duration expiration) {
-        return createToken(userUid, type, UUID.randomUUID().toString(), Instant.now().plus(expiration));
+        return createToken(userUid, type, UUID.randomUUID().toString(), clock.instant().plus(expiration));
     }
 
     private String createToken(Long userUid, JwtTokenType type, String sessionKey, Instant expiresAt) {
-        Instant now = Instant.now();
+        Instant now = clock.instant();
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .subject(userUid.toString())
                 .issuedAt(now)

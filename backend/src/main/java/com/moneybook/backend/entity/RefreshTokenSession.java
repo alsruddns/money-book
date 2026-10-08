@@ -11,6 +11,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.time.Duration;
 import java.util.Objects;
 
 /** 서버가 상태와 회전을 관리하는 Refresh Token 세션이다. 원문 토큰은 저장하지 않는다. */
@@ -89,6 +90,11 @@ public class RefreshTokenSession extends BaseEntity {
 
     public boolean isActiveAt(LocalDateTime now) {
         return revokedAt == null && expiresAt.isAfter(now);
+    }
+
+    /** Treats the exact idle-timeout boundary as expired. */
+    public boolean isIdleAt(LocalDateTime now, Duration idleTimeout) {
+        return !lastUsedAt.plus(idleTimeout).isAfter(now);
     }
 
     private static String limit(String value, int maxLength) {

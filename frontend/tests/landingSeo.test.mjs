@@ -69,9 +69,9 @@ test("public metadata provides canonical, Open Graph, Twitter and optional verif
   assert.equal(metadata.openGraph.type, "website");
   assert.equal(metadata.openGraph.url, "https://money.example/privacy");
   assert.equal(metadata.openGraph.locale, "ko_KR");
-  assert.equal(metadata.openGraph.images[0].url, "https://money.example/moneybook-og.png");
+  assert.equal(metadata.openGraph.images[0].url, "https://money.example/_assets/money/moneybook-og.png");
   assert.equal(metadata.twitter.card, "summary_large_image");
-  assert.equal(metadata.twitter.images[0], "https://money.example/moneybook-og.png");
+  assert.equal(metadata.twitter.images[0], "https://money.example/_assets/money/moneybook-og.png");
   assert.deepEqual(JSON.parse(JSON.stringify(metadata.verification)), {
     google: "google-token",
     other: { "naver-site-verification": "naver-token" },

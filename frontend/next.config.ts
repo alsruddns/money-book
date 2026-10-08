@@ -2,8 +2,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  assetPrefix: "/_assets/money",
   poweredByHeader: false,
   devIndicators: false,
+  images: {
+    path: "/_assets/money/_next/image",
+  },
 
   async rewrites() {
     const configuredUrl = process.env.BACKEND_API_URL;
