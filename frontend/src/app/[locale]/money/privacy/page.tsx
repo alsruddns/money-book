@@ -1,4 +1,5 @@
 import Link from "../../../../common/components/MoneyLink";
+import GoogleAdSenseScript from "@/common/components/GoogleAdSenseScript";
 import { createLocalizedMetadata } from "@/common/seo/localizedMetadata";
 import { isLocale, type Locale } from "@/i18n/config";
 import { notFound } from "next/navigation";
@@ -17,7 +18,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 
 export default async function PrivacyPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale: raw } = await params; if (!isLocale(raw)) notFound(); const text = copy[raw];
-  return <main className="flex-1 bg-zinc-50 px-4 py-10 text-zinc-900 sm:px-6 sm:py-14">
+  return <><GoogleAdSenseScript /><main className="flex-1 bg-zinc-50 px-4 py-10 text-zinc-900 sm:px-6 sm:py-14">
     <article className="mx-auto max-w-3xl rounded-2xl border border-zinc-200 bg-white p-6 sm:p-10">
       <Link href={`/${raw}`} className="text-sm font-medium text-blue-700 hover:underline">{text.home}</Link>
       <h1 className="mt-5 text-3xl font-bold">{text.title}</h1>
@@ -27,5 +28,5 @@ export default async function PrivacyPage({ params }: { params: Promise<{ locale
       </div>
       {raw === "ko" && <p className="mt-9 border-t border-zinc-200 pt-5 text-sm text-zinc-600">계정이 있다면 <Link href={`/${raw}/account`} className="font-medium text-blue-700 hover:underline">{text.account}</Link>에서 관련 기능을 확인할 수 있습니다.</p>}
     </article>
-  </main>;
+  </main></>;
 }
