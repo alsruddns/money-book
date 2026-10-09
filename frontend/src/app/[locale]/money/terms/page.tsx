@@ -1,4 +1,5 @@
 import Link from "../../../../common/components/MoneyLink";
+import GoogleAdSenseScript from "@/common/components/GoogleAdSenseScript";
 import { createLocalizedMetadata } from "@/common/seo/localizedMetadata";
 import { isLocale, type Locale } from "@/i18n/config";
 import { notFound } from "next/navigation";
@@ -17,7 +18,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 
 export default async function TermsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale: raw } = await params; if (!isLocale(raw)) notFound(); const text = copy[raw];
-  return <main className="flex-1 bg-zinc-50 px-4 py-10 text-zinc-900 sm:px-6 sm:py-14">
+  return <><GoogleAdSenseScript /><main className="flex-1 bg-zinc-50 px-4 py-10 text-zinc-900 sm:px-6 sm:py-14">
     <article className="mx-auto max-w-3xl rounded-2xl border border-zinc-200 bg-white p-6 sm:p-10">
       <Link href={`/${raw}`} className="text-sm font-medium text-blue-700 hover:underline">{text.home}</Link>
       <h1 className="mt-5 text-3xl font-bold">{text.title}</h1>
@@ -26,5 +27,5 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
         {text.sections.map(([heading, body]) => <section key={heading}><h2 className="text-lg font-semibold text-zinc-900">{heading}</h2><p className="mt-2">{body}</p></section>)}
       </div>
     </article>
-  </main>;
+  </main></>;
 }
