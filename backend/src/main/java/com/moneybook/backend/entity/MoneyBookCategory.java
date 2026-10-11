@@ -1,6 +1,7 @@
 package com.moneybook.backend.entity;
 
 import com.moneybook.backend.enums.TransactionType;
+import com.moneybook.backend.enums.CategoryLevel;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -49,15 +50,35 @@ public class MoneyBookCategory extends BaseEntity {
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
 
-    private MoneyBookCategory(MoneyBook moneyBook, String name, TransactionType transactionType, int sortOrder) {
+    @Enumerated(EnumType.STRING)
+    @Column(name = "category_level", nullable = false, length = 10)
+    private CategoryLevel categoryLevel;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_category_uid")
+    private MoneyBookCategory parentCategory;
+
+    @Column(name = "active", nullable = false)
+    private boolean active;
+
+    private MoneyBookCategory(MoneyBook moneyBook, String name, TransactionType transactionType, int sortOrder,
+                              CategoryLevel categoryLevel, MoneyBookCategory parentCategory) {
         this.moneyBook = Objects.requireNonNull(moneyBook, "moneyBook");
         this.transactionType = Objects.requireNonNull(transactionType, "transactionType");
+        this.categoryLevel = Objects.requireNonNull(categoryLevel, "categoryLevel");
+        this.parentCategory = parentCategory;
+        this.active = true;
         change(name, sortOrder);
     }
 
     public static MoneyBookCategory create(MoneyBook moneyBook, String name,
                                             TransactionType transactionType, int sortOrder) {
-        return new MoneyBookCategory(moneyBook, name, transactionType, sortOrder);
+        return create(moneyBook, name, transactionType, sortOrder, CategoryLevel.LARGE, null);
+    }
+
+    public static MoneyBookCategory create(MoneyBook moneyBook, String name, TransactionType transactionType,
+                                            int sortOrder, CategoryLevel level, MoneyBookCategory parent) {
+        return new MoneyBookCategory(moneyBook, name, transactionType, sortOrder, level, parent);
     }
 
     public void change(String name, int sortOrder) {
@@ -67,4 +88,6 @@ public class MoneyBookCategory extends BaseEntity {
         this.name = name;
         this.sortOrder = sortOrder;
     }
+
+    public void deactivate() { this.active = false; }
 }

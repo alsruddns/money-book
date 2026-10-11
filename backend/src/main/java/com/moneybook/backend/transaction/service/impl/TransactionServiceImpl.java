@@ -14,6 +14,7 @@ import com.moneybook.backend.enums.MoneyBookPermission;
 import com.moneybook.backend.enums.ActivityTargetType;
 import com.moneybook.backend.enums.ActivityType;
 import com.moneybook.backend.enums.TransactionType;
+import com.moneybook.backend.enums.CategoryLevel;
 import com.moneybook.backend.moneybook.provider.MoneyBookPermissionProvider;
 import com.moneybook.backend.transaction.dto.CreateTransactionRequest;
 import com.moneybook.backend.transaction.dto.TransactionResponse;
@@ -46,7 +47,8 @@ public class TransactionServiceImpl implements TransactionService {
         MoneyBook book = permissions.require(bookUid, authentication, MoneyBookPermission.CREATE);
         closingGuard.requireOpen(bookUid, request.transactionDate());
         validateAmount(request.amount());
-        MoneyBookCategory category = category(bookUid, request.categoryUid(), request.transactionType());
+        MoneyBookCategory category = resolveCategory(bookUid, request.categoryUid(), request.largeCategoryUid(),
+                request.mediumCategoryUid(), request.smallCategoryUid(), request.transactionType());
         MoneyBookAccount account = account(bookUid, request.accountUid());
         var saved = transactions.save(MoneyBookTransaction.create(
                 book, request.transactionType(), request.amount(), request.transactionDate(),
@@ -72,7 +74,8 @@ public class TransactionServiceImpl implements TransactionService {
         closingGuard.requireOpen(bookUid, List.of(YearMonth.from(entry.getTransactionDate()),
                 YearMonth.from(request.transactionDate())));
         validateAmount(request.amount());
-        MoneyBookCategory category = category(bookUid, request.categoryUid(), request.transactionType());
+        MoneyBookCategory category = resolveCategory(bookUid, request.categoryUid(), request.largeCategoryUid(),
+                request.mediumCategoryUid(), request.smallCategoryUid(), request.transactionType());
         MoneyBookAccount account = account(bookUid, request.accountUid());
         entry.change(request.transactionType(), request.amount(), request.transactionDate(),
                 category, account, request.memo());
@@ -119,7 +122,36 @@ public class TransactionServiceImpl implements TransactionService {
         if (category.getTransactionType() != type) {
             throw new BusinessException(ErrorCode.TRANSACTION_CATEGORY_TYPE_MISMATCH);
         }
+        if (!category.isActive()) throw new BusinessException(ErrorCode.CATEGORY_NOT_FOUND);
         return category;
+    }
+
+    private MoneyBookCategory resolveCategory(Long bookUid, Long legacyUid, Long largeUid, Long mediumUid,
+                                               Long smallUid, TransactionType type) {
+        if (largeUid == null && mediumUid == null && smallUid == null) {
+            if (legacyUid == null) throw new BusinessException(ErrorCode.VALIDATION_FAILED);
+            return category(bookUid, legacyUid, type);
+        }
+        if (largeUid == null || (smallUid != null && mediumUid == null)) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED);
+        }
+        MoneyBookCategory large = category(bookUid, largeUid, type);
+        if (large.getCategoryLevel() != CategoryLevel.LARGE || large.getParentCategory() != null) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED);
+        }
+        if (mediumUid == null) return large;
+        MoneyBookCategory medium = category(bookUid, mediumUid, type);
+        if (medium.getCategoryLevel() != CategoryLevel.MEDIUM || medium.getParentCategory() == null
+                || !medium.getParentCategory().getCategoryUid().equals(largeUid)) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED);
+        }
+        if (smallUid == null) return medium;
+        MoneyBookCategory small = category(bookUid, smallUid, type);
+        if (small.getCategoryLevel() != CategoryLevel.SMALL || small.getParentCategory() == null
+                || !small.getParentCategory().getCategoryUid().equals(mediumUid)) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED);
+        }
+        return small;
     }
 
     private MoneyBookAccount account(Long bookUid, Long accountUid) {

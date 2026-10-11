@@ -1,6 +1,7 @@
 package com.moneybook.backend.category.controller;
 
 import com.moneybook.backend.category.dto.CategoryResponse;
+import com.moneybook.backend.category.dto.CategoryTreeResponse;
 import com.moneybook.backend.category.dto.CreateCategoryRequest;
 import com.moneybook.backend.category.dto.UpdateCategoryRequest;
 import com.moneybook.backend.category.service.CategoryService;
@@ -43,6 +44,13 @@ public class CategoryController {
                                                         @RequestParam(required = false) TransactionType transactionType,
                                                         Authentication authentication) {
         return ResponseEntity.ok(service.list(moneyBookUid, transactionType, authentication));
+    }
+
+    /** Returns active categories in a tree for category management. */
+    @GetMapping("/tree")
+    public ResponseEntity<List<CategoryTreeResponse>> tree(@PathVariable Long moneyBookUid,
+            @RequestParam(required = false) TransactionType transactionType, Authentication authentication) {
+        return ResponseEntity.ok(service.tree(moneyBookUid, transactionType, authentication));
     }
 
     /** U 권한으로 이름과 정렬 순서를 변경한다. 거래 유형은 유지한다. */

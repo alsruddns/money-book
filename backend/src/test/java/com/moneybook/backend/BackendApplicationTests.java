@@ -10,6 +10,7 @@ import org.springframework.test.context.ActiveProfiles;
 		"spring.datasource.password=",
 		"spring.datasource.driver-class-name=org.h2.Driver",
 		"spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
+		"spring.jpa.hibernate.ddl-auto=create-drop",
 		"spring.flyway.enabled=false",
 		"jwt.secret=bW9uZXlib29rLXRlc3Qtc2VjcmV0LWtleS1mb3ItdGVzdC1vbmx5LTMyeQ=="
 })

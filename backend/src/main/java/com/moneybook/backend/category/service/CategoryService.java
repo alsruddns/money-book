@@ -7,10 +7,12 @@ import com.moneybook.backend.enums.TransactionType;
 import org.springframework.security.core.Authentication;
 
 import java.util.List;
+import com.moneybook.backend.category.dto.CategoryTreeResponse;
 
 public interface CategoryService {
     CategoryResponse create(Long moneyBookUid, CreateCategoryRequest request, Authentication authentication);
     List<CategoryResponse> list(Long moneyBookUid, TransactionType type, Authentication authentication);
+    List<CategoryTreeResponse> tree(Long moneyBookUid, TransactionType type, Authentication authentication);
     CategoryResponse update(Long moneyBookUid, Long categoryUid, UpdateCategoryRequest request,
                             Authentication authentication);
     void delete(Long moneyBookUid, Long categoryUid, Authentication authentication);
