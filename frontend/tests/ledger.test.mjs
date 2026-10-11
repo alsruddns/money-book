@@ -34,11 +34,18 @@ test("category API uses exact paths, optional type filter, and book scoped tags"
   assert.deepEqual(plain(api.getCategories.query({ moneyBookUid: 4, transactionType: "INCOME" })), {
     url: "money-books/4/categories", params: { transactionType: "INCOME" },
   });
-  assert.equal(api.createCategory.query({ moneyBookUid: 4, request: {} }).method, "POST");
+  assert.deepEqual(plain(api.createCategory.query({ moneyBookUid: 4, request: { name: "Dining", transactionType: "EXPENSE", sortOrder: 0, parentCategoryUid: 1 } })), {
+    url: "money-books/4/categories", method: "POST", body: { name: "Dining", transactionType: "EXPENSE", sortOrder: 0, parentCategoryUid: 1 },
+  });
   assert.equal(api.updateCategory.query({ moneyBookUid: 4, categoryUid: 8, request: {} }).url, "money-books/4/categories/8");
   assert.equal(api.deleteCategory.query({ moneyBookUid: 4, categoryUid: 8 }).method, "DELETE");
   assert.deepEqual(plain(api.getCategories.providesTags([], undefined, { moneyBookUid: 4 })), [{ type: "Category", id: 4 }]);
+  assert.deepEqual(plain(api.getCategoryTree.query({ moneyBookUid: 4, transactionType: "EXPENSE" })), {
+    url: "money-books/4/categories/tree", params: { transactionType: "EXPENSE" },
+  });
+  assert.deepEqual(plain(api.getCategoryTree.providesTags([], undefined, { moneyBookUid: 4 })), [{ type: "Category", id: 4 }]);
   assert.deepEqual(plain(api.createCategory.invalidatesTags({}, undefined, { moneyBookUid: 4 })), [{ type: "Category", id: 4 }, { type: "Report", id: 4 }, { type: "Dashboard", id: 4 }, { type: "MoneyBookActivity", id: 4 }]);
+  assert.deepEqual(plain(api.deleteCategory.invalidatesTags(undefined, undefined, { moneyBookUid: 4 })), [{ type: "Category", id: 4 }, { type: "Report", id: 4 }, { type: "Dashboard", id: 4 }, { type: "MoneyBookActivity", id: 4 }]);
   assert.deepEqual(plain(api.updateCategory.invalidatesTags({}, undefined, { moneyBookUid: 4 })), [
     { type: "Category", id: 4 }, { type: "Transaction", id: 4 },
     { type: "Calendar", id: 4 }, { type: "Budget", id: 4 }, { type: "Recurring", id: 4 }, { type: "Report", id: 4 }, { type: "Dashboard", id: 4 }, { type: "MoneyBookActivity", id: 4 },
@@ -91,27 +98,36 @@ test("month URL parsing rejects invalid values and navigation crosses year bound
   assert.deepEqual(plain(shiftMonth({ year: 1, month: 1 }, -1)), { year: 1, month: 1 });
 });
 
-test("transaction form accepts backend fields and rejects bad amount, date, and missing choices", () => {
-  const { parseTransactionRequest, todayLocalDate, formatWon } = loadModule("transaction/transactionForm.ts");
-  const values = { transactionType: "EXPENSE", amount: "15000.50", transactionDate: "2026-10-02", categoryUid: "2", accountUid: "3", memo: " 점심 " };
+test("transaction form sends large, medium, and small category UIDs and validates required hierarchy", () => {
+  const { parseTransactionRequest, selectLargeCategory, selectMediumCategory, todayLocalDate, formatWon } = loadModule("transaction/transactionForm.ts");
+  const values = { transactionType: "EXPENSE", amount: "15000.50", transactionDate: "2026-10-02", largeCategoryUid: "2", mediumCategoryUid: "20", smallCategoryUid: "30", accountUid: "3", memo: " 점심 " };
   assert.deepEqual(plain(parseTransactionRequest(values).request), {
     transactionType: "EXPENSE", amount: 15000.5, transactionDate: "2026-10-02",
-    categoryUid: 2, accountUid: 3, memo: "점심",
+    largeCategoryUid: 2, mediumCategoryUid: 20, smallCategoryUid: 30, accountUid: 3, memo: "점심",
+  });
+  assert.equal(parseTransactionRequest({ ...values, mediumCategoryUid: "", smallCategoryUid: "" }).request.smallCategoryUid, null);
+  assert.equal(parseTransactionRequest({ ...values, largeCategoryUid: "", mediumCategoryUid: "", smallCategoryUid: "" }).request, null);
+  assert.equal(parseTransactionRequest({ ...values, mediumCategoryUid: "", smallCategoryUid: "30" }).request, null);
+  assert.deepEqual(plain(selectLargeCategory(values, "4")), { ...values, largeCategoryUid: "4", mediumCategoryUid: "", smallCategoryUid: "" });
+  assert.deepEqual(plain(selectMediumCategory(values, "21")), { ...values, mediumCategoryUid: "21", smallCategoryUid: "" });
+  assert.deepEqual(plain(parseTransactionRequest({ ...values, largeCategoryUid: "2", mediumCategoryUid: "", smallCategoryUid: "" }).request), {
+    transactionType: "EXPENSE", amount: 15000.5, transactionDate: "2026-10-02", largeCategoryUid: 2,
+    mediumCategoryUid: null, smallCategoryUid: null, accountUid: 3, memo: "점심",
   });
   for (const amount of ["0", "-1", "NaN", "1.234", "999999999999999999999"]) {
     assert.equal(parseTransactionRequest({ ...values, amount }).request, null);
   }
   assert.equal(parseTransactionRequest({ ...values, transactionDate: "2026-02-30" }).request, null);
-  assert.equal(parseTransactionRequest({ ...values, categoryUid: "" }).request, null);
+  assert.equal(parseTransactionRequest({ ...values, largeCategoryUid: "" }).request, null);
   assert.equal(parseTransactionRequest({ ...values, accountUid: "" }).request, null);
   assert.equal(todayLocalDate(new Date(2026, 9, 2)), "2026-10-02");
   assert.equal(formatWon(15000), "15,000원");
 });
 
-test("form choices keep only matching transaction categories and all accounts", () => {
+test("form choices load the selected transaction type tree and all accounts", () => {
   const { useTransactionFormOptions } = loadModule("transaction/hooks/useTransactionFormOptions.ts", {
-    "@/category/hooks/useCategoryList": { useCategoryList: () => ({
-      categories: [{ categoryUid: 1, transactionType: "INCOME" }, { categoryUid: 2, transactionType: "EXPENSE" }],
+    "@/category/hooks/useCategoryTree": { useCategoryTree: (_uid, type) => ({
+      categories: [{ categoryUid: type === "EXPENSE" ? 2 : 1, level: "LARGE", children: [] }],
       isLoading: false, isFetching: false, isError: false,
     }) },
     "@/account/hooks/useAccountList": { useAccountList: () => ({ accounts: [{ accountUid: 3 }], isLoading: false, isError: false }) },
@@ -121,21 +137,113 @@ test("form choices keep only matching transaction categories and all accounts", 
   assert.deepEqual(plain(useTransactionFormOptions(7, "EXPENSE").accounts.map((item) => item.accountUid)), [3]);
 });
 
+test("transaction form restores a category path, disables empty child selects, and stacks selects on mobile", () => {
+  const tree = [
+    { categoryUid: 1, name: "Food", level: "LARGE", children: [
+      { categoryUid: 2, name: "Dining", level: "MEDIUM", children: [{ categoryUid: 3, name: "Korean", level: "SMALL", children: [] }] },
+      { categoryUid: 4, name: "Groceries", level: "MEDIUM", children: [] },
+    ] },
+    { categoryUid: 5, name: "Transport", level: "LARGE", children: [] },
+  ];
+  const Component = loadModule("transaction/components/TransactionFormDialog.tsx", {
+    react: React,
+    "@/common/components/DialogShell": { default: ({ children }) => React.createElement("div", null, children) },
+    "@/i18n/useTranslation": { useTranslation: () => ({ t: (key) => ({ "category.large": "Large", "category.medium": "Medium", "category.small": "Small", "category.selectLarge": "Choose large", "category.selectMedium": "Choose medium", "category.selectSmall": "Choose small", "category.noMedium": "No medium", "category.noSmall": "No small", "transactions.edit": "Edit", "transactions.expense": "Expense", "transactions.income": "Income" }[key] ?? key) }) },
+    "../hooks/useTransactionFormOptions": { useTransactionFormOptions: () => ({ categories: tree, accounts: [{ accountUid: 8, name: "Cash" }], isLoading: false, isError: false }) },
+    "../hooks/useCreateTransaction": { useCreateTransaction: () => ({ isLoading: false }) },
+    "../hooks/useUpdateTransaction": { useUpdateTransaction: () => ({ isLoading: false }) },
+    "../transactionForm": loadModule("transaction/transactionForm.ts"),
+  }).default;
+  const initial = { transactionUid: 9, categoryUid: 3, accountUid: 8, categoryName: "Korean", transactionType: "EXPENSE", amount: 100,
+    transactionDate: "2026-10-02", memo: null, categoryPath: {
+    largeCategory: { categoryUid: 1, name: "Food" }, mediumCategory: { categoryUid: 2, name: "Dining" }, smallCategory: { categoryUid: 3, name: "Korean" },
+  } };
+  const html = renderToStaticMarkup(React.createElement(Component, { moneyBookUid: 7, initial, onClose() {}, onSaved() {} }));
+  assert.match(html, /id="large-category" required/);
+  assert.match(html, /id="medium-category"/);
+  assert.match(html, /id="small-category"/);
+  assert.match(html, /value="1" selected=""/);
+  assert.match(html, /value="2" selected=""/);
+  assert.match(html, /value="3" selected=""/);
+  assert.match(html, /grid gap-4 md:grid-cols-3/);
+  const noChildren = renderToStaticMarkup(React.createElement(Component, { moneyBookUid: 7, onClose() {}, onSaved() {} }));
+  assert.match(noChildren, /id="medium-category" disabled=""/);
+  assert.match(noChildren, /id="small-category" disabled=""/);
+  const noMediumInitial = { ...initial, categoryUid: 5, categoryName: "Transport", categoryPath: {
+    largeCategory: { categoryUid: 5, name: "Transport" }, mediumCategory: null, smallCategory: null,
+  } };
+  const noMediumHtml = renderToStaticMarkup(React.createElement(Component, { moneyBookUid: 7, initial: noMediumInitial, onClose() {}, onSaved() {} }));
+  assert.match(noMediumHtml, /id="medium-category" disabled=""/);
+  const noSmallInitial = { ...initial, categoryUid: 4, categoryName: "Groceries", categoryPath: {
+    largeCategory: { categoryUid: 1, name: "Food" }, mediumCategory: { categoryUid: 4, name: "Groceries" }, smallCategory: null,
+  } };
+  const noSmallHtml = renderToStaticMarkup(React.createElement(Component, { moneyBookUid: 7, initial: noSmallInitial, onClose() {}, onSaved() {} }));
+  assert.match(noSmallHtml, /id="small-category" disabled=""/);
+});
+
+test("transaction category path displays backend breadcrumb and falls back for legacy response", () => {
+  const { formatTransactionCategoryPath } = loadModule("transaction/categoryPath.ts");
+  assert.equal(formatTransactionCategoryPath({ categoryName: "한식", categoryPath: {
+    largeCategory: { categoryUid: 1, name: "식비" }, mediumCategory: { categoryUid: 2, name: "외식" }, smallCategory: { categoryUid: 3, name: "한식" },
+  } }), "식비 > 외식 > 한식");
+  assert.equal(formatTransactionCategoryPath({ categoryName: "식비", categoryPath: {
+    largeCategory: { categoryUid: 1, name: "식비" }, mediumCategory: null, smallCategory: null,
+  } }), "식비");
+  assert.equal(formatTransactionCategoryPath({ categoryName: "legacy", categoryPath: undefined }), "legacy");
+});
+
+test("category management renders three nested levels, level-specific add actions, and cascade-delete guidance", async () => {
+  const categories = [
+    { categoryUid: 1, moneyBookUid: 7, name: "Food", transactionType: "EXPENSE", sortOrder: 0, level: "LARGE", parentCategoryUid: null, active: true },
+    { categoryUid: 2, moneyBookUid: 7, name: "Dining", transactionType: "EXPENSE", sortOrder: 0, level: "MEDIUM", parentCategoryUid: 1, active: true },
+    { categoryUid: 3, moneyBookUid: 7, name: "Korean", transactionType: "EXPENSE", sortOrder: 0, level: "SMALL", parentCategoryUid: 2, active: true },
+  ];
+  const tree = [{ categoryUid: 1, name: "Food", level: "LARGE", children: [
+    { categoryUid: 2, name: "Dining", level: "MEDIUM", children: [{ categoryUid: 3, name: "Korean", level: "SMALL", children: [] }] },
+  ] }];
+  const Component = loadModule("category/components/CategoryList.tsx", {
+    react: React,
+    "@/moneybook/hooks/useMoneyBookPermission": { useMoneyBookPermission: () => ({ canCreate: true, canUpdate: true, canDelete: true }) },
+    "@/i18n/useTranslation": { useTranslation: () => ({ t: (key) => ({ "category.title": "Categories", "category.description": "Manage", "category.add": "Add large", "category.addMedium": "Add medium", "category.addSmall": "Add small", "category.empty": "Empty", "category.order": "Order {order}", "transactions.income": "Income", "transactions.expense": "Expense", "common.edit": "Edit", "common.delete": "Delete" }[key] ?? key) }) },
+    "../hooks/useCategoryList": { useCategoryList: () => ({ categories, isLoading: false, isError: false }) },
+    "../hooks/useCategoryTree": { useCategoryTree: () => ({ categories: tree, isLoading: false, isError: false }) },
+    "../hooks/useDeleteCategory": { useDeleteCategory: () => ({ isLoading: false, errorMessage: null }) },
+    "./CategoryFormDialog": { default: () => null },
+  }).default;
+  const html = renderToStaticMarkup(React.createElement(Component, { moneyBookUid: 7 }));
+  assert.match(html, /Food[\s\S]*Dining[\s\S]*Korean/);
+  assert.match(html, /Add medium/);
+  assert.match(html, /Add small/);
+  assert.match(html, /border-l-2/);
+
+  let confirmation = "";
+  const hook = loadModule("category/hooks/useDeleteCategory.ts", {
+    react: { useState: (value) => [value, () => {}] },
+    "@/common/api/getApiErrorMessage": { getApiErrorMessage: () => "error" },
+    "@/i18n/useTranslation": { useTranslation: () => ({ t: (key) => key === "category.deleteTreeConfirm" ? "Delete {name} and all descendants?" : "Delete {name}?" }) },
+    "../controller/categoryApi": { useDeleteCategoryMutation: () => [() => ({ unwrap: async () => {} }), { isLoading: false }] },
+  }, { window: { confirm: (message) => { confirmation = message; return false; } } }).useDeleteCategory(7);
+  assert.equal(await hook.deleteCategory(1, "Food", true), false);
+  assert.equal(confirmation, "Delete Food and all descendants?");
+});
+
 test("category, account, and transaction lists expose empty states and permission controls", () => {
   function categoryMarkup(permission, categories = []) {
     const Component = loadModule("category/components/CategoryList.tsx", {
       react: React,
       "@/moneybook/hooks/useMoneyBookPermission": { useMoneyBookPermission: () => permission },
+      "@/i18n/useTranslation": { useTranslation: () => ({ t: (key) => ({ "category.title": "카테고리", "category.description": "설명", "category.add": "대분류 추가", "category.empty": "등록된 카테고리가 없습니다.", "category.order": "정렬 순서 {order}", "category.addMedium": "중분류 추가", "category.addSmall": "소분류 추가", "category.noMedium": "등록된 중분류가 없습니다", "category.noSmall": "등록된 소분류가 없습니다", "transactions.income": "수입", "transactions.expense": "지출", "common.edit": "수정", "common.delete": "삭제" }[key] ?? key) }) },
       "../hooks/useCategoryList": { useCategoryList: () => ({ categories, isLoading: false, isError: false }) },
+      "../hooks/useCategoryTree": { useCategoryTree: () => ({ categories: categories.filter((item) => item.level === "LARGE").map((item) => ({ ...item, children: [] })), isLoading: false, isError: false }) },
       "../hooks/useDeleteCategory": { useDeleteCategory: () => ({ isLoading: false, errorMessage: null }) },
       "./CategoryFormDialog": { default: () => null },
     }).default;
     return renderToStaticMarkup(React.createElement(Component, { moneyBookUid: 7 }));
   }
-  const category = { categoryUid: 1, name: "식비", transactionType: "EXPENSE", sortOrder: 0 };
+  const category = { categoryUid: 1, name: "식비", transactionType: "EXPENSE", sortOrder: 0, level: "LARGE", parentCategoryUid: null, active: true };
   assert.match(categoryMarkup({}, []), /등록된 카테고리가 없습니다/);
   assert.doesNotMatch(categoryMarkup({}, [category]), /카테고리 추가|>수정<|>삭제</);
-  assert.match(categoryMarkup({ canCreate: true, canUpdate: true, canDelete: true }, [category]), /카테고리 추가/);
+  assert.match(categoryMarkup({ canCreate: true, canUpdate: true, canDelete: true }, [category]), /대분류 추가|중분류 추가/);
   assert.match(categoryMarkup({ canUpdate: true }, [category]), />수정</);
   assert.match(categoryMarkup({ canDelete: true }, [category]), />삭제</);
 
@@ -231,7 +339,7 @@ test("transaction create/update hooks use validated DTO and delete requires conf
   const trigger = (argument) => ({ unwrap: async () => { calls.push(argument); } });
   const error = { getApiErrorMessage: () => "거래 오류" };
   const form = loadModule("transaction/transactionForm.ts");
-  const values = { transactionType: "INCOME", amount: "1000", transactionDate: "2026-10-02", categoryUid: "2", accountUid: "3", memo: "급여" };
+  const values = { transactionType: "INCOME", amount: "1000", transactionDate: "2026-10-02", largeCategoryUid: "2", mediumCategoryUid: "", smallCategoryUid: "", accountUid: "3", memo: "급여" };
   for (const [action, uid] of [["Create", null], ["Update", 8]]) {
     const hook = loadModule(`transaction/hooks/use${action}Transaction.ts`, {
       react: reactMock,

@@ -4,7 +4,9 @@ export interface UpdateTransactionRequest {
   transactionType: TransactionType;
   amount: number;
   transactionDate: string;
-  categoryUid: number;
+  largeCategoryUid: number;
+  mediumCategoryUid: number | null;
+  smallCategoryUid: number | null;
   accountUid: number;
   memo: string | null;
 }

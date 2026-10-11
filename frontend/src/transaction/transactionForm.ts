@@ -6,9 +6,19 @@ export interface TransactionFormValues {
   transactionType: TransactionType;
   amount: string;
   transactionDate: string;
-  categoryUid: string;
+  largeCategoryUid: string;
+  mediumCategoryUid: string;
+  smallCategoryUid: string;
   accountUid: string;
   memo: string;
+}
+
+export function selectLargeCategory(values: TransactionFormValues, categoryUid: string): TransactionFormValues {
+  return { ...values, largeCategoryUid: categoryUid, mediumCategoryUid: "", smallCategoryUid: "" };
+}
+
+export function selectMediumCategory(values: TransactionFormValues, categoryUid: string): TransactionFormValues {
+  return { ...values, mediumCategoryUid: categoryUid, smallCategoryUid: "" };
 }
 
 export function todayLocalDate(now = new Date()): string {
@@ -42,9 +52,13 @@ export function parseTransactionRequest(values: TransactionFormValues):
     return { request: null, error: "금액은 0보다 큰 숫자이며 소수점 둘째 자리까지 입력할 수 있습니다." };
   }
   if (!isLocalDate(values.transactionDate)) return { request: null, error: "올바른 거래 날짜를 입력해 주세요." };
-  const categoryUid = Number(values.categoryUid);
+  const largeCategoryUid = Number(values.largeCategoryUid);
+  const mediumCategoryUid = values.mediumCategoryUid ? Number(values.mediumCategoryUid) : null;
+  const smallCategoryUid = values.smallCategoryUid ? Number(values.smallCategoryUid) : null;
   const accountUid = Number(values.accountUid);
-  if (!Number.isSafeInteger(categoryUid) || categoryUid <= 0) return { request: null, error: "카테고리를 선택해 주세요." };
+  if (!Number.isSafeInteger(largeCategoryUid) || largeCategoryUid <= 0) return { request: null, error: "대분류를 선택해 주세요." };
+  if (mediumCategoryUid !== null && (!Number.isSafeInteger(mediumCategoryUid) || mediumCategoryUid <= 0)) return { request: null, error: "중분류를 다시 선택해 주세요." };
+  if (smallCategoryUid !== null && (mediumCategoryUid === null || !Number.isSafeInteger(smallCategoryUid) || smallCategoryUid <= 0)) return { request: null, error: "중분류를 먼저 선택해 주세요." };
   if (!Number.isSafeInteger(accountUid) || accountUid <= 0) return { request: null, error: "계좌 또는 결제수단을 선택해 주세요." };
   if (values.memo.length > 500) return { request: null, error: "메모는 500자 이내로 입력해 주세요." };
   return {
@@ -52,7 +66,9 @@ export function parseTransactionRequest(values: TransactionFormValues):
       transactionType: values.transactionType,
       amount,
       transactionDate: values.transactionDate,
-      categoryUid,
+      largeCategoryUid,
+      mediumCategoryUid,
+      smallCategoryUid,
       accountUid,
       memo: values.memo.trim() || null,
     },

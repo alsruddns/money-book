@@ -11,7 +11,7 @@ function loadConfig() {
   const source = fs.readFileSync(path.join(sourceRoot, "i18n/config.ts"), "utf8");
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
   const commonJsModule = { exports: {} };
-  vm.runInNewContext(compiled, { module: commonJsModule, exports: commonJsModule.exports, require: (name) => name === "./dashboardMessages" ? { dashboardByLocale: Object.fromEntries(["ko", "en", "ja", "zh"].map((locale) => [locale, { title: locale }])) } : {} });
+  vm.runInNewContext(compiled, { module: commonJsModule, exports: commonJsModule.exports, require: (name) => name === "./dashboardMessages" ? { dashboardByLocale: Object.fromEntries(["ko", "en", "ja", "zh"].map((locale) => [locale, { title: locale }])) } : name === "./categoryMessages" ? { categoryMessages: Object.fromEntries(["ko", "en", "ja", "zh"].map((locale) => [locale, Object.fromEntries(["title", "description", "add", "large", "medium", "small", "selectLarge", "selectMedium", "selectSmall", "noMedium", "noSmall", "addMedium", "addSmall", "empty", "order", "type", "name", "parent", "createTitle", "editTitle", "save", "saving", "deleteConfirm", "deleteTreeConfirm"].map((key) => [key, `${locale}.${key}`]))])) } : {} });
   return commonJsModule.exports;
 }
 
@@ -37,7 +37,7 @@ test("translation catalogs contain the same keys for every supported locale", ()
   const source = fs.readFileSync(path.join(sourceRoot, "i18n/messages.ts"), "utf8");
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
   const commonJsModule = { exports: {} };
-  vm.runInNewContext(compiled, { module: commonJsModule, exports: commonJsModule.exports, require: (name) => name === "./dashboardMessages" ? { dashboardByLocale: Object.fromEntries(["ko", "en", "ja", "zh"].map((locale) => [locale, { title: locale }])) } : {} });
+  vm.runInNewContext(compiled, { module: commonJsModule, exports: commonJsModule.exports, require: (name) => name === "./dashboardMessages" ? { dashboardByLocale: Object.fromEntries(["ko", "en", "ja", "zh"].map((locale) => [locale, { title: locale }])) } : name === "./categoryMessages" ? { categoryMessages: Object.fromEntries(["ko", "en", "ja", "zh"].map((locale) => [locale, Object.fromEntries(["title", "description", "add", "large", "medium", "small", "selectLarge", "selectMedium", "selectSmall", "noMedium", "noSmall", "addMedium", "addSmall", "empty", "order", "type", "name", "parent", "createTitle", "editTitle", "save", "saving", "deleteConfirm", "deleteTreeConfirm"].map((key) => [key, `${locale}.${key}`]))])) } : {} });
   const sets = commonJsModule.exports.translationKeySets();
   const expected = JSON.stringify(sets.ko);
   for (const locale of ["en", "ja", "zh"]) assert.equal(JSON.stringify(sets[locale]), expected, `${locale} catalog keys differ`);
