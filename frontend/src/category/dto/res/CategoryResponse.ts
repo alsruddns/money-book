@@ -6,4 +6,16 @@ export interface CategoryResponse {
   name: string;
   transactionType: TransactionType;
   sortOrder: number;
+  level: CategoryLevel;
+  parentCategoryUid: number | null;
+  active: boolean;
+}
+
+export type CategoryLevel = "LARGE" | "MEDIUM" | "SMALL";
+
+export interface CategoryTreeResponse {
+  categoryUid: number;
+  name: string;
+  level: CategoryLevel;
+  children: CategoryTreeResponse[];
 }

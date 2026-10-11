@@ -4,4 +4,5 @@ export interface CreateCategoryRequest {
   name: string;
   transactionType: TransactionType;
   sortOrder: number;
+  parentCategoryUid: number | null;
 }

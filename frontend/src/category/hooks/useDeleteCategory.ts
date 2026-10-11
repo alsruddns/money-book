@@ -3,12 +3,15 @@
 import { useState } from "react";
 import { getApiErrorMessage } from "@/common/api/getApiErrorMessage";
 import { useDeleteCategoryMutation } from "../controller/categoryApi";
+import { useTranslation } from "@/i18n/useTranslation";
 
 export function useDeleteCategory(moneyBookUid: number) {
   const [trigger, { isLoading }] = useDeleteCategoryMutation();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  async function deleteCategory(categoryUid: number, name: string): Promise<boolean> {
-    if (!window.confirm(`'${name}' 카테고리를 삭제하시겠습니까?`)) return false;
+  const { t } = useTranslation();
+  async function deleteCategory(categoryUid: number, name: string, hasChildren = false): Promise<boolean> {
+    const confirmText = t(hasChildren ? "category.deleteTreeConfirm" : "category.deleteConfirm").replaceAll("{name}", name);
+    if (!window.confirm(confirmText)) return false;
     setErrorMessage(null);
     try {
       await trigger({ moneyBookUid, categoryUid }).unwrap();

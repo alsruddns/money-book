@@ -2,7 +2,7 @@ import { baseApi } from "@/common/api/baseApi";
 import type { TransactionType } from "@/transaction/dto/TransactionType";
 import type { CreateCategoryRequest } from "../dto/req/CreateCategoryRequest";
 import type { UpdateCategoryRequest } from "../dto/req/UpdateCategoryRequest";
-import type { CategoryResponse } from "../dto/res/CategoryResponse";
+import type { CategoryResponse, CategoryTreeResponse } from "../dto/res/CategoryResponse";
 
 interface CategoryListArg { moneyBookUid: number; transactionType?: TransactionType }
 interface CategoryKey { moneyBookUid: number; categoryUid: number }
@@ -14,6 +14,13 @@ export const categoryApi = baseApi.injectEndpoints({
     getCategories: builder.query<CategoryResponse[], CategoryListArg>({
       query: ({ moneyBookUid, transactionType }) => ({
         url: `money-books/${moneyBookUid}/categories`,
+        params: transactionType ? { transactionType } : undefined,
+      }),
+      providesTags: (_result, _error, { moneyBookUid }) => [{ type: "Category", id: moneyBookUid }],
+    }),
+    getCategoryTree: builder.query<CategoryTreeResponse[], CategoryListArg>({
+      query: ({ moneyBookUid, transactionType }) => ({
+        url: `money-books/${moneyBookUid}/categories/tree`,
         params: transactionType ? { transactionType } : undefined,
       }),
       providesTags: (_result, _error, { moneyBookUid }) => [{ type: "Category", id: moneyBookUid }],
@@ -40,4 +47,4 @@ export const categoryApi = baseApi.injectEndpoints({
   }),
 });
 
-export const { useGetCategoriesQuery, useCreateCategoryMutation, useUpdateCategoryMutation, useDeleteCategoryMutation } = categoryApi;
+export const { useGetCategoriesQuery, useGetCategoryTreeQuery, useCreateCategoryMutation, useUpdateCategoryMutation, useDeleteCategoryMutation } = categoryApi;
