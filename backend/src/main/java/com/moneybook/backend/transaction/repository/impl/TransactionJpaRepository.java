@@ -15,6 +15,8 @@ public interface TransactionJpaRepository extends JpaRepository<MoneyBookTransac
     @Query("""
             select entry from MoneyBookTransaction entry
             join fetch entry.category
+            left join fetch entry.category.parentCategory parent
+            left join fetch parent.parentCategory
             join fetch entry.account
             where entry.transactionUid = :transactionUid and entry.moneyBook.moneyBookUid = :bookUid
             """)
@@ -25,6 +27,8 @@ public interface TransactionJpaRepository extends JpaRepository<MoneyBookTransac
     @Query("""
             select entry from MoneyBookTransaction entry
             join fetch entry.category
+            left join fetch entry.category.parentCategory parent
+            left join fetch parent.parentCategory
             join fetch entry.account
             where entry.moneyBook.moneyBookUid = :bookUid
               and entry.transactionDate >= :from and entry.transactionDate < :until

@@ -12,6 +12,7 @@ import java.util.Set;
 
 public interface CategoryJpaRepository extends JpaRepository<MoneyBookCategory, Long> {
     Optional<MoneyBookCategory> findByCategoryUidAndMoneyBook_MoneyBookUid(Long categoryUid, Long moneyBookUid);
+    List<MoneyBookCategory> findByParentCategory_CategoryUidOrderBySortOrderAscCategoryUidAsc(Long categoryUid);
     List<MoneyBookCategory> findByMoneyBook_MoneyBookUidAndCategoryUidIn(Long moneyBookUid, Set<Long> categoryUids);
 
     List<MoneyBookCategory> findByMoneyBook_MoneyBookUidOrderByTransactionTypeAscSortOrderAscCategoryUidAsc(

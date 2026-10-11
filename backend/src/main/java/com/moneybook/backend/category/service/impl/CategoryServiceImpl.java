@@ -12,6 +12,7 @@ import com.moneybook.backend.entity.MoneyBook;
 import com.moneybook.backend.entity.MoneyBookCategory;
 import com.moneybook.backend.enums.MoneyBookPermission;
 import com.moneybook.backend.enums.TransactionType;
+import com.moneybook.backend.enums.CategoryLevel;
 import com.moneybook.backend.enums.ActivityTargetType;
 import com.moneybook.backend.enums.ActivityType;
 import com.moneybook.backend.moneybook.provider.MoneyBookPermissionProvider;
@@ -22,6 +23,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import com.moneybook.backend.category.dto.CategoryTreeResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -38,7 +42,18 @@ public class CategoryServiceImpl implements CategoryService {
             throw new BusinessException(ErrorCode.CATEGORY_ALREADY_EXISTS);
         }
         try {
-            var saved = categories.save(MoneyBookCategory.create(book, request.name(), request.transactionType(), request.sortOrder()));
+            MoneyBookCategory parent = null;
+            CategoryLevel level = CategoryLevel.LARGE;
+            if (request.parentCategoryUid() != null) {
+                parent = category(bookUid, request.parentCategoryUid());
+                if (!parent.isActive() || parent.getTransactionType() != request.transactionType()
+                        || parent.getCategoryLevel() == CategoryLevel.SMALL) {
+                    throw new BusinessException(ErrorCode.VALIDATION_FAILED);
+                }
+                level = parent.getCategoryLevel() == CategoryLevel.LARGE ? CategoryLevel.MEDIUM : CategoryLevel.SMALL;
+            }
+            var saved = categories.save(MoneyBookCategory.create(book, request.name(), request.transactionType(),
+                    request.sortOrder(), level, parent));
             activityRecorder.record(bookUid, authentication, ActivityType.CATEGORY_CREATED, ActivityTargetType.CATEGORY,
                     saved.getCategoryUid(), "카테고리 '" + saved.getName() + "'를 만들었습니다.", null);
             return CategoryResponse.from(saved);
@@ -51,7 +66,25 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional(readOnly = true)
     public List<CategoryResponse> list(Long bookUid, TransactionType type, Authentication authentication) {
         permissions.require(bookUid, authentication, MoneyBookPermission.READ);
-        return categories.findByMoneyBookUid(bookUid, type).stream().map(CategoryResponse::from).toList();
+        return categories.findByMoneyBookUid(bookUid, type).stream().filter(MoneyBookCategory::isActive)
+                .map(CategoryResponse::from).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CategoryTreeResponse> tree(Long bookUid, TransactionType type, Authentication authentication) {
+        permissions.require(bookUid, authentication, MoneyBookPermission.READ);
+        List<MoneyBookCategory> active = categories.findByMoneyBookUid(bookUid, type).stream()
+                .filter(MoneyBookCategory::isActive).toList();
+        Map<Long, List<MoneyBookCategory>> children = active.stream().filter(c -> c.getParentCategory() != null)
+                .collect(Collectors.groupingBy(c -> c.getParentCategory().getCategoryUid()));
+        return active.stream().filter(c -> c.getCategoryLevel() == CategoryLevel.LARGE)
+                .map(c -> treeNode(c, children)).toList();
+    }
+
+    private CategoryTreeResponse treeNode(MoneyBookCategory category, Map<Long, List<MoneyBookCategory>> children) {
+        return CategoryTreeResponse.from(category, children.getOrDefault(category.getCategoryUid(), List.of()).stream()
+                .map(child -> treeNode(child, children)).toList());
     }
 
     @Override
@@ -79,17 +112,18 @@ public class CategoryServiceImpl implements CategoryService {
     public void delete(Long bookUid, Long categoryUid, Authentication authentication) {
         permissions.require(bookUid, authentication, MoneyBookPermission.DELETE);
         MoneyBookCategory category = category(bookUid, categoryUid);
-        if (categories.isInUse(categoryUid)) {
-            throw new BusinessException(ErrorCode.CATEGORY_IN_USE);
-        }
-        try {
-            categories.delete(category);
-            categories.flush();
-            activityRecorder.record(bookUid, authentication, ActivityType.CATEGORY_DELETED, ActivityTargetType.CATEGORY,
-                    categoryUid, "카테고리 '" + category.getName() + "'를 삭제했습니다.", null);
-        } catch (DataIntegrityViolationException exception) {
-            throw new BusinessException(ErrorCode.CATEGORY_IN_USE);
-        }
+        Map<Long, List<MoneyBookCategory>> children = categories.findByMoneyBookUid(bookUid, null).stream()
+                .filter(c -> c.getParentCategory() != null)
+                .collect(Collectors.groupingBy(c -> c.getParentCategory().getCategoryUid()));
+        deactivateTree(category, children);
+        activityRecorder.record(bookUid, authentication, ActivityType.CATEGORY_DELETED, ActivityTargetType.CATEGORY,
+                categoryUid, "Category and descendants deactivated", null);
+    }
+
+    private void deactivateTree(MoneyBookCategory category, Map<Long, List<MoneyBookCategory>> children) {
+        if (!category.isActive()) return;
+        children.getOrDefault(category.getCategoryUid(), List.of()).forEach(child -> deactivateTree(child, children));
+        category.deactivate();
     }
 
     private MoneyBookCategory category(Long bookUid, Long categoryUid) {

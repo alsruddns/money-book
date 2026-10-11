@@ -90,7 +90,7 @@ class LedgerIntegrationTests {
         error(ErrorCode.CATEGORY_NOT_FOUND, () -> categoryService.update(other.getMoneyBookUid(),
                 expense.categoryUid(), new UpdateCategoryRequest("wrong", 0), f.owner()));
         categoryService.delete(f.bookUid(), expense.categoryUid(), f.owner());
-        assertTrue(categories.findById(expense.categoryUid()).isEmpty());
+        assertTrue(categories.findById(expense.categoryUid()).orElseThrow().isActive() == false);
     }
 
     @Test
@@ -129,7 +129,8 @@ class LedgerIntegrationTests {
         assertEquals("cash", spending.accountName());
         assertEquals(TransactionType.INCOME, earning.transactionType());
         assertEquals(spending, transactionService.detail(f.bookUid(), spending.transactionUid(), f.owner()));
-        error(ErrorCode.CATEGORY_IN_USE, () -> categoryService.delete(f.bookUid(), expense.getCategoryUid(), f.owner()));
+        categoryService.delete(f.bookUid(), expense.getCategoryUid(), f.owner());
+        assertTrue(!categories.findById(expense.getCategoryUid()).orElseThrow().isActive());
         error(ErrorCode.ACCOUNT_IN_USE, () -> accountService.delete(f.bookUid(), cash.getAccountUid(), f.owner()));
 
         var modified = transactionService.update(f.bookUid(), spending.transactionUid(),
@@ -140,6 +141,49 @@ class LedgerIntegrationTests {
         transactionService.delete(f.bookUid(), spending.transactionUid(), f.owner());
         error(ErrorCode.TRANSACTION_NOT_FOUND,
                 () -> transactionService.detail(f.bookUid(), spending.transactionUid(), f.owner()));
+    }
+
+    @Test
+    void hierarchicalCategoriesValidateParentsAndTransactionsStoreSelectedLeafWithPath() {
+        Fixture f = fixture();
+        var large = categoryService.create(f.bookUid(), new CreateCategoryRequest("food", TransactionType.EXPENSE, 0), f.owner());
+        var medium = categoryService.create(f.bookUid(), new CreateCategoryRequest("dining", TransactionType.EXPENSE, 0,
+                large.categoryUid()), f.owner());
+        var small = categoryService.create(f.bookUid(), new CreateCategoryRequest("korean", TransactionType.EXPENSE, 0,
+                medium.categoryUid()), f.owner());
+        MoneyBook otherBook = book(f.ownerUid());
+        var foreignLarge = categoryService.create(otherBook.getMoneyBookUid(),
+                new CreateCategoryRequest("other", TransactionType.EXPENSE, 0), f.owner());
+        error(ErrorCode.CATEGORY_NOT_FOUND, () -> categoryService.create(f.bookUid(),
+                new CreateCategoryRequest("foreign child", TransactionType.EXPENSE, 0, foreignLarge.categoryUid()), f.owner()));
+        error(ErrorCode.VALIDATION_FAILED, () -> categoryService.create(f.bookUid(),
+                new CreateCategoryRequest("invalid", TransactionType.EXPENSE, 0, small.categoryUid()), f.owner()));
+        var tree = categoryService.tree(f.bookUid(), TransactionType.EXPENSE, f.owner());
+        assertEquals("korean", tree.get(0).children().get(0).children().get(0).name());
+        var account = account(f.book(), "cash");
+        var largeOnly = transactionService.create(f.bookUid(), new CreateTransactionRequest(TransactionType.EXPENSE,
+                BigDecimal.ONE, LocalDate.parse("2026-10-01"), null, account.getAccountUid(), null,
+                large.categoryUid(), null, null), f.owner());
+        var mediumOnly = transactionService.create(f.bookUid(), new CreateTransactionRequest(TransactionType.EXPENSE,
+                BigDecimal.ONE, LocalDate.parse("2026-10-01"), null, account.getAccountUid(), null,
+                large.categoryUid(), medium.categoryUid(), null), f.owner());
+        assertEquals(large.categoryUid(), largeOnly.categoryUid());
+        assertEquals(medium.categoryUid(), mediumOnly.categoryUid());
+        var entry = transactionService.create(f.bookUid(), new CreateTransactionRequest(TransactionType.EXPENSE,
+                BigDecimal.ONE, LocalDate.parse("2026-10-01"), null, account.getAccountUid(), null,
+                large.categoryUid(), medium.categoryUid(), small.categoryUid()), f.owner());
+        assertEquals(small.categoryUid(), entry.categoryUid());
+        assertEquals(large.categoryUid(), entry.categoryPath().largeCategory().categoryUid());
+        assertEquals(medium.categoryUid(), entry.categoryPath().mediumCategory().categoryUid());
+        error(ErrorCode.VALIDATION_FAILED, () -> transactionService.create(f.bookUid(), new CreateTransactionRequest(
+                TransactionType.EXPENSE, BigDecimal.ONE, LocalDate.parse("2026-10-01"), null,
+                account.getAccountUid(), null, large.categoryUid(), null, small.categoryUid()), f.owner()));
+        error(ErrorCode.CATEGORY_NOT_IN_MONEY_BOOK, () -> transactionService.create(f.bookUid(), new CreateTransactionRequest(
+                TransactionType.EXPENSE, BigDecimal.ONE, LocalDate.parse("2026-10-01"), null,
+                account.getAccountUid(), null, large.categoryUid(), foreignLarge.categoryUid(), null), f.owner()));
+        categoryService.delete(f.bookUid(), large.categoryUid(), f.owner());
+        assertTrue(!categories.findById(small.categoryUid()).orElseThrow().isActive());
+        assertEquals("korean", transactionService.detail(f.bookUid(), entry.transactionUid(), f.owner()).categoryName());
     }
 
     @Test

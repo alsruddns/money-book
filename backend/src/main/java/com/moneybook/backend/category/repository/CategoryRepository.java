@@ -16,5 +16,6 @@ public interface CategoryRepository {
     List<MoneyBookCategory> findByMoneyBookUid(Long moneyBookUid, TransactionType transactionType);
     boolean existsByName(Long moneyBookUid, TransactionType type, String name, Long exceptCategoryUid);
     boolean isInUse(Long categoryUid);
+    List<MoneyBookCategory> findChildren(Long categoryUid);
     void delete(MoneyBookCategory category);
 }

@@ -9,5 +9,10 @@ import jakarta.validation.constraints.Size;
 public record CreateCategoryRequest(
         @NotBlank @Size(max = 100) String name,
         @NotNull TransactionType transactionType,
-        @NotNull @Min(0) Integer sortOrder
-) { }
+        @NotNull @Min(0) Integer sortOrder,
+        Long parentCategoryUid
+) {
+    public CreateCategoryRequest(String name, TransactionType type, Integer sortOrder) {
+        this(name, type, sortOrder, null);
+    }
+}

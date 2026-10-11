@@ -13,7 +13,15 @@ public record CreateTransactionRequest(
         @NotNull TransactionType transactionType,
         @NotNull @DecimalMin(value = "0", inclusive = false) @Digits(integer = 17, fraction = 2) BigDecimal amount,
         @NotNull LocalDate transactionDate,
-        @NotNull Long categoryUid,
+        Long categoryUid,
         @NotNull Long accountUid,
-        @Size(max = 500) String memo
-) { }
+        @Size(max = 500) String memo,
+        Long largeCategoryUid,
+        Long mediumCategoryUid,
+        Long smallCategoryUid
+) {
+    public CreateTransactionRequest(TransactionType type, BigDecimal amount, LocalDate date, Long categoryUid,
+                                    Long accountUid, String memo) {
+        this(type, amount, date, categoryUid, accountUid, memo, null, null, null);
+    }
+}

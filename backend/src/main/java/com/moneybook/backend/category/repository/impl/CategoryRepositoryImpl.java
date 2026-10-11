@@ -60,6 +60,11 @@ public class CategoryRepositoryImpl implements CategoryRepository {
     }
 
     @Override
+    public List<MoneyBookCategory> findChildren(Long categoryUid) {
+        return jpa.findByParentCategory_CategoryUidOrderBySortOrderAscCategoryUidAsc(categoryUid);
+    }
+
+    @Override
     public void delete(MoneyBookCategory category) {
         jpa.delete(category);
     }
