@@ -1,15 +1,19 @@
 "use client";
 
 import Link from "../../common/components/MoneyLink";
+import NextLink from "next/link";
+import { usePathname } from "next/navigation";
+import { getLocaleFromPathname } from "@/i18n/config";
 import { useCurrentUser } from "@/auth/hooks/useCurrentUser";
 
 export function LandingHeader() {
+  const locale = getLocaleFromPathname(usePathname() || "/ko");
   const { isAuthenticated, isLoading } = useCurrentUser();
   if (isAuthenticated || isLoading) return null;
 
   return <header className="border-b border-zinc-200 bg-white">
     <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-      <Link href="/" className="text-lg font-bold tracking-tight text-zinc-900">MoneyBook</Link>
+      <NextLink href={`/${locale}`} aria-label={`woori.today ${locale}`} className="text-lg font-bold tracking-tight text-zinc-900">woori.today</NextLink>
       <nav aria-label="공개 메뉴" className="flex items-center gap-2 sm:gap-4">
         <Link href="#features" className="hidden min-h-11 items-center px-2 text-sm font-medium text-zinc-600 hover:text-blue-700 sm:inline-flex">주요 기능</Link>
         <Link href="/login" className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100">로그인</Link>

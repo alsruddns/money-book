@@ -1,6 +1,6 @@
 import Link from "../../../common/components/MoneyLink";
 import GoogleAdSenseScript from "@/common/components/GoogleAdSenseScript";
-import { buildWebApplicationJsonLd, SITE_DESCRIPTION, SITE_NAME } from "@/common/seo/siteMetadata";
+import { buildWebApplicationJsonLd, SITE_DESCRIPTION } from "@/common/seo/siteMetadata";
 import LandingActions, { LandingHeader } from "@/landing/components/LandingActions";
 import { createLocalizedMetadata } from "@/common/seo/localizedMetadata";
 import { isLocale, type Locale } from "@/i18n/config";
@@ -61,7 +61,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const jsonLd = JSON.stringify(buildWebApplicationJsonLd(process.env, raw)).replace(/</g, "\\u003c");
   if (raw !== "ko") {
     const content = localizedLanding[raw];
-    return <><GoogleAdSenseScript /><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} /><LandingHeader /><main className="flex-1 text-zinc-900"><section className="bg-gradient-to-br from-blue-50 via-white to-emerald-50 px-5 py-24"><div className="mx-auto max-w-5xl"><p className="font-semibold text-blue-800">MoneyBook</p><h1 className="mt-5 max-w-3xl text-4xl font-bold tracking-tight sm:text-6xl">{content.title}</h1><p className="mt-6 max-w-2xl text-lg leading-8 text-zinc-600">{content.intro}</p><div className="mt-8 flex gap-3"><Link className="rounded-lg bg-blue-700 px-5 py-3 font-semibold text-white" href={`/${raw}/signup`}>{content.signup}</Link><Link className="rounded-lg border border-zinc-300 bg-white px-5 py-3 font-semibold" href={`/${raw}/login`}>{content.login}</Link></div></div></section><section id="features" className="mx-auto max-w-5xl px-5 py-16"><h2 className="text-3xl font-bold">{content.features}</h2><p className="mt-4 max-w-2xl leading-7 text-zinc-600">{content.intro}</p><div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{localizedFeatures[raw].map((feature) => <article key={feature.title} className="rounded-2xl border border-zinc-200 bg-white p-5"><h3 className="font-semibold">{feature.title}</h3><p className="mt-2 leading-6 text-zinc-600">{feature.description}</p></article>)}</div></section></main><footer className="flex justify-center gap-6 border-t p-6"><Link href={`/${raw}/privacy`}>{content.privacy}</Link><Link href={`/${raw}/terms`}>{content.terms}</Link></footer></>;
+    return <><GoogleAdSenseScript /><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} /><LandingHeader /><main className="flex-1 text-zinc-900"><section className="bg-gradient-to-br from-blue-50 via-white to-emerald-50 px-5 py-24"><div className="mx-auto max-w-5xl"><p className="font-semibold text-blue-800">MoneyBook</p><h1 className="mt-5 max-w-3xl text-4xl font-bold tracking-tight sm:text-6xl">{content.title}</h1><p className="mt-6 max-w-2xl text-lg leading-8 text-zinc-600">{content.intro}</p><div className="mt-8 flex gap-3"><Link className="rounded-lg bg-blue-700 px-5 py-3 font-semibold text-white" href={`/${raw}/signup`}>{content.signup}</Link><Link className="rounded-lg border border-zinc-300 bg-white px-5 py-3 font-semibold" href={`/${raw}/login`}>{content.login}</Link></div></div></section><section id="features" className="mx-auto max-w-5xl px-5 py-16"><h2 className="text-3xl font-bold">{content.features}</h2><p className="mt-4 max-w-2xl leading-7 text-zinc-600">{content.intro}</p><div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{localizedFeatures[raw].map((feature) => <article key={feature.title} className="rounded-2xl border border-zinc-200 bg-white p-5"><h3 className="font-semibold">{feature.title}</h3><p className="mt-2 leading-6 text-zinc-600">{feature.description}</p></article>)}</div></section></main></>;
   }
 
   return <>
@@ -101,6 +101,6 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         <div className="max-w-2xl"><p className="text-sm font-semibold text-blue-200">기록에서 흐름까지</p><h2 className="mt-3 text-3xl font-bold tracking-tight">이번 달 지출을 이해하기 쉽게</h2><p className="mt-4 leading-7 text-blue-100">월 수입과 지출, 최근 추이, 카테고리별 사용액과 예산 현황을 대시보드와 리포트에서 확인할 수 있습니다.</p></div><div className="mt-7 shrink-0 lg:mt-0"><LandingActions light /></div>
       </div></section>
     </main>
-    <footer className="border-t border-zinc-200 bg-white px-4 py-8 sm:px-6 lg:px-8"><div className="mx-auto flex max-w-7xl flex-col gap-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold">{SITE_NAME}</p><p className="mt-1 text-sm text-zinc-500">함께 기록하는 생활비 관리</p></div><nav aria-label="서비스 정보" className="flex flex-wrap gap-x-5 gap-y-2 text-sm"><Link className="text-zinc-600 hover:text-blue-700" href="/privacy">개인정보 처리 안내</Link><Link className="text-zinc-600 hover:text-blue-700" href="/terms">이용 안내</Link><Link className="text-zinc-600 hover:text-blue-700" href="/login">로그인</Link></nav></div></footer>
+
   </>;
 }
