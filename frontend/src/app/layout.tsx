@@ -6,6 +6,7 @@ import Script from "next/script";
 import StoreProvider from "@/store/StoreProvider";
 import GlobalHeader from "@/common/components/GlobalHeader";
 import LanguageSelector from "@/common/components/LanguageSelector";
+import GlobalFooter from "@/common/components/GlobalFooter";
 import { SITE_DESCRIPTION, SITE_TITLE } from "@/common/seo/siteMetadata";
 import { defaultLocale, isLocale, localeHtmlLang } from "@/i18n/config";
 import "./globals.css";
@@ -36,7 +37,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           {`window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', '${GA_ID}');`}
         </Script>
       </>}
-      <StoreProvider><GlobalHeader /><LanguageSelector />{children}</StoreProvider>
+      <StoreProvider><GlobalHeader /><LanguageSelector />{children}<GlobalFooter /></StoreProvider>
     </body>
   </html>;
 }
