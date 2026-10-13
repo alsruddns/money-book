@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useSelector } from "react-redux";
 import { useLogout } from "@/auth/hooks/useLogout";
@@ -11,12 +11,12 @@ import type { RootState } from "@/store/store";
 import { getGlobalNavItems, isGlobalHeaderHidden, isGlobalNavItemActive } from "./globalNavigation";
 import { getLocaleFromPathname, withMoneyLocale } from "@/i18n/config";
 import { useTranslation } from "@/i18n/useTranslation";
+import { familySitesCopy } from "@/i18n/familySitesCopy";
 
 export default function GlobalHeader() {
   const pathname = usePathname();
-  const router = useRouter();
   const locale = getLocaleFromPathname(pathname ?? "/ko");
-  const family = ({ ko: ["패밀리 사이트", "포털", "머니북", "계산기", "도구"], en: ["Family site", "Portal", "MoneyBook", "Calculators", "Tools"], ja: ["ファミリーサイト", "ポータル", "MoneyBook", "計算機", "ツール"], zh: ["家族网站", "门户", "MoneyBook", "计算器", "工具"] } as const)[locale];
+  const family = familySitesCopy[locale];
   const { t } = useTranslation();
   const [isOpen, setOpen] = useState(false);
   const { accessToken, refreshToken, isInitialized } = useSelector((state: RootState) => state.auth);
@@ -38,7 +38,7 @@ export default function GlobalHeader() {
         <Image src="/_assets/money/images/brand/woori-logo.png" alt="woori.today" width={419} height={99} sizes="(max-width: 640px) 136px, 160px" className="h-auto w-[136px] sm:w-[160px]" />
       </Link>
       <nav aria-label={t("navigation.manage")} aria-busy={roleLoading} className="hidden items-center gap-1 md:flex">
-        <label className="mr-2 flex items-center gap-2 text-sm text-zinc-600"><span>{family[0]}</span><select aria-label={family[0]} value="money" onChange={(event) => router.push(`/${locale}${event.target.value}`)} className="min-h-11 rounded-lg border border-zinc-300 bg-white px-2 font-medium text-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"><option value="">{family[1]}</option><option value="/money">{family[2]}</option><option value="/calculators">{family[3]}</option><option value="/tools">{family[4]}</option></select></label>
+        <label className="mr-2 flex shrink-0 items-center gap-2 text-sm text-zinc-600"><span>{family.label}</span><select aria-label={`${family.label} — ${family.newTab}`} value="/money" onChange={(event) => window.open(`/${locale}${event.currentTarget.value}`, "_blank", "noopener,noreferrer")} className="min-h-11 w-auto max-w-[25vw] rounded-lg border border-zinc-300 bg-white px-2 font-medium text-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"><option value="">{family.portal}</option><option value="/calculators">{family.calculator}</option><option value="/tools">{family.tools}</option><option value="/money">{family.moneyBook}</option></select></label>
         {hasToken && (roleLoading ? <div aria-hidden="true" className="flex gap-2 px-2"><span className="h-9 w-24 animate-pulse rounded-lg bg-zinc-100" /><span className="h-9 w-24 animate-pulse rounded-lg bg-zinc-100" /><span className="h-9 w-20 animate-pulse rounded-lg bg-zinc-100" /></div> : navLinks.map((item) => <Link key={item.href} href={withMoneyLocale(locale, item.href)} aria-current={isGlobalNavItemActive(pathname, item.href) ? "page" : undefined} className={linkClass(item.href)}>{item.label}</Link>))}
         {hasToken && <button type="button" disabled={logout.isLoading} onClick={() => void logout.logout()} className="min-h-11 cursor-pointer rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-blue-700 active:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:cursor-not-allowed disabled:opacity-50">
           {logout.isLoading ? t("auth.loggingOut") : t("auth.logout")}
@@ -49,7 +49,7 @@ export default function GlobalHeader() {
     </div>
     {isOpen && <nav id="global-mobile-menu" aria-label={t("navigation.mobileMenu")} className="border-t border-zinc-200 bg-white p-3 md:hidden">
       <div className="mx-auto flex max-w-screen-2xl flex-col gap-1 px-1">
-        <label className="flex min-h-11 items-center justify-between px-3 text-sm">{family[0]}<select aria-label={family[0]} value="money" onChange={(event) => router.push(`/${locale}${event.target.value}`)} className="min-h-11 rounded-lg border px-2"><option value="">{family[1]}</option><option value="/money">{family[2]}</option><option value="/calculators">{family[3]}</option><option value="/tools">{family[4]}</option></select></label>
+        <label className="flex min-h-11 flex-col items-start gap-2 px-3 py-2 text-sm">{family.label}<select aria-label={`${family.label} — ${family.newTab}`} value="/money" onChange={(event) => window.open(`/${locale}${event.currentTarget.value}`, "_blank", "noopener,noreferrer")} className="min-h-11 w-full rounded-lg border px-2"><option value="">{family.portal}</option><option value="/calculators">{family.calculator}</option><option value="/tools">{family.tools}</option><option value="/money">{family.moneyBook}</option></select></label>
         {hasToken && (roleLoading ? <p role="status" className="px-3 py-3 text-sm text-zinc-600">{t("common.loading")}</p> : navLinks.map((item) => <Link key={item.href} href={withMoneyLocale(locale, item.href)} onClick={() => setOpen(false)} aria-current={isGlobalNavItemActive(pathname, item.href) ? "page" : undefined} className={`flex min-h-11 items-center ${linkClass(item.href)}`}>{item.label}</Link>))}
         {hasToken && <button type="button" disabled={logout.isLoading} onClick={() => void logout.logout()} className="min-h-11 cursor-pointer rounded-lg px-3 text-left text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-blue-700 active:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:cursor-not-allowed disabled:opacity-50">{logout.isLoading ? t("auth.loggingOut") : t("auth.logout")}</button>}
       </div>
