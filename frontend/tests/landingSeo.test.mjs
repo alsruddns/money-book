@@ -54,7 +54,7 @@ test("landing CTA changes to the personal MoneyBook link for an authenticated us
   assert.match(memberMarkup, /내 가계부로 이동/);
   assert.match(memberMarkup, /href="\/ko\/money\/books"/);
   assert.doesNotMatch(memberMarkup, /무료로 시작하기|href="\/ko\/money\/login"/);
-  assert.match(render(false, false, "LandingHeader"), /공개 메뉴/);
+  assert.match(render(false, false, "LandingHeader"), /패밀리사이트/);
   assert.equal(render(false, true, "LandingHeader"), "");
   assert.equal(render(true, false, "LandingHeader"), "");
 });
