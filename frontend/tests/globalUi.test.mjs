@@ -62,6 +62,21 @@ test("global header uses shared logout and includes a mobile navigation control"
   assert.match(source, /getGlobalNavItems\(role, locale\)/);
 });
 
+test("family site selectors show translated service names and open locale paths in a secure new tab", () => {
+  const header = fs.readFileSync(path.join(testDirectory, "../src/common/components/GlobalHeader.tsx"), "utf8");
+  const landing = fs.readFileSync(path.join(testDirectory, "../src/landing/components/LandingActions.tsx"), "utf8");
+  const copy = fs.readFileSync(path.join(testDirectory, "../src/i18n/familySitesCopy.ts"), "utf8");
+  for (const source of [header, landing]) {
+    assert.match(source, /family\.label/);
+    assert.match(source, /family\.portal/);
+    assert.match(source, /family\.calculator/);
+    assert.match(source, /family\.tools/);
+    assert.match(source, /family\.(moneyBook|money)/);
+    assert.match(source, /window\.open\(`\/\$\{locale\}\$\{event\.currentTarget\.value\}`, "_blank", "noopener,noreferrer"\)/);
+  }
+  for (const label of ["패밀리사이트", "포탈", "계산기", "온라인 도구", "무료 공유 가계부"]) assert.ok(copy.includes(label));
+});
+
 test("session section starts compact and reveals existing session actions when expanded", () => {
   const sessions = {
     sessions: [{ sessionUid: 8, current: true, userAgent: "Chrome/120 Windows", ipAddress: "192.0.2.1", createdAt: "2026-10-03T00:00:00Z", lastUsedAt: null, expiresAt: "2026-10-04T00:00:00Z" }],

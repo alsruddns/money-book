@@ -33,13 +33,16 @@ test("landing CTA changes to the personal MoneyBook link for an authenticated us
   const React = require("react");
   const renderToStaticMarkup = require("react-dom/server").renderToStaticMarkup;
   const Link = ({ href, children, ...props }) => React.createElement("a", { href, ...props }, children);
+  const familySitesCopy = {
+    ko: { label: "패밀리사이트", portal: "포탈", calculator: "계산기", tools: "온라인 도구", moneyBook: "무료 공유 가계부", newTab: "새 탭에서 열림" },
+  };
 
   function render(isAuthenticated, isLoading = false, component = "default") {
     const mod = { exports: {} };
     vm.runInNewContext(js, {
       module: mod,
       exports: mod.exports,
-      require: (name) => name === "next/link" ? { default: Link } : name === "@/auth/hooks/useCurrentUser" ? { useCurrentUser: () => ({ isAuthenticated, isLoading }) } : resolveLocaleTestImport(name, {}, require),
+      require: (name) => name === "next/link" ? { default: Link } : name === "@/auth/hooks/useCurrentUser" ? { useCurrentUser: () => ({ isAuthenticated, isLoading }) } : name === "@/i18n/familySitesCopy" ? { familySitesCopy } : resolveLocaleTestImport(name, {}, require),
     });
     return renderToStaticMarkup(React.createElement(mod.exports[component]));
   }
