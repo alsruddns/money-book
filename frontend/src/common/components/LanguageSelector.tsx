@@ -28,7 +28,7 @@ export default function LanguageSelector({ compact = false, placement = "floatin
       router.push(target);
     }}
     className={isHeader
-      ? "h-11 w-20 max-w-[24vw] rounded-lg border border-zinc-300 bg-white px-2 text-sm font-medium text-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 max-[380px]:w-16"
+      ? "h-11 w-16 max-w-[20vw] rounded-lg border border-zinc-300 bg-white px-1 text-xs font-medium text-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 sm:w-20 sm:px-2 sm:text-sm"
       : "min-h-9 max-w-36 rounded-lg border-0 bg-transparent px-2 font-medium text-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"}
   >
     {supportedLocales.map((item) => <option key={item} value={item}>{localeNames[item]}</option>)}

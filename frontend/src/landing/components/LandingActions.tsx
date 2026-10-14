@@ -12,8 +12,8 @@ import LanguageSelector from "@/common/components/LanguageSelector";
 export function LandingHeader() {
   const locale = getLocaleFromPathname(usePathname() || "/ko");
   const family = familySitesCopy[locale];
-  const { isAuthenticated, isLoading } = useCurrentUser();
-  if (isAuthenticated || isLoading) return null;
+  const { isAuthenticated } = useCurrentUser();
+  if (isAuthenticated) return null;
 
   return <header className="border-b border-zinc-200 bg-white">
     <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-2 sm:flex-nowrap sm:gap-4 sm:px-6 sm:py-0 lg:px-8">
@@ -21,8 +21,8 @@ export function LandingHeader() {
       <nav aria-label={family.label} className="flex w-full flex-wrap items-center justify-end gap-1 sm:w-auto sm:flex-nowrap sm:gap-4">
         <div className="flex shrink-0 items-center gap-1"><FamilySiteSelector locale={locale} className="max-[380px]:w-24 sm:max-w-48" /><LanguageSelector compact /></div>
         <Link href="#features" className="hidden min-h-11 items-center px-2 text-sm font-medium text-zinc-600 hover:text-blue-700 sm:inline-flex">주요 기능</Link>
-        <Link href="/login" className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100">로그인</Link>
-        <Link href="/signup" className="inline-flex min-h-11 items-center rounded-lg bg-blue-700 px-4 text-sm font-semibold text-white hover:bg-blue-800">무료로 시작하기</Link>
+        <Link href="/login" className="hidden min-h-11 items-center rounded-lg px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100 sm:inline-flex">로그인</Link>
+        <Link href="/signup" className="hidden min-h-11 items-center rounded-lg bg-blue-700 px-4 text-sm font-semibold text-white hover:bg-blue-800 sm:inline-flex">무료로 시작하기</Link>
       </nav>
     </div>
   </header>;
