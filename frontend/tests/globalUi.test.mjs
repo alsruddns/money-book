@@ -62,18 +62,21 @@ test("global header uses shared logout and includes a mobile navigation control"
   assert.match(source, /getGlobalNavItems\(role, locale\)/);
 });
 
-test("family site selectors show translated service names and open locale paths in a secure new tab", () => {
+test("family site selectors keep a fixed translated trigger and open locale paths in a secure new tab", () => {
   const header = fs.readFileSync(path.join(testDirectory, "../src/common/components/GlobalHeader.tsx"), "utf8");
   const landing = fs.readFileSync(path.join(testDirectory, "../src/landing/components/LandingActions.tsx"), "utf8");
+  const selector = fs.readFileSync(path.join(testDirectory, "../src/common/components/FamilySiteSelector.tsx"), "utf8");
   const copy = fs.readFileSync(path.join(testDirectory, "../src/i18n/familySitesCopy.ts"), "utf8");
   for (const source of [header, landing]) {
-    assert.match(source, /family\.label/);
-    assert.match(source, /family\.portal/);
-    assert.match(source, /family\.calculator/);
-    assert.match(source, /family\.tools/);
-    assert.match(source, /family\.(moneyBook|money)/);
-    assert.match(source, /window\.open\(`\/\$\{locale\}\$\{event\.currentTarget\.value\}`, "_blank", "noopener,noreferrer"\)/);
+    assert.match(source, /<FamilySiteSelector locale=\{locale\}/);
+    assert.match(source, /<LanguageSelector compact/);
   }
+  assert.match(selector, /aria-label=\{family\.label\}/);
+  assert.match(selector, /aria-describedby=\{newTabDescriptionId\}/);
+  assert.match(selector, /<option value="" disabled>\{family\.label\}<\/option>/);
+  assert.match(selector, /window\.open\(href, "_blank", "noopener,noreferrer"\)/);
+  assert.match(selector, /event\.currentTarget\.value = ""/);
+  assert.match(selector, /sites = \[\s*\{ href: `\/\$\{locale\}`, label: family\.portal \},\s*\{ href: `\/\$\{locale\}\/calculators`, label: family\.calculator \},\s*\{ href: `\/\$\{locale\}\/tools`, label: family\.tools \},\s*\{ href: `\/\$\{locale\}\/money`, label: family\.moneyBook \}/s);
   for (const label of ["패밀리사이트", "포탈", "계산기", "온라인 도구", "무료 공유 가계부"]) assert.ok(copy.includes(label));
 });
 

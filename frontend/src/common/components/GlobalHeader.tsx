@@ -11,12 +11,12 @@ import type { RootState } from "@/store/store";
 import { getGlobalNavItems, isGlobalHeaderHidden, isGlobalNavItemActive } from "./globalNavigation";
 import { getLocaleFromPathname, withMoneyLocale } from "@/i18n/config";
 import { useTranslation } from "@/i18n/useTranslation";
-import { familySitesCopy } from "@/i18n/familySitesCopy";
+import FamilySiteSelector from "@/common/components/FamilySiteSelector";
+import LanguageSelector from "@/common/components/LanguageSelector";
 
 export default function GlobalHeader() {
   const pathname = usePathname();
   const locale = getLocaleFromPathname(pathname ?? "/ko");
-  const family = familySitesCopy[locale];
   const { t } = useTranslation();
   const [isOpen, setOpen] = useState(false);
   const { accessToken, refreshToken, isInitialized } = useSelector((state: RootState) => state.auth);
@@ -33,23 +33,27 @@ export default function GlobalHeader() {
   const roleLoading = currentUser.isLoading && !currentUser.data;
   const linkClass = (href: string) => `min-h-11 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${isGlobalNavItemActive(pathname, href) ? "bg-blue-50 text-blue-800" : "text-zinc-700 hover:bg-zinc-100 hover:text-blue-700 active:bg-zinc-200"}`;
   return <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white/95 text-zinc-900 backdrop-blur">
-    <div className="mx-auto flex min-h-16 w-full max-w-screen-2xl items-center justify-between gap-4 px-4 sm:px-6">
+    <div className="mx-auto flex min-h-16 w-full max-w-screen-2xl flex-wrap items-center justify-between gap-2 px-4 sm:px-6">
       <Link href={`/${locale}`} aria-label={`woori.today ${t("common.home")}`} className="shrink-0">
-        <Image src="/_assets/money/images/brand/woori-logo.png" alt="woori.today" width={419} height={99} sizes="(max-width: 640px) 136px, 160px" className="h-auto w-[136px] sm:w-[160px]" />
+        <Image src="/_assets/money/images/brand/woori-logo.png" alt="woori.today" width={419} height={99} sizes="(max-width: 640px) 80px, 160px" className="h-auto w-[80px] sm:w-[160px] max-[380px]:w-[68px]" />
       </Link>
+      <div className="ml-auto flex min-w-0 shrink-0 items-center gap-1 md:hidden">
+        <FamilySiteSelector locale={locale} className="max-[380px]:w-24" />
+        <LanguageSelector compact />
+        <button type="button" aria-label={t("navigation.openMenu")} aria-expanded={isOpen} aria-controls="global-mobile-menu" aria-busy={roleLoading} onClick={() => setOpen((value) => !value)}
+          className="flex min-h-11 shrink-0 items-center rounded-lg border border-zinc-300 px-2 text-sm font-medium md:hidden">{t("navigation.menu")}</button>
+      </div>
       <nav aria-label={t("navigation.manage")} aria-busy={roleLoading} className="hidden items-center gap-1 md:flex">
-        <label className="mr-2 flex shrink-0 items-center gap-2 text-sm text-zinc-600"><span>{family.label}</span><select aria-label={`${family.label} — ${family.newTab}`} value="/money" onChange={(event) => window.open(`/${locale}${event.currentTarget.value}`, "_blank", "noopener,noreferrer")} className="min-h-11 w-auto max-w-[25vw] rounded-lg border border-zinc-300 bg-white px-2 font-medium text-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"><option value="">{family.portal}</option><option value="/calculators">{family.calculator}</option><option value="/tools">{family.tools}</option><option value="/money">{family.moneyBook}</option></select></label>
+        <FamilySiteSelector locale={locale} className="w-auto max-w-[25vw] sm:max-w-48" />
+        <LanguageSelector compact />
         {hasToken && (roleLoading ? <div aria-hidden="true" className="flex gap-2 px-2"><span className="h-9 w-24 animate-pulse rounded-lg bg-zinc-100" /><span className="h-9 w-24 animate-pulse rounded-lg bg-zinc-100" /><span className="h-9 w-20 animate-pulse rounded-lg bg-zinc-100" /></div> : navLinks.map((item) => <Link key={item.href} href={withMoneyLocale(locale, item.href)} aria-current={isGlobalNavItemActive(pathname, item.href) ? "page" : undefined} className={linkClass(item.href)}>{item.label}</Link>))}
         {hasToken && <button type="button" disabled={logout.isLoading} onClick={() => void logout.logout()} className="min-h-11 cursor-pointer rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-blue-700 active:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:cursor-not-allowed disabled:opacity-50">
           {logout.isLoading ? t("auth.loggingOut") : t("auth.logout")}
         </button>}
       </nav>
-      <button type="button" aria-label={t("navigation.openMenu")} aria-expanded={isOpen} aria-controls="global-mobile-menu" aria-busy={roleLoading} onClick={() => setOpen((value) => !value)}
-        className="flex min-h-11 items-center rounded-lg border border-zinc-300 px-3 text-sm font-medium md:hidden">{t("navigation.menu")}</button>
     </div>
     {isOpen && <nav id="global-mobile-menu" aria-label={t("navigation.mobileMenu")} className="border-t border-zinc-200 bg-white p-3 md:hidden">
       <div className="mx-auto flex max-w-screen-2xl flex-col gap-1 px-1">
-        <label className="flex min-h-11 flex-col items-start gap-2 px-3 py-2 text-sm">{family.label}<select aria-label={`${family.label} — ${family.newTab}`} value="/money" onChange={(event) => window.open(`/${locale}${event.currentTarget.value}`, "_blank", "noopener,noreferrer")} className="min-h-11 w-full rounded-lg border px-2"><option value="">{family.portal}</option><option value="/calculators">{family.calculator}</option><option value="/tools">{family.tools}</option><option value="/money">{family.moneyBook}</option></select></label>
         {hasToken && (roleLoading ? <p role="status" className="px-3 py-3 text-sm text-zinc-600">{t("common.loading")}</p> : navLinks.map((item) => <Link key={item.href} href={withMoneyLocale(locale, item.href)} onClick={() => setOpen(false)} aria-current={isGlobalNavItemActive(pathname, item.href) ? "page" : undefined} className={`flex min-h-11 items-center ${linkClass(item.href)}`}>{item.label}</Link>))}
         {hasToken && <button type="button" disabled={logout.isLoading} onClick={() => void logout.logout()} className="min-h-11 cursor-pointer rounded-lg px-3 text-left text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-blue-700 active:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:cursor-not-allowed disabled:opacity-50">{logout.isLoading ? t("auth.loggingOut") : t("auth.logout")}</button>}
       </div>

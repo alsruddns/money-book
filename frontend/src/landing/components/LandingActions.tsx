@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import { getLocaleFromPathname } from "@/i18n/config";
 import { familySitesCopy } from "@/i18n/familySitesCopy";
 import { useCurrentUser } from "@/auth/hooks/useCurrentUser";
+import FamilySiteSelector from "@/common/components/FamilySiteSelector";
+import LanguageSelector from "@/common/components/LanguageSelector";
 
 export function LandingHeader() {
   const locale = getLocaleFromPathname(usePathname() || "/ko");
@@ -17,7 +19,7 @@ export function LandingHeader() {
     <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-2 sm:flex-nowrap sm:gap-4 sm:px-6 sm:py-0 lg:px-8">
       <NextLink href={`/${locale}`} aria-label={`woori.today ${locale}`} className="text-lg font-bold tracking-tight text-zinc-900">woori.today</NextLink>
       <nav aria-label={family.label} className="flex w-full flex-wrap items-center justify-end gap-1 sm:w-auto sm:flex-nowrap sm:gap-4">
-        <label className="flex shrink-0 flex-col items-start text-[10px] leading-tight text-zinc-600 sm:text-xs"><span>{family.label}</span><select aria-label={`${family.label} — ${family.newTab}`} value="/money" onChange={(event) => window.open(`/${locale}${event.currentTarget.value}`, "_blank", "noopener,noreferrer")} className="min-h-10 max-w-[34vw] rounded-lg border border-zinc-300 bg-white px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 sm:min-h-11 sm:max-w-48 sm:text-sm"><option value="">{family.portal}</option><option value="/calculators">{family.calculator}</option><option value="/tools">{family.tools}</option><option value="/money">{family.moneyBook}</option></select></label>
+        <div className="flex shrink-0 items-center gap-1"><FamilySiteSelector locale={locale} className="max-[380px]:w-24 sm:max-w-48" /><LanguageSelector compact /></div>
         <Link href="#features" className="hidden min-h-11 items-center px-2 text-sm font-medium text-zinc-600 hover:text-blue-700 sm:inline-flex">주요 기능</Link>
         <Link href="/login" className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100">로그인</Link>
         <Link href="/signup" className="inline-flex min-h-11 items-center rounded-lg bg-blue-700 px-4 text-sm font-semibold text-white hover:bg-blue-800">무료로 시작하기</Link>

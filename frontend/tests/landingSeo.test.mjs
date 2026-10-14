@@ -42,7 +42,7 @@ test("landing CTA changes to the personal MoneyBook link for an authenticated us
     vm.runInNewContext(js, {
       module: mod,
       exports: mod.exports,
-      require: (name) => name === "next/link" ? { default: Link } : name === "@/auth/hooks/useCurrentUser" ? { useCurrentUser: () => ({ isAuthenticated, isLoading }) } : name === "@/i18n/familySitesCopy" ? { familySitesCopy } : resolveLocaleTestImport(name, {}, require),
+      require: (name) => name === "next/link" ? { default: Link } : name === "@/auth/hooks/useCurrentUser" ? { useCurrentUser: () => ({ isAuthenticated, isLoading }) } : name === "@/i18n/familySitesCopy" ? { familySitesCopy } : name === "@/common/components/FamilySiteSelector" || name === "@/common/components/LanguageSelector" ? { default: () => null } : resolveLocaleTestImport(name, {}, require),
     });
     return renderToStaticMarkup(React.createElement(mod.exports[component]));
   }
